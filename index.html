@@ -263,7 +263,7 @@ table.ctab td,table.ctab th{white-space:nowrap}
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:20px;width:min(440px,92vw)}
 dialog::backdrop{background:rgb(0 0 0 / .35)}
 
-.sc-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.sc-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .sc-grid{display:grid;min-width:max-content}
 .sc-col{border-right:1px solid var(--line);min-width:0}
 .sc-col:last-child{border-right:none}
@@ -500,6 +500,10 @@ table.resv thead th{position:sticky;top:0;z-index:2}
 .oqf{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.oqf input{height:32px;padding:0 10px;flex:1;min-width:120px}.oqf select{height:32px;padding:0 6px}
 .oqsum{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 8px;padding:8px 10px;background:var(--soft,#eef4fb);border-radius:8px;font-size:13px}
 .btn.rdel{height:26px;padding:0 8px;font-size:12px}.btn.rdel.sure{color:var(--bad);border-color:var(--bad)}.lwhy{font-size:12px;text-align:left}
+.sc-h.sc-go{cursor:pointer}.sc-h.sc-go:hover{background:var(--accent-soft);color:var(--navy);text-decoration:underline}
+.nth.n1,.ap.nth1{}.tel{white-space:nowrap}
+.signup{max-width:420px}.signup .form-2{display:grid;grid-template-columns:1fr 1fr}
+.sgreq{border-color:var(--warn,#c98a00)}.menutab th,.menutab td{text-align:center;font-size:12px;white-space:nowrap}.menutab td:first-child,.menutab th:first-child{text-align:left}.menutab input{width:16px;height:16px}
 </style>
 </head>
 <body>
@@ -521,8 +525,23 @@ const PT_ITEMS = ["도수A","도수B","도수C","도수E2A","도수E2B","충격�
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
 
-const DEPTS = ["원무","간호","병동","수술","물리치료","영상의학","임상병리","경영지원"];
-const LEVELS = {1:"대표·본부",2:"원장",3:"부서장",4:"직원"};
+const DEPTS = ["총괄","원무","간호","병동","수술","물리치료","영상의학","임상병리","경영지원"];
+const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원"};
+// 부서별 메뉴 (3·4등급). 1·2등급과 총괄은 전부. 계정·원장 관리에서 1등급이 지점별로 바꿀 수 있습니다.
+const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","씨암 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["upload","엑셀 업로드"],["perf","부서 실적"]];
+const MENU_BASE=["staff","resv","ot","leave","docs","reg","info"];
+const MENU_DEFAULT={
+  "원무":["entry","cal","spt","semg",...MENU_BASE,"upload"],
+  "영상의학":["carm",...MENU_BASE],
+  "물리치료":["spt",...MENU_BASE],
+  "간호":["inv",...MENU_BASE],
+  "임상병리":["semg",...MENU_BASE],
+  "병동":["inv",...MENU_BASE],
+  "수술":["inv",...MENU_BASE],
+  "경영지원":[...MENU_BASE]};
+const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원"];
+function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
+function fullMenu(){ return S.me.level<=2 || S.me.dept==="총괄"; }
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
 const PATHS = ["지인소개","네이버 블로그","네이버 지도","카카오맵","유튜브","병원 간판","이마트 광고","GTX 광고","지하철역 광고","기타"];
@@ -604,7 +623,7 @@ async function boot(){
   render();
 }
 function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(lv<=2) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
-function canDash(){ return S.me.level<=2 || (S.me.level===3 && S.me.dept==="원무"); }
+function canDash(){ return S.me.level<=2 || (S.me.level===3 && (S.me.dept==="원무"||S.me.dept==="총괄")); }
 function canEntry(){ return S.me.level<=2 || S.me.dept==="원무"; }
 
 function renderLogin(){
@@ -615,6 +634,7 @@ function renderLogin(){
     <div class="field"><label for="lpw">비밀번호</label><input id="lpw" type="password" autocomplete="current-password" required></div>
     <div class="err" id="lerr">${(()=>{ try{ if(sessionStorage.getItem("gt-idle")){ sessionStorage.removeItem("gt-idle"); return `${IDLE_MIN}분 동안 사용하지 않아 로그아웃했습니다.`; } }catch(e){} return ""; })()}</div>
     <button class="btn block" type="submit" id="lbtn">로그인</button>
+    <button class="btn ghost block" type="button" id="lsign" style="margin-top:8px">처음이신가요? 회원가입 요청</button>
     <div class="foot"><span>비밀번호 분실 시 지점 원장·본부에 재설정 요청</span><b>D:TEN</b></div>
   </form></div>`;
   $("lf").addEventListener("submit", async e=>{
@@ -623,6 +643,33 @@ function renderLogin(){
     const {error} = await sb.auth.signInWithPassword({ email, password:$("lpw").value });
     $("lbtn").disabled=false; if(error) $("lerr").textContent=errMsg(error);
   });
+  $("lsign").onclick=renderSignup;
+}
+async function renderSignup(){
+  const {data:brs}=await sb.rpc("signup_branches"); const B=brs||[];
+  $("app").innerHTML = `<div class="login-wrap gut"><form class="login signup" id="sgf" autocomplete="off">
+    <div class="brand"><h1>회원가입 요청</h1><span class="by">D:TEN</span></div>
+    <p class="sub" style="margin:4px 0 14px">요청을 넣으면 지점 원장·본부가 확인 후 승인합니다. 승인되면 아래 아이디·비밀번호로 로그인하세요.</p>
+    <div class="field"><label for="sg_b">지점</label><select id="sg_b" required><option value="">지점 선택</option>${B.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></div>
+    <div class="field"><label for="sg_d">부서</label><select id="sg_d" required><option value="">부서 선택</option>${DEPTS.map(d=>`<option>${d}</option>`).join("")}</select></div>
+    <div class="form-2" style="gap:0 10px"><div class="field"><label for="sg_n">이름</label><input id="sg_n" required maxlength="30"></div>
+    <div class="field"><label for="sg_t">직함 <small class="meta">(선택)</small></label><input id="sg_t" maxlength="20" placeholder="예: 주임"></div></div>
+    <div class="field"><label for="sg_id">아이디 <small class="meta">영문·숫자 3~30자</small></label><input id="sg_id" required pattern="[A-Za-z0-9._\\-]{3,30}" autocomplete="username"></div>
+    <div class="field"><label for="sg_pw">비밀번호 <small class="meta">8자 이상</small></label><input id="sg_pw" type="password" minlength="8" required autocomplete="new-password"></div>
+    <div class="field"><label for="sg_pw2">비밀번호 확인</label><input id="sg_pw2" type="password" minlength="8" required autocomplete="new-password"></div>
+    <div class="err" id="sg_e"></div>
+    <button class="btn block" id="sg_ok">요청 보내기</button>
+    <button class="btn ghost block" type="button" id="sg_back" style="margin-top:8px">로그인 화면으로</button>
+  </form></div>`;
+  $("sg_back").onclick=renderLogin;
+  $("sgf").onsubmit=async e=>{ e.preventDefault(); const pw=$("sg_pw").value; if(pw!==$("sg_pw2").value){ $("sg_e").textContent="비밀번호 확인이 다릅니다."; return; }
+    $("sg_ok").disabled=true; $("sg_e").textContent="";
+    const {error}=await sb.rpc("request_signup",{p_login:$("sg_id").value.trim(),p_password:pw,p_name:$("sg_n").value.trim(),p_branch:$("sg_b").value,p_dept:$("sg_d").value,p_title:$("sg_t").value.trim()||null});
+    $("sg_ok").disabled=false; if(error){ $("sg_e").textContent=errMsg(error); return; }
+    const who=$("sg_n").value.trim(), id=$("sg_id").value.trim().toLowerCase();
+    $("app").innerHTML=`<div class="login-wrap gut"><div class="login"><div class="brand"><h1>요청을 보냈습니다</h1><span class="by">D:TEN</span></div>
+      <p class="sub" style="margin:8px 0 16px">${esc(who)}님, 승인되면 아이디 <b>${esc(id)}</b>와 정하신 비밀번호로 로그인할 수 있습니다.</p>
+      <button class="btn block" id="sg_home">로그인 화면으로</button></div></div>`; $("sg_home").onclick=renderLogin; };
 }
 function renderNoProfile(error){
   $("app").innerHTML = `<div class="login-wrap gut"><div class="login"><div class="brand"><h1>골든타임 ERP</h1><span class="by">D:TEN</span></div>
@@ -653,7 +700,7 @@ function render(){
     {id:"spt",label:"도수·충격파 스케줄",ok:schedPerm("pt")!=="none"},
     {id:"semg",label:"근전도 스케줄",ok:schedPerm("emg")!=="none"},
     {id:"staff",label:"근무 스케줄"},
-    {id:"resv",label:"예약관리",ok:lv<=3||["원무","간호","물리치료","임상병리","병동"].includes(S.me.dept)},
+    {id:"resv",label:"예약관리",ok:lv<=3||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept)},
     {id:"ot",label:"연장근무"},
     {id:"leave",label:"연차관리"},
     {id:"inv",label:"물품·재고"},
@@ -661,7 +708,7 @@ function render(){
     {id:"docs",label:"업무게시판"},
     {id:"reg",label:"업무 기록부"},
     {id:"info",label:"기본정보·연락망"},
-    {id:"upload",label:"엑셀 업로드",ok:lv<=3},
+    {id:"upload",label:"엑셀 업로드",ok:lv<=3||S.me.dept==="원무"},
     {id:"users",label:"계정·원장 관리",ok:lv<=2},
     {id:"log",label:"변경 기록",ok:lv<=2},
     {id:"perf",label:"부서 실적",ok:canPerf()},
@@ -670,10 +717,13 @@ function render(){
     {id:"report",label:"월간 보고서",ok:lv<=2},
     {id:"pay",label:"인건비·인센티브",ok:lv===1},
     {id:"goals",label:"목표·알림 설정",ok:lv<=2},
-  ].filter(i=>i.sep||i.ok!==false||!i.id);
+  ].filter(i=>i.sep||i.ok!==false||!i.id).filter(i=>!i.id||i.id==="me"||fullMenu()||deptMenus(S.me.dept).includes(i.id));
+  if(lv>=3&&!fullMenu()&&S.menuFor!==S.branch){ S.menuFor=S.branch; loadBranchSettings().then(d=>{ const m=d.raw?.menus||null; if(JSON.stringify(m)!==JSON.stringify(S.menuCfg||null)){ S.menuCfg=m; render(); } }).catch(()=>{}); }
+  { const ok=new Set(items.map(i=>i.id)); const base=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view; if(!ok.has(base)) S.view="me"; }
   $("app").innerHTML = topbar()+`<div class="shell"><nav class="side" aria-label="메뉴">${items.map(i=>i.sep?`<div class="sep">${i.sep}</div>`:
     i.id?`<button data-v="${i.id}" ${(S.view===i.id||S.view===i.id+"s"||(S.view==="price"&&i.id===(S.priceKind==="emg"?"semg":"spt")))?'aria-current="page"':""}>${i.label}</button>`:`<button disabled>${i.label}<span class="soon">준비 중</span></button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
   $("logout").onclick=()=>doLogout(); if($("appInstall")) $("appInstall").onclick=installHelp;
+  if(lv<=2) sb.from("signup_requests").select("id",{count:"exact",head:true}).eq("status","pending").then(({count})=>{ const b=document.querySelector('nav.side button[data-v="users"]'); if(b&&count) b.insertAdjacentHTML("beforeend",` <span class="pill wait" title="가입 요청">${count}</span>`); },()=>{});
   $("homeBtn").onclick=()=>{ S.view=canDash()?"dash":defaultView(); render(); };
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; } S.view=b.dataset.v; render(); });
@@ -1021,7 +1071,10 @@ async function renderEntry(){
 async function renderUsers(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const lv=S.me.level;
-  const [{data:users,error},docs]=await Promise.all([ sb.from("profiles").select("*").order("level").order("name"), loadDoctors() ]);
+  const [{data:users,error},docs,rq,bset]=await Promise.all([ sb.from("profiles").select("*").order("level").order("name"), loadDoctors(),
+    sb.from("signup_requests").select("id,login_id,name,branch_id,dept,title,created_at").eq("status","pending").order("created_at"),
+    lv===1?loadBranchSettings().catch(()=>null):Promise.resolve(null) ]);
+  const reqs=(rq&&!rq.error?rq.data:[])||[];
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const brName=id=>S.branches.find(b=>b.id===id)?.name||"-";
   const list=(users||[]).filter(u=>lv===1?(u.branch_id===S.branch||u.level===1):true);
@@ -1029,9 +1082,14 @@ async function renderUsers(){
   const deptOpts=(sel)=>`<option value="">(없음)</option>`+DEPTS.map(d=>`<option ${d===sel?"selected":""}>${d}</option>`).join("");
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>계정·원장 관리</h2><div class="meta">${esc(brName(S.branch))} · 로그인 아이디로 들어오면 소속 지점으로 바로 입장합니다</div></div></div>
+    ${reqs.length?`<section class="panel sgreq"><h3>가입 요청 <span>${reqs.length}건 · 등급·부서를 확인하고 승인하세요 (요청한 지점으로 들어갑니다)</span></h3><div class="tbl-box"><table><thead><tr><th>요청일</th><th>이름</th><th>아이디</th><th>지점</th><th>부서</th><th>직함</th><th>등급</th><th></th></tr></thead><tbody>
+      ${reqs.map(r=>`<tr data-rq="${r.id}"><td class="num">${esc(new Date(r.created_at).toLocaleDateString("ko-KR"))}</td><td><b>${esc(r.name)}</b></td><td class="num">${esc(r.login_id)}</td><td>${esc(brName(r.branch_id))}</td>
+        <td><select data-rqd style="height:28px">${DEPTS.map(d=>`<option ${d===r.dept?"selected":""}>${d}</option>`).join("")}${DEPTS.includes(r.dept)?"":`<option selected>${esc(r.dept)}</option>`}</select></td><td>${esc(r.title||"-")}</td>
+        <td><select data-rql style="height:28px">${[2,3,4].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("")}</select></td>
+        <td style="white-space:nowrap"><button class="btn sm" data-rqok>승인</button> <button class="btn ghost sm" data-rqx>거절</button></td></tr>`).join("")}</tbody></table></div></section>`:""}
     <section class="panel"><h3>새 계정 만들기 <span>2~4등급은 소속 지점으로 바로 들어가고 지점 선택이 안 보입니다 · 비밀번호 8자 이상, 처음 로그인 후 마이페이지에서 본인이 바꾸도록 안내하세요</span></h3>
       <form class="inline-form" id="uf" autocomplete="off">
-        <div class="field"><label for="u_id">아이디 (영문·숫자)</label><input id="u_id" required pattern="[A-Za-z0-9._-]{3,30}"></div>
+        <div class="field"><label for="u_id">아이디 (영문·숫자)</label><input id="u_id" required pattern="[A-Za-z0-9._\\-]{3,30}"></div>
         <div class="field"><label for="u_name">이름</label><input id="u_name" required></div>
         <div class="field"><label for="u_pw">초기 비밀번호</label><input id="u_pw" type="password" autocomplete="new-password" minlength="8" required></div>
         <div class="field"><label for="u_lv">등급</label><select id="u_lv">${lvOpts(4)}</select></div>
@@ -1044,12 +1102,22 @@ async function renderUsers(){
       ${list.map(u=>`<tr><td>${esc(u.name)}</td><td class="num">${esc(u.login_id)}</td><td>${u.level}등급 ${LEVELS[u.level]}</td><td>${u.level===1?"전 지점":esc(brName(u.branch_id))}</td><td>${esc(u.dept||"-")}</td><td>${esc(u.title||"-")}</td>${lv===1?`<td class="num">${u.pw_changed_at?esc(new Date(u.pw_changed_at).toLocaleDateString("ko-KR")):`<span class="pill wait">초기 비밀번호</span>`}</td>`:""}<td><span class="pill ${u.active?"ok":"off"}">${u.active?"사용":"중지"}</span></td>
         <td>${(lv===1||u.level>=3)?`<button class="btn ghost sm" data-edit="${u.user_id}">수정</button> <button class="btn ghost sm" data-pw="${u.user_id}">비밀번호 재설정</button>`:""}</td></tr>`).join("")}
     </tbody></table></div></section>
+    ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 3·4등급 직원에게 보이는 메뉴 · 1·2등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
+      <div class="tbl-box"><table class="menutab"><thead><tr><th>부서</th>${MENU_PICK.map(([,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
+      ${MENU_DEPTS.map(d=>{ const m=deptMenus(d,bset?.raw?.menus); return `<tr><td><b>${d}</b></td>${MENU_PICK.map(([k,t])=>`<td><input type="checkbox" data-mn="${d}|${k}" ${m.includes(k)?"checked":""} aria-label="${d} ${t}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" id="mn_save">메뉴 저장</button><button class="btn ghost sm" id="mn_reset">기본값으로</button><span class="meta">메뉴만 숨깁니다. 실제 자료 권한(보기·고치기)은 등급·부서 기준 그대로입니다.</span></div></section>`:""}
     <section class="panel"><h3>원장 목록 <span>마감일지의 원장별 칸에 나옵니다</span></h3>
       <form class="inline-form" id="df"><div class="field"><label for="d_name">원장 이름</label><input id="d_name" placeholder="예: 홍길동 원장" required></div><button class="btn" type="submit">원장 추가</button></form>
       <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>순서</th><th>이름</th><th>상태</th><th></th></tr></thead><tbody>
       ${docs.map(d=>`<tr><td class="num">${d.sort}</td><td>${esc(d.name)}</td><td><span class="pill ${d.active?"ok":"off"}">${d.active?"진료 중":"숨김"}</span></td><td><button class="btn ghost sm" data-doc="${d.id}" data-act="${d.active?0:1}">${d.active?"숨기기":"다시 보이기"}</button></td></tr>`).join("")}
       </tbody></table></div></section>
   </div>`;
+  document.querySelectorAll("[data-rq]").forEach(tr=>{ const id=+tr.dataset.rq;
+    tr.querySelector("[data-rqok]").onclick=async e=>{ const b=e.currentTarget; b.disabled=true; const {error}=await sb.rpc("approve_signup",{p_id:id,p_level:+tr.querySelector("[data-rql]").value,p_dept:tr.querySelector("[data-rqd]").value}); b.disabled=false; if(error) return toast(errMsg(error)); toast("승인했습니다 · 이제 로그인할 수 있습니다"); render(); };
+    tr.querySelector("[data-rqx]").onclick=async e=>{ const b=e.currentTarget; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 거절"; return; } const {error}=await sb.rpc("reject_signup",{p_id:id}); if(error) return toast(errMsg(error)); toast("거절했습니다"); render(); }; });
+  if($("mn_save")){ const saveMenus=async(menus)=>{ const d=JSON.parse(JSON.stringify(bset?.raw||{})); if(menus) d.menus=menus; else delete d.menus; const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); if(error) return toast(errMsg(error)); S.menuFor=null; toast(menus?"부서별 메뉴를 저장했습니다":"기본값으로 돌렸습니다"); renderUsers(); };
+    $("mn_save").onclick=()=>{ const m={}; MENU_DEPTS.forEach(d=>m[d]=MENU_PICK.map(([k])=>k).filter(k=>document.querySelector(`[data-mn="${d}|${k}"]`).checked)); saveMenus(m); };
+    $("mn_reset").onclick=()=>saveMenus(null); }
   $("uf").addEventListener("submit", async e=>{
     e.preventDefault(); $("u_err").textContent=""; $("u_btn").disabled=true;
     const {error}=await sb.rpc("admin_create_user",{p_login:$("u_id").value.trim(),p_password:$("u_pw").value,p_name:$("u_name").value.trim(),p_level:Number($("u_lv").value),p_branch:(Number($("u_lv").value)===1?null:($("u_br").value||S.branch)),p_dept:$("u_dept").value,p_title:$("u_title").value.trim()});
@@ -1159,10 +1227,10 @@ async function renderSched(kind){
     const n=Math.max(1,tracks.length);
     const cards=list.map(a=>{ const top=(a.start_min-cfg.from)/10*SLOT_H+1, h=Math.max(SLOT_H-2,a.minutes/10*SLOT_H-2);
       const laneName = "";
-      const ct=a.contact||{}; const badges=kind==="emg"?`${a._n?`<em class="nth n${Math.min(a._n,3)}">${a._n}차</em>`:""}${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
-      return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._n?" nth"+Math.min(a._n,3):""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
+      const ct=a.contact||{}; const badges=kind==="emg"?`${a._k?`<em class="nth n${a._k}" title="${a.exam_no?"직접 지정":"자동 계산 ("+a._n+"번째 검사)"}">${a._k}차</em>`:""}${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
+      return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
         <b>${badges}${hhmm(a.start_min)} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")}</b><span>${esc(a.item)}${a.is_new?" · 신환":""}${a.inpatient?" · 입원":""}${a.staff?" · "+esc(a.staff):""}${a.doctor?" · "+esc(a.doctor):""}${a.needle_doctor?" · 니들링 "+esc(a.needle_doctor):""}${laneName?" · "+esc(laneName):""}${a.status!=="예약"?" · "+a.status:""}</span></button>`; }).join("");
-    return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h">${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
+    return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h${st.mode==="week"?" sc-go":""}" ${st.mode==="week"?`data-goday="${c.date}" role="button" tabindex="0" title="${c.date} 하루 보기"`:""}>${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
       <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>예약 불가${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
   // 집계
@@ -1243,6 +1311,7 @@ async function renderSched(kind){
   const ctx={kind,lanes,items,itemBy,docNames,staffNames,canEdit,cfg,blocks,reload:()=>{ const y=window.scrollY; return renderSched(kind).then(()=>window.scrollTo(0,y)); }};
   document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); if(b.dataset.nodlg) return; apptDialog(ctx, appts.find(a=>a.id==b.dataset.ap)); });
   document.querySelectorAll(".blk").forEach(b=>b.onclick=e=>{ e.stopPropagation(); toast(b.title||"예약 불가 시간입니다"); });
+  document.querySelectorAll("[data-goday]").forEach(h=>{ const go=()=>{ st.mode="day"; st.date=h.dataset.goday; renderSched(kind); }; h.onclick=go; h.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } }; });
   stickHead(document.querySelector(".sc-wrap"),".sc-h");
   if(kind==="emg") bindContact(appts);
   bindBlocks(kind,ctx.reload);
@@ -1282,6 +1351,7 @@ function apptDialog(ctx, a, preset){
       <div class="field"><label for="a_s">담당자</label><input id="a_s" list="a_sl" value="${esc(v.staff||"")}" autocomplete="off" ${ro}><datalist id="a_sl">${staffNames.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
       ${kind==="emg"?`<div class="field"><label for="a_dr">담당 원장</label><select id="a_dr" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="${v.minutes}" inputmode="numeric" ${ro}></div>`}
       ${kind==="emg"?`<div class="field"><label for="a_nd">니들링 원장</label><select id="a_nd" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.needle_doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div><div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="30" readonly title="근전도는 30분 고정" style="background:var(--sunk)"></div>
+        <div class="field"><label for="a_no">검사 회차</label><select id="a_no" ${ro}><option value="">자동${v._n?` (지금 ${((v._n-1)%2)+1}차)`:""}</option><option value="1" ${+v.exam_no===1?"selected":""}>1차</option><option value="2" ${+v.exam_no===2?"selected":""}>2차</option></select></div>
         <div class="field"><label for="a_ph">전화번호</label><input id="a_ph" value="${esc(v.phone||"")}" inputmode="tel" placeholder="010-0000-0000" ${ro}></div>
         <div class="field"><label>연락 체크</label><div style="display:flex;gap:6px;flex-wrap:wrap">${CT_KEYS.map(([k,l])=>`<label class="ctsel">${l}<select data-ctk="${k}" ${ro}><option value="">-</option><option ${ct[k]==="O"?"selected":""}>O</option><option ${ct[k]==="X"?"selected":""}>X</option></select></label>`).join("")}</div></div>`:""}
       <div class="field"><label for="a_st">상태</label><select id="a_st" ${ro}>${["예약","완료","취소","노쇼"].map(s=>`<option ${s===v.status?"selected":""}>${s}</option>`).join("")}</select></div>
@@ -1306,7 +1376,7 @@ function apptDialog(ctx, a, preset){
     const row={branch_id:S.branch,kind,appt_date:$("a_d").value,start_min:start,minutes,lane_id:+$("a_l").value||null,item:$("a_i").value,
       chart_no:$("a_c").value.trim()||null,patient_name:$("a_n").value.trim()||null,staff:$("a_s").value.trim()||null,
       doctor:$("a_dr")?($("a_dr").value||null):null, needle_doctor:$("a_nd")?($("a_nd").value||null):null,status:$("a_st").value,is_new:$("a_new").checked,inpatient:$("a_in").checked,note:$("a_note").value.trim()||null};
-    if(kind==="emg"){ row.phone=$("a_ph").value.trim()||null; const c={}; document.querySelectorAll("[data-ctk]").forEach(x=>{ if(x.value) c[x.dataset.ctk]=x.value; }); row.contact=c; }
+    if(kind==="emg"){ row.exam_no=$("a_no").value?+$("a_no").value:null; row.phone=$("a_ph").value.trim()||null; const c={}; document.querySelectorAll("[data-ctk]").forEach(x=>{ if(x.value) c[x.dataset.ctk]=x.value; }); row.contact=c; }
     if(!$("a_ok").dataset.force && row.status!=="취소" && row.status!=="노쇼"){
       $("a_ok").disabled=true; const w=[...blockHit(ctx.blocks||[],row).map(b=>"예약 불가 시간: "+blkLabel(b)), ...await apptConflicts(row, a?.id, lanes)]; $("a_ok").disabled=false;
       if(w.length){ $("a_err").innerHTML=`<b>⚠ 확인해 주세요</b><br>${w.map(x=>"· "+esc(x)).join("<br>")}<br><span class="meta">확인했으면 [그래도 저장]을 누르세요.</span>`; const b=$("a_ok"); b.dataset.force=1; b.textContent="그래도 저장"; b.classList.add("warnbtn"); return; } }
@@ -2274,7 +2344,7 @@ async function renderLeave(){
 // ── 기본정보·연락망 ──
 const INFO_TABS=[["info","기본정보"],["vendor","업체 연락망"],["staff","직원 연락처"],["org","조직도"],["etc","기타 자료"]];
 const PLACEHOLDER=/^(야간|블로커|알바|야간루틴|야간알바)$/;
-const telLink=p=>{ const s=String(p||"").trim(); if(!s) return ""; return s.split(/\s*[\n,/]\s*/).filter(Boolean).map(x=>/\d{2,}/.test(x)?`<a href="tel:${esc(x.replace(/[^\d+]/g,""))}">${esc(x)}</a>`:esc(x)).join("<br>"); };
+const telLink=p=>{ const s=String(p||"").trim(); if(!s) return ""; return s.split(/\s*[\n,/]\s*/).filter(Boolean).map(x=>`<span class="tel">${esc(x)}</span>`).join("<br>"); };
 function infoTabs(cur){ return `<div class="seg infotabs" role="tablist" aria-label="기본정보 메뉴" style="margin-bottom:12px">${INFO_TABS.map(([k,l])=>`<button role="tab" data-it="${k}" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`; }
 function bindInfoTabs(){ document.querySelectorAll("[data-it]").forEach(b=>b.onclick=()=>{ S.infoTab=b.dataset.it; renderInfo(); }); }
 async function renderInfo(){
@@ -3163,11 +3233,13 @@ function bindBlocks(kind,reload){
 
 // ── 근전도: 검사 차수 · 연락 체크 ──
 async function emgOrder(appts,end){
-  const charts=[...new Set(appts.map(a=>a.chart_no).filter(Boolean))]; if(!charts.length) return;
+  const setK=()=>appts.forEach(a=>{ a._k = a.exam_no ? +a.exam_no : a._n ? ((a._n-1)%2)+1 : null; });
+  const charts=[...new Set(appts.map(a=>a.chart_no).filter(Boolean))]; if(!charts.length) return setK();
   const all=[]; for(let i=0;i<charts.length;i+=150){ const {data}=await sb.from("appointments").select("id,chart_no,appt_date,start_min,status").eq("branch_id",S.branch).eq("kind","emg").in("chart_no",charts.slice(i,i+150)).lte("appt_date",end); all.push(...(data||[])); }
   const by={}; all.filter(a=>a.status!=="취소"&&a.status!=="노쇼").forEach(a=>(by[a.chart_no] ||= []).push(a));
   Object.values(by).forEach(L=>L.sort((x,y)=>x.appt_date<y.appt_date?-1:x.appt_date>y.appt_date?1:x.start_min-y.start_min||x.id-y.id));
   appts.forEach(a=>{ if(!a.chart_no) return; const L=by[a.chart_no]||[]; const i=L.findIndex(x=>x.id===a.id); a._n=i>=0?i+1:null; });
+  setK();
 }
 const CT_KEYS=[["sms","문자-전날"],["call","전화-당일"],["ok","내원가능"]];
 function contactPanel(appts,dates,canEdit){
@@ -3175,7 +3247,7 @@ function contactPanel(appts,dates,canEdit){
   const todo=L.filter(a=>!(a.contact||{}).ok).length;
   return `<section class="panel"><h3>근전도 연락 체크 <span>${dates.length>1?"이번 주":"이 날"} ${L.length}명 · 내원 확인 안 된 ${todo}명 · 칸을 누르면 빈칸 → O → X 순서로 바뀝니다</span></h3>
     ${L.length?`<div class="tbl-box"><table class="ctab"><thead><tr><th>날짜</th><th>시간</th><th>환자</th><th>검사</th><th>차수</th><th>전화번호</th>${CT_KEYS.map(([k,l])=>`<th>${l}</th>`).join("")}</tr></thead><tbody>
-    ${L.map(a=>{ const c=a.contact||{}; return `<tr><td>${+a.appt_date.slice(5,7)}/${+a.appt_date.slice(8)} (${WD[new Date(a.appt_date+"T00:00:00Z").getUTCDay()]})</td><td class="num">${hhmm(a.start_min)}</td><td>${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))}</td><td>${esc(a.item)}</td><td>${a._n?`<span class="nth n${Math.min(a._n,3)}">${a._n}차</span>`:""}</td><td>${a.phone?telLink(a.phone):`<span class="meta">-</span>`}</td>
+    ${L.map(a=>{ const c=a.contact||{}; return `<tr><td>${+a.appt_date.slice(5,7)}/${+a.appt_date.slice(8)} (${WD[new Date(a.appt_date+"T00:00:00Z").getUTCDay()]})</td><td class="num">${hhmm(a.start_min)}</td><td>${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))}</td><td>${esc(a.item)}</td><td>${a._k?`<span class="nth n${a._k}">${a._k}차</span>`:""}</td><td>${a.phone?telLink(a.phone):`<span class="meta">-</span>`}</td>
       ${CT_KEYS.map(([k])=>`<td><button type="button" class="ckb ${c[k]==="O"?"o":c[k]==="X"?"x":""}" data-ct="${a.id}" data-k="${k}" ${canEdit?"":"disabled"} aria-label="${k}">${c[k]||"·"}</button></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>`;
 }
 function bindContact(appts){
