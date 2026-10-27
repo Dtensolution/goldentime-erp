@@ -102,7 +102,7 @@ main{min-width:0;padding-block:20px 64px}
 .kpi .v small{font-size:13px;font-weight:500;color:var(--muted);margin-left:2px}
 .kpi .d{font-size:12px;color:var(--muted)}
 .kpi.lead{background:var(--accent-soft)}
-.up{color:var(--good)} .down{color:var(--bad)}
+.up{color:#d93025} .down{color:#1a5fd0}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
 .panel h3{margin:0 0 12px;font-size:15px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
 .panel h3 span{font-size:12px;color:var(--muted);font-weight:400}
@@ -219,6 +219,10 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .gbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
 .goal .gd{font-size:12px;color:var(--muted)}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
+.trend h3 span b{font-size:13px}
+.tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
+.trend .cbox{height:300px}
+table.trendtbl tr.cur td{font-weight:600;background:var(--navy-soft)}
 .inline-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:end}
 .inline-form .field{margin:0}
 .inline-form .field input,.inline-form .field select{height:36px}
@@ -732,6 +736,7 @@ async function renderDash(){
     ${B.slice().reverse().map(b=>`<tr><td>${bm==="day"?`<button class="linkbtn" data-one="${b.key}">${b.label}</button>`:b.label}${bm==="day"?"":` <span class="meta">${b.a.days}일</span>`}</td>${rowCells(b.a)}</tr>`).join("")}</tbody></table>`;
   main.innerHTML=`<div class="wrap">${head}
     <section class="kpis">${kpis.map(x=>`<div class="kpi ${x.lead?"lead":""}"><span class="k">${x.k}</span><span class="v num">${x.v}<small>${x.u}</small></span><span class="d">${x.d}</span></div>`).join("")}</section>
+    ${mode==="week"?(()=>{ const W=weekTrend(B); if(!W.focus) return ""; const fk=W.focus.key; const t=`${W.focus.label.replace("주","주차")}(${+fk.slice(5,7)}.${+fk.slice(8)}~${+addDays(fk,6).slice(5,7)}.${+addDays(fk,6).slice(8)}) 주간 매출 추세${W.vsAvg!=null?` <span>직전 4주 평균 대비 ${updown(W.vsAvg)} ${W.vsAvg>=0?"상승":"하락"}</span>`:""}`; window.__wk=W; return trendPanel("trw",t,W,"week"); })():""}
     <section class="panel"><h3>총진료비 <span>외래 + 입원, 원 · 선은 비급여 비중</span></h3><div class="cbox tall"><canvas id="c1" role="img" aria-label="총진료비 그래프"></canvas></div></section>
     <div class="grid2">
       <section class="panel"><h3>진료 인원 <span>신환 / 재진, 명</span></h3><div class="cbox"><canvas id="c2" role="img" aria-label="진료 인원 그래프"></canvas></div></section>
@@ -752,6 +757,7 @@ async function renderDash(){
   bindDash();
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn"), good=cssv("--good");
   const pctAxis={position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>v+"%"}};
+  if(mode==="week"&&window.__wk) drawTrend("trw",window.__wk);
   mkChart("c1",{data:{labels:L,datasets:[
       {label:"외래",data:B.map(b=>M(b.a.out)),backgroundColor:navy,stack:"s",order:2},
       {label:"입원",data:B.map(b=>M(b.a.inpat)),backgroundColor:sky,stack:"s",order:2},
@@ -766,7 +772,7 @@ async function renderDash(){
 }
 async function renderDashOne(seg){
   const main=$("main"); const today=kstToday();
-  let rows; try{ rows=await loadRange(addDays(S.oneDate||today,-7), S.oneDate||today); }catch(e){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(e))}</div></div>`; return; }
+  let rows; try{ rows=await loadRange(addDays(S.oneDate||today,-63), S.oneDate||today); }catch(e){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(e))}</div></div>`; return; }
   S.oneDate ||= today;
   const d=S.oneDate, dd=new Date(d+"T00:00:00Z"); const r=rows.find(x=>x.close_date===d);
   rows.sort((x,y)=>x.close_date<y.close_date?-1:1); const prevR=rows.filter(x=>x.close_date<d&&+x.total>0).at(-1), wkR=rows.find(x=>x.close_date===addDays(d,-7)&&+x.total>0);
@@ -786,8 +792,10 @@ async function renderDashOne(seg){
   const docNames=Object.keys(A.docs).sort((a,b)=>(A.docs[b].nw+A.docs[b].re)-(A.docs[a].nw+A.docs[a].re));
   const ptK=PT_ITEMS.filter(k=>A.pt[k]);
   const cmpRows=[["이 날",A],P&&[`${prevR.close_date===addDays(d,-1)?"전일":"직전 마감"} (${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)})`,P],W&&[`지난주 같은 요일 (${+wkR.close_date.slice(5,7)}/${+wkR.close_date.slice(8)})`,W]].filter(Boolean);
+  const TR=sameDowTrend(rows,d); const TRt=`${+d.slice(5,7)}월 ${+d.slice(8)}일 ${WD[dd.getUTCDay()]}요일 매출 추세${TR.vsAvg!=null?` <span>같은 요일 직전 4주 평균 대비 ${updown(TR.vsAvg)} ${TR.vsAvg>=0?"상승":"하락"}</span>`:""}`;
   main.innerHTML=`<div class="wrap">${head}
     <section class="kpis">${kpis.map(x=>`<div class="kpi ${x.lead?"lead":""}"><span class="k">${x.k}</span><span class="v num">${x.v}<small>${x.u}</small></span><span class="d">${x.d}</span></div>`).join("")}</section>
+    ${trendPanel("tr1",TRt,TR,"day")}
     <div class="grid2">
       <section class="panel"><h3>진료비 구성 <span>원</span></h3><div class="cbox"><canvas id="o1" role="img" aria-label="진료비 구성"></canvas></div></section>
       <section class="panel"><h3>원장별 진료 인원 <span>신환 / 재진, 명</span></h3><div class="cbox"><canvas id="o2" role="img" aria-label="원장별 진료 인원"></canvas></div>
@@ -803,6 +811,7 @@ async function renderDashOne(seg){
   </div>`;
   bind();
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn");
+  drawTrend("tr1",TR);
   mkChart("o1",{data:{labels:["외래","입원","비급여"],datasets:[{label:"이 날",data:[A.out,A.inpat,A.nonpay],backgroundColor:[navy,sky,warn]}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${won(c.raw)}원`}}},scales:{y:{ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}}}});
   mkChart("o2",{data:{labels:docNames,datasets:[{label:"신환",data:docNames.map(n=>A.docs[n].nw),backgroundColor:sky,stack:"s"},{label:"재진",data:docNames.map(n=>A.docs[n].re),backgroundColor:navy,stack:"s"}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   if(ptK.length) mkChart("o3",{data:{labels:ptK,datasets:[{label:"건수",data:ptK.map(k=>A.pt[k]),backgroundColor:ptK.map(k=>PT_COLORS[PT_ITEMS.indexOf(k)])}]},options:{plugins:{legend:{display:false}}}});
@@ -2954,6 +2963,51 @@ async function renderGoals(){
     main.querySelectorAll("[data-aon]").forEach(el=>el.onchange=()=>saveSet(d=>{ d.alerts ||= {}; (d.alerts[el.dataset.aon] ||= {}).on=el.checked; }));
     main.querySelectorAll("[data-ath]").forEach(el=>el.onchange=()=>{ const v=parseFloat(el.value); if(isNaN(v)) return toast("숫자를 확인하세요"); saveSet(d=>{ d.alerts ||= {}; (d.alerts[el.dataset.ath] ||= {}).th=v; }); });
   }
+}
+
+// ── 매출 추세 (같은 요일 / 주간) · 오르면 빨강, 내리면 파랑 ──
+const RISE="#d93025", FALL="#1a5fd0";
+const sgnPct=x=>(x>=0?"+":"")+(x*100).toFixed(1)+"%";
+const updown=x=>x==null?"":`<b style="color:${x>=0?RISE:FALL}">${x>=0?"▲":"▼"} ${Math.abs(x*100).toFixed(1)}%</b>`;
+function sameDowTrend(rows,d){
+  const by=Object.fromEntries(rows.filter(r=>+r.total>0).map(r=>[r.close_date,+r.total]));
+  const pts=[]; for(let k=4;k>=0;k--){ const day=addDays(d,-7*k); const amt=by[day]; const prev=[1,2,3,4].map(w=>by[addDays(day,-7*w)]).filter(v=>v);
+    const base=prev.length>=2?prev.reduce((a,b)=>a+b,0)/prev.length:null; const dd=new Date(day+"T00:00:00Z");
+    pts.push({label:`${String(+day.slice(5,7)).padStart(2,"0")}-${day.slice(8)}(${WD[dd.getUTCDay()]})`,day,amt:amt??null,base,pct:amt&&base?(amt-base)/base:null}); }
+  const cur=pts.at(-1), wk=by[addDays(d,-7)];
+  return {pts,cur,vsAvg:cur.pct,vsWeek:cur.amt&&wk?(cur.amt-wk)/wk:null,wkAmt:wk||null};
+}
+function weekTrend(B){
+  const today=kstToday(); let f=B.length-1; while(f>=0&&addDays(B[f].key,6)>=today) f--; if(f<0) f=B.length-1; const tot=i=>B[i]?.a.total||0;
+  const pts=[]; for(let i=f-4;i<=f;i++){ if(i<0) continue; const prev=[1,2,3,4].map(w=>i-w).filter(j=>j>=0).map(tot).filter(v=>v); const base=prev.length>=2?prev.reduce((a,b)=>a+b,0)/prev.length:null;
+    pts.push({label:B[i].label,key:B[i].key,amt:tot(i)||null,base,pct:tot(i)&&base?(tot(i)-base)/base:null,days:B[i].a.days}); }
+  const cur=pts.at(-1); const pw=f>0?tot(f-1):0; return {pts,cur,vsAvg:cur?.pct??null,vsWeek:cur&&pw?(cur.amt-pw)/pw:null,wkAmt:pw||null,focus:B[f]};
+}
+function trendPanel(id,title,T,kind){
+  if(!T.cur||T.cur.amt==null) return "";
+  const day=kind==="day"; const subj=day?"오늘":"이 주";
+  const line=(t,x)=>x==null?"":`<li>${t} ${subj} 매출 <b class="num">${wonMan(T.cur.amt)}</b>은 ${updown(x)} ${x>=0?"상승":"하락"}했습니다</li>`;
+  return `<section class="panel trend"><h3>${title}</h3>
+    <ol class="tlines">${line(`${day?"같은 요일 ":""}직전 4주 평균(${T.cur.base?wonMan(Math.round(T.cur.base)):"–"}) 대비`,T.vsAvg)}${line(`${day?"1주 전 같은 요일":"직전 1주"}(${T.wkAmt?wonMan(T.wkAmt):"–"}) 대비`,T.vsWeek)}</ol>
+    <div class="cbox"><canvas id="${id}" role="img" aria-label="${esc(title)}"></canvas></div>
+    <div class="tbl-box" style="margin-top:10px"><table class="trendtbl"><thead><tr><th>${day?"날짜":"주차"}</th><th>매출</th><th>직전 4주 평균</th><th>증감</th></tr></thead><tbody>
+      ${T.pts.slice().reverse().map((p,i)=>`<tr class="${i===0?"cur":""}"><td>${esc(p.label)}${p.days!=null?` <span class="meta">${p.days}일</span>`:""}</td><td class="num">${p.amt!=null?won(p.amt):"–"}</td><td class="num">${p.base?won(Math.round(p.base)):"–"}</td><td class="num">${p.pct!=null?updown(p.pct):"–"}</td></tr>`).join("")}</tbody></table></div></section>`;
+}
+const trendLabelPlugin={id:"trendLabels",afterDatasetsDraw(ch){ const ds=ch.data.datasets[0]; const meta=ch.getDatasetMeta(0); const ctx=ch.ctx; const P=ch.options.plugins.trendLabels?.pts||[];
+  meta.data.forEach((el,i)=>{ const p=P[i]; if(!p||p.pct==null) return; const up=p.pct>=0, last=i===P.length-1; ctx.save(); ctx.textAlign="center"; ctx.fillStyle=up?RISE:FALL;
+    ctx.font=`${last?700:600} ${last?13:12}px ${cssv("--f-num")||"sans-serif"}`; const y=up?el.y-12:el.y+18; ctx.fillText(sgnPct(p.pct),el.x,y);
+    ctx.font=`500 11px ${cssv("--f-body")||"sans-serif"}`; ctx.fillStyle=cssv("--muted"); ctx.fillText(wonMan(p.amt),el.x,up?y-14:y+14); ctx.restore(); }); }};
+function drawTrend(id,T){
+  if(!window.Chart||!$(id)||!T.pts.length) return; const P=T.pts; const vals=P.map(p=>p.pct==null?null:+(p.pct*100).toFixed(1));
+  const mx=Math.max(5,...vals.filter(v=>v!=null).map(Math.abs))*1.45;
+  const grid=cssv("--line"), ink=cssv("--muted");
+  charts.push(new Chart($(id),{type:"line",plugins:[trendLabelPlugin],data:{labels:P.map(p=>p.label),datasets:[{data:vals,borderColor:cssv("--navy"),borderWidth:2.5,tension:.4,spanGaps:true,fill:{target:{value:0},above:"rgba(217,48,37,.08)",below:"rgba(26,95,208,.10)"},
+      pointRadius:P.map((_,i)=>i===P.length-1?7:4),pointBackgroundColor:P.map(p=>p.pct==null?ink:p.pct>=0?RISE:FALL),pointBorderColor:"#fff",pointBorderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,layout:{padding:{top:30,bottom:10,left:26,right:26}},plugins:{legend:{display:false},trendLabels:{pts:P},tooltip:{callbacks:{label:c=>{ const p=P[c.dataIndex]; return p.pct==null?"비교 자료 부족":[`매출 ${won(p.amt)}원`,`직전 4주 평균 ${won(Math.round(p.base))}원`,`증감 ${sgnPct(p.pct)}`]; }}}},
+      scales:{x:{grid:{display:false},ticks:{color:ink}},y:{min:-mx,max:mx,grid:{color:c=>c.tick.value===0?"rgba(0,0,0,0)":grid},ticks:{color:ink,callback:v=>(v>0?"+":"")+Math.round(v)+"%"}}}},
+    }));
+  // 기준선(0%) 점선
+  const ch=charts.at(-1); ch.options.plugins.zeroLine=true; ch.config.plugins.push({id:"zero",beforeDatasetsDraw(c){ const y=c.scales.y.getPixelForValue(0); const g=c.ctx; g.save(); g.setLineDash([5,4]); g.strokeStyle=cssv("--muted"); g.lineWidth=1; g.beginPath(); g.moveTo(c.chartArea.left,y); g.lineTo(c.chartArea.right,y); g.stroke(); g.setLineDash([]); g.fillStyle=cssv("--muted"); g.font="11px sans-serif"; g.textAlign="right"; g.fillText("직전 4주 평균 (0%)",c.chartArea.right,y-5); g.restore(); }}); ch.update();
 }
 
 // ── 변경 기록 ──
