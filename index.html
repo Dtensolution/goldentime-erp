@@ -497,6 +497,9 @@ table.resv thead th{position:sticky;top:0;z-index:2}
 .obox.mem{min-width:0;padding:6px 8px}
 @media print{ nav.side,.top,.page-h button,.infotabs,.oadd,.otools{display:none!important} .shell{display:block} }
 .docadd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.docadd input{height:30px;padding:0 8px;width:150px}
+.oqf{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}.oqf input{height:32px;padding:0 10px;flex:1;min-width:120px}.oqf select{height:32px;padding:0 6px}
+.oqsum{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 8px;padding:8px 10px;background:var(--soft,#eef4fb);border-radius:8px;font-size:13px}
+.btn.rdel{height:26px;padding:0 8px;font-size:12px}.btn.rdel.sure{color:var(--bad);border-color:var(--bad)}.lwhy{font-size:12px;text-align:left}
 </style>
 </head>
 <body>
@@ -1741,7 +1744,12 @@ async function renderOvertime(){
   const people=Object.values(by).sort((a,b)=>(a.dept||"").localeCompare(b.dept||"")||b.tot-a.tot);
   const kindTot=k=>shown.filter(r=>r.kind===k).reduce((s,r)=>s+r.minutes,0);
   const canWrite=true; const canApprove=lv<=3;
-  const list=st.who?shown.filter(r=>r.staff_name===st.who):shown.slice(-60).reverse();
+  const oq=(st.oq||"").trim(); let found=null, fsum=null;
+  if(oq){ const y=kstToday().slice(0,4); const rg=st.orange||"year";
+    const {data:fd,error:fe}=await allRows(()=>{ let x=sb.from("overtime").select("*").eq("branch_id",S.branch).ilike("staff_name",`%${oq}%`); if(rg==="year") x=x.gte("work_date",`${y}-01-01`).lte("work_date",`${y}-12-31`); else if(rg==="month") x=x.gte("work_date",R.start).lte("work_date",R.end); return x.order("work_date",{ascending:false}).order("start_min"); });
+    if(fe) toast(errMsg(fe)); found=(fd||[]).slice().sort((a,b)=>b.work_date.localeCompare(a.work_date)||a.start_min-b.start_min);
+    fsum={}; found.forEach(r=>{ const o=fsum[r.staff_name] ||= {n:0,m:0,days:new Set()}; o.n++; o.m+=r.minutes; o.days.add(r.work_date); }); }
+  const list=found?found:st.who?shown.filter(r=>r.staff_name===st.who):shown.slice().reverse();
   const dOrd=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
   const myStaff = (lv<=2 ? staff : lv===3 ? staff.filter(s=>s.dept===S.me.dept) : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
   const otDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = otDepts.includes(st.fdept)?st.fdept:(otDepts.includes(S.me.dept)?S.me.dept:otDepts[0]);
@@ -1771,12 +1779,19 @@ async function renderOvertime(){
           <p class="meta" id="o_m" style="grid-column:1/-1;margin:0"></p>
           <button class="btn" style="grid-column:1/-1">추가</button>
         </form></section>
-      <section class="panel"><h3>${st.who?esc(st.who)+" 기록":"최근 기록"} <span>${st.who?`<button class="linkbtn" id="owx">전체 보기</button>`:"최근 60건"}</span></h3><div class="tbl-box" style="max-height:420px"><table><thead><tr><th>날짜</th><th>이름</th><th>구분</th><th>시간</th><th>분</th><th>메모</th><th>확인</th><th></th></tr></thead><tbody>
-        ${list.map(r=>`<tr><td class="num">${+r.work_date.slice(5,7)}/${+r.work_date.slice(8)}</td><td>${esc(r.staff_name)}</td><td>${esc(r.kind)}</td><td class="num">${minTxt(r.start_min)}~${minTxt(r.end_min)}</td><td class="num">${r.minutes}</td><td>${esc(r.note||"")}</td>
+      <section class="panel"><h3>${oq?`"${esc(oq)}" 연장근무 ${found.length}건`:st.who?esc(st.who)+" 기록":`${R.m}월 기록`} <span>${st.who&&!oq?`<button class="linkbtn" id="owx">전체 보기</button>`:oq?"":"이름으로 찾으면 다른 달 기록도 나옵니다"}</span></h3>
+        <form id="oqf" class="oqf"><input id="oq" type="search" placeholder="이름 입력 후 🔍 또는 Enter" value="${esc(oq)}" autocomplete="off"><select id="org" aria-label="기간">${[["year","올해"],["month",`${R.m}월`],["all","전체 기간"]].map(([k,t])=>`<option value="${k}" ${(st.orange||"year")===k?"selected":""}>${t}</option>`).join("")}</select><button class="btn sm">🔍 찾기</button>${oq?`<button type="button" class="btn ghost sm" id="oqx">지우기</button>`:""}</form>
+        ${fsum&&Object.keys(fsum).length?`<div class="oqsum">${Object.entries(fsum).map(([n,o])=>`<span><b>${esc(n)}</b> ${o.days.size}일 · ${o.n}건 · <b class="num">${hm(o.m)}</b></span>`).join("")}</div>`:""}
+        <div class="tbl-box" style="max-height:480px"><table><thead><tr><th>날짜</th><th>이름</th><th>구분</th><th>시간</th><th>분</th><th>메모</th><th>확인</th><th></th></tr></thead><tbody>
+        ${list.map(r=>`<tr><td class="num">${oq?r.work_date.slice(2).replace(/-/g,".")+` (${WD[new Date(r.work_date+"T00:00:00Z").getUTCDay()]})`:`${+r.work_date.slice(5,7)}/${+r.work_date.slice(8)}`}</td><td>${esc(r.staff_name)}</td><td>${esc(r.kind)}</td><td class="num">${minTxt(r.start_min)}~${minTxt(r.end_min)}</td><td class="num">${r.minutes}</td><td>${esc(r.note||"")}</td>
           <td>${r.approved?`<span class="pill ok">확인</span>`:canApprove?`<button class="btn ghost sm" data-oap="${r.id}">확인</button>`:`<span class="pill wait">대기</span>`}</td>
-          <td>${(lv<=3||!r.approved)?`<button class="btn ghost sm" data-odel="${r.id}">삭제</button>`:""}</td></tr>`).join("")||`<tr><td colspan="8" class="meta">기록이 없습니다.</td></tr>`}
+          <td>${(lv<=3||!r.approved)?`<button class="btn ghost sm" data-odel="${r.id}">삭제</button>`:""}</td></tr>`).join("")||`<tr><td colspan="8" class="meta">${oq?`"${esc(oq)}" 이름의 연장근무 기록이 없습니다.`:"기록이 없습니다."}</td></tr>`}
       </tbody></table></div></section>
     </div></div>`;
+  const oKeep=()=>{ const y=window.scrollY; return renderOvertime().then(()=>window.scrollTo(0,y)); };
+  $("oqf").onsubmit=e=>{ e.preventDefault(); st.oq=$("oq").value.trim(); st.orange=$("org").value; oKeep(); };
+  $("org").onchange=()=>{ st.orange=$("org").value; if(st.oq) oKeep(); };
+  if($("oqx")) $("oqx").onclick=()=>{ st.oq=""; oKeep(); };
   $("mp").onclick=()=>{ st.month=shiftMonth(st.month,-1); renderOvertime(); };
   $("mn").onclick=()=>{ st.month=shiftMonth(st.month,1); renderOvertime(); };
   document.querySelectorAll("[data-od]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.od; st.who=null; renderOvertime(); });
@@ -2079,7 +2094,7 @@ async function renderResv(){
         ${list.map(r=>`<tr data-v="${r.id}" class="${r.visit==="내원"?"v-ok":r.visit==="취소"?"v-x":r.visit==="변경"?"v-b":""}"><td class="num">${esc(r.resv_time||"")}</td><td class="num">${esc(r.chart_no||"")}</td><td><b>${esc(r.patient_name||"")}</b></td><td>${esc(r.doctor||"")}</td><td>${esc(r.memo||"")}</td>
           <td><div class="vbtns">${VISITS.map(k=>`<button class="vb ${k}" data-vs="${k}" aria-pressed="${r.visit===k}">${k==="취소"?"취소·노쇼":k}</button>`).join("")}</div></td>
           <td>${r.visit==="취소"||r.visit==="변경"?`<select data-vw="${r.id}" style="height:28px;max-width:150px"><option value="">사유 선택</option>${RESV_WHY.map(w=>`<option ${r.reason===w?"selected":""}>${w}</option>`).join("")}${r.reason&&!RESV_WHY.includes(r.reason)?`<option selected>${esc(r.reason)}</option>`:""}</select>`:""}${r.note?` <small class="meta">${esc(r.note)}</small>`:""}</td>
-          <td><button class="nmbtn" data-ve="${r.id}" aria-label="수정">⋯</button></td></tr>`).join("")||`<tr><td colspan="8" class="empty">이 날 예약이 없습니다. EMR 예약 목록 엑셀을 올려주세요.</td></tr>`}
+          <td style="white-space:nowrap"><button class="nmbtn" data-ve="${r.id}" aria-label="수정" title="수정">⋯</button> <button class="btn ghost sm rdel" data-vx="${r.id}" title="삭제">삭제</button></td></tr>`).join("")||`<tr><td colspan="8" class="empty">이 날 예약이 없습니다. EMR 예약 목록 엑셀을 올려주세요.</td></tr>`}
       </tbody></table></div></section></div>`;
     const go=n=>{ st.date=addDays(st.date,n); renderResv(); };
     $("vp").onclick=()=>go(-1); $("vn").onclick=()=>go(1); $("vt").onclick=()=>{ st.date=kstToday(); renderResv(); }; $("vd").onchange=()=>{ if($("vd").value){ st.date=$("vd").value; renderResv(); } };
@@ -2090,6 +2105,8 @@ async function renderResv(){
     document.querySelectorAll("[data-vw]").forEach(s=>s.onchange=async()=>{ const {error}=await sb.from("reservations").update({reason:s.value||null}).eq("id",s.dataset.vw); if(error) toast(errMsg(error)); else toast("사유 저장"); });
     document.querySelectorAll("[data-vm]").forEach(b=>b.onclick=()=>{});
     $("vadd").onclick=()=>resvDialog(null,st.date,()=>renderResv());
+    document.querySelectorAll("[data-vx]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="삭제"; b.classList.remove("sure"); } },4000); return; }
+      const {error}=await sb.from("reservations").delete().eq("id",+b.dataset.vx); if(error) return toast(errMsg(error)); toast("예약을 삭제했습니다"); const y=window.scrollY; renderResv().then(()=>window.scrollTo(0,y)); });
     document.querySelectorAll("[data-ve]").forEach(b=>b.onclick=()=>resvDialog(all.find(x=>x.id===+b.dataset.ve),st.date,()=>renderResv()));
     $("vup").onclick=()=>$("vf").click(); $("vf").onchange=()=>resvUpload($("vf").files[0],st);
   } else {
@@ -2163,11 +2180,15 @@ async function resvUpload(file,st){ if(!file) return;
 // 근로기준법 제60조: 1년 미만은 1개월 개근마다 1일(최대 11일), 1년 이상 15일, 3년차부터 2년마다 1일 가산(최대 25일)
 // 입사일 기준으로, 해당 연도(1~12월) 안에 생기는 연차를 합산합니다.
 function addMonthsISO(iso,n){ const [y,m,d]=iso.split("-").map(Number); const t=new Date(Date.UTC(y,m-1+n,1)); const last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate(); t.setUTCDate(Math.min(d,last)); return t.toISOString().slice(0,10); }
-function legalLeave(hire,year){ if(!hire||!/^\d{4}-\d{2}-\d{2}$/.test(hire)) return null; const ys=`${year}-01-01`, ye=`${year}-12-31`;
-  let monthly=0; for(let m=1;m<=11;m++){ const d=addMonthsISO(hire,m); if(d>=ys&&d<=ye) monthly++; }
-  let ann=0, yrs=0; for(let k=1;k<=45;k++){ const d=addMonthsISO(hire,12*k); if(d>ye) break; if(d>=ys){ ann=Math.min(25,15+Math.floor((k-1)/2)); yrs=k; } }
-  const why=[monthly?`1년 미만 월차 ${monthly}일`:"", ann?`${yrs}년 근속(${addMonthsISO(hire,12*yrs).slice(5).replace("-","/")}) ${ann}일`:""].filter(Boolean).join(" + ")||`${year}년에 새로 생기는 연차 없음`;
-  return {days:monthly+ann, monthly, ann, yrs, why}; }
+// 입사일 기준: 한 달 만근할 때마다 1일(최대 11일), 1년 되는 날 15일 + 2년마다 1일(최대 25일). asOf까지 생긴 것만 셉니다.
+function legalLeave(hire,year,asOf){ if(!hire||!/^\d{4}-\d{2}-\d{2}$/.test(hire)) return null; const ys=`${year}-01-01`, ye=`${year}-12-31`;
+  const cut=asOf&&asOf<ye?asOf:ye; const calc=end=>{ let monthly=0, next=null; for(let m=1;m<=11;m++){ const d=addMonthsISO(hire,m); if(d>=ys&&d<=end) monthly++; else if(d>end&&d<=ye&&!next) next=d; }
+    let ann=0, yrs=0, annNext=null; for(let k=1;k<=45;k++){ const d=addMonthsISO(hire,12*k); if(d>ye) break; if(d>=ys){ if(d<=end){ ann=Math.min(25,15+Math.floor((k-1)/2)); yrs=k; } else if(!annNext) annNext={d,v:Math.min(25,15+Math.floor((k-1)/2))}; } }
+    return {monthly,ann,yrs,next,annNext}; };
+  const A=calc(cut), F=calc(ye); const md=s=>`${+s.slice(5,7)}/${+s.slice(8)}`;
+  const why=[A.monthly?`입사 후 만근 ${A.monthly}개월 → ${A.monthly}일`:"", A.ann?`${A.yrs}년 근속(${md(addMonthsISO(hire,12*A.yrs))}) ${A.ann}일`:""].filter(Boolean).join(" + ")||(cut<ye?"아직 만근한 달이 없습니다":`${year}년에 새로 생기는 연차 없음`);
+  const nextTxt=A.next?`다음 1일: ${md(A.next)}`:A.annNext?`${md(A.annNext.d)}에 ${A.annNext.v}일`:"";
+  return {days:A.monthly+A.ann, full:F.monthly+F.ann, monthly:A.monthly, ann:A.ann, yrs:A.yrs, why, nextTxt}; }
 const LEAVE_KINDS={"연차":1,"오전반차":0.5,"오후반차":0.5,"반차":0.5,"병가":1,"경조사":1,"기타":1};
 async function renderLeave(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
@@ -2178,8 +2199,9 @@ async function renderLeave(){
   if(gr.error||ur.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(gr.error||ur.error))}</div></div>`; return; }
   const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
   const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name)])];
-  const people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
-    return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,grant:g?+g.days:0,used,sick,pend:u.filter(x=>!x.approved).length,left:(g?+g.days:0)-used}; })
+  const asOf=kstToday();
+  const people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
+    const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
     .filter(p=>st.dept==="전체"||p.dept===st.dept).sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
   const depts=[...new Set(names.map(n=>(grants.find(x=>x.staff_name===n)||uses.find(x=>x.staff_name===n))?.dept||""))].filter(Boolean);
   const lq=(st.lq||"").trim(); const list=lq?uses.filter(u=>u.staff_name.includes(lq)).slice().reverse():st.who?uses.filter(u=>u.staff_name===st.who).slice().reverse():uses.slice(-40).reverse();
@@ -2190,10 +2212,10 @@ async function renderLeave(){
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용(병가 제외) · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>${lv<=2?"발생 일수 칸을 눌러 고칠 수 있습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>법정 기준</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=2?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
       ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=2?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
-        <td class="num">${lv<=2?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
-        <td class="num">${(()=>{ const L=legalLeave(p.g?.hire_date,st.year); if(!L) return `<span class="meta">입사일 필요</span>`; const same=+L.days===+p.grant; return `<span title="${esc(L.why)}">${L.days}일</span>${lv<=2&&!same?` <button class="btn ghost sm" data-lapply="${esc(p.name)}" data-v="${L.days}" data-dept="${esc(p.dept)}">적용</button>`:same?` <span class="pill ok" style="font-size:10px">일치</span>`:""}`; })()}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="9" class="meta">자료가 없습니다.</td></tr>`}
+        <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=2?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
+        <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="9" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
     ${lv<=2?`<div style="margin-top:10px"><button class="btn ghost sm" id="lg_add">+ 직원 추가</button></div>`:""}</section>
     <div class="grid2">
@@ -2226,8 +2248,8 @@ async function renderLeave(){
   const upGrant=async(n,dept,patch)=>{ const g=grants.find(x=>x.staff_name===n); const s0=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update(patch).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s0?.id||null,staff_name:n,dept:dept||s0?.dept||null,year:st.year,days:0,...patch}); return res.error; };
   document.querySelectorAll("[data-lh]").forEach(inp=>inp.onchange=async()=>{ const n=inp.dataset.lh; const L=legalLeave(inp.value,st.year); const g=grants.find(x=>x.staff_name===n);
-    const patch={hire_date:inp.value||null}; if(L&&(!g||!+g.days)) patch.days=L.days;
-    const e=await upGrant(n,inp.dataset.dept,patch); if(e) return toast(errMsg(e)); toast(L?`입사일 저장 · 법정 ${L.days}일${patch.days!=null?" 자동 입력":""}`:"입사일 저장"); renderLeave(); });
+    const patch={hire_date:inp.value||null}; const L2=legalLeave(inp.value,st.year,kstToday()); if(L2) patch.days=L2.days;
+    const e=await upGrant(n,inp.dataset.dept,patch); if(e) return toast(errMsg(e)); toast(L2?`입사일 저장 · 오늘까지 ${L2.days}일 발생`:"입사일 저장"); renderLeave(); });
   document.querySelectorAll("[data-lapply]").forEach(b=>b.onclick=async()=>{ const e=await upGrant(b.dataset.lapply,b.dataset.dept,{days:+b.dataset.v}); if(e) return toast(errMsg(e)); toast(`${b.dataset.lapply} 발생 ${b.dataset.v}일로 맞췄습니다`); renderLeave(); });
   document.querySelectorAll("[data-lg]").forEach(inp=>inp.onchange=async()=>{ const v=parseFloat(inp.value); if(isNaN(v)) return; const n=inp.dataset.lg; const g=grants.find(x=>x.staff_name===n); const s=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update({days:v}).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:inp.dataset.dept||s?.dept||null,year:st.year,days:v}); if(res.error) return toast(errMsg(res.error)); toast("발생 일수 저장"); renderLeave(); });
@@ -2242,7 +2264,7 @@ async function renderLeave(){
       <p class="err" id="g5"></p><div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button>${cd.length?`<button type="button" class="btn" id="g6">추가</button>`:""}</div></form>`;
     dlg.showModal(); if(!cd.length) return;
     $("g1").onchange=()=>{ dsel=$("g1").value; $("g2").innerHTML=opts(); };
-    $("g4").onchange=()=>{ const L=legalLeave($("g4").value,st.year); if(L){ $("g3").value=L.days; $("g5").style.color="var(--muted)"; $("g5").textContent=`법정 ${L.days}일 자동 계산: ${L.why}`; } };
+    $("g4").onchange=()=>{ const L=legalLeave($("g4").value,st.year,kstToday()); if(L){ $("g3").value=L.days; $("g5").style.color="var(--muted)"; $("g5").textContent=`오늘까지 ${L.days}일 자동 계산: ${L.why}`; } };
     $("g6").onclick=async()=>{ const n=$("g2").value; if(!n){ $("g5").textContent="직원을 고르세요."; return; } const s=staff.find(x=>x.name===n);
       const {error}=await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:dsel,year:st.year,days:parseFloat($("g3").value)||0,hire_date:$("g4").value||null});
       if(error){ $("g5").textContent=errMsg(error); return; } dlg.close(); toast(`${n} 추가됨`); reKeep(); }; };
@@ -2658,7 +2680,7 @@ async function renderMe(){
   const codes=Object.fromEntries((cr.data||[]).map(c=>[c.code,c]));
   const readSet=new Set((rd.data||[]).map(r=>r.doc_id));
   const notices=(dr.data||[]).filter(d=>!readSet.has(d.id)&&(me.level<=2||d.dept==="공통"||d.dept===me.dept||d.dept==="회의록"));
-  const grant=(gr.data||[])[0]; const uses=ur.data||[]; const used=uses.filter(u=>u.approved&&u.kind!=="병가").reduce((s,u)=>s+(+u.days),0); const pend=uses.filter(u=>!u.approved).length;
+  const grant0=(gr.data||[])[0]; const LL=grant0&&legalLeave(grant0.hire_date,y,kstToday()); const grant=grant0?{...grant0,days:LL?LL.days:grant0.days}:null; const uses=ur.data||[]; const used=uses.filter(u=>u.approved&&u.kind!=="병가").reduce((s,u)=>s+(+u.days),0); const pend=uses.filter(u=>!u.approved).length;
   const ot=or.data||[]; const otMin=ot.reduce((s,o)=>s+(+o.minutes||0),0);
   const appts=(ar.data||[]).filter(a=>a.status!=="취소"); const br=S.branches.find(b=>b.id===S.branch);
   const days=[...Array(7)].map((_,i)=>addDays(mon,i));
