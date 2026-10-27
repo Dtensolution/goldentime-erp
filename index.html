@@ -496,6 +496,7 @@ table.resv thead th{position:sticky;top:0;z-index:2}
 .obox.lead{border:2px solid var(--dc)}
 .obox.mem{min-width:0;padding:6px 8px}
 @media print{ nav.side,.top,.page-h button,.infotabs,.oadd,.otools{display:none!important} .shell{display:block} }
+.docadd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}.docadd input{height:30px;padding:0 8px;width:150px}
 </style>
 </head>
 <body>
@@ -910,6 +911,11 @@ async function renderEntry(){
   // 저장된 원장 목록 + 현재 활성 원장 합치기
   const docRows=[...docs.map(d=>({doctor_id:d.id,name:d.name}))]; (r.doctors||[]).forEach(d=>{ if(!docRows.find(x=>x.name===d.name)) docRows.push({doctor_id:d.doctor_id,name:d.name}); });
   const dv=(name,k)=>{ const f=(r.doctors||[]).find(x=>x.name===name); return f&&f[k]?won(f[k]):""; };
+  setTimeout(()=>{ const b=$("nd_add"); if(!b) return; const go=async()=>{ let n=$("nd_name").value.trim(); if(!n) return toast("원장 이름을 적어주세요"); if(!/원장$/.test(n)) n+=" 원장";
+      const all=S.doctors||[]; const ex=all.find(d=>d.name===n||d.name.replace(/\s*원장$/,"")===n.replace(/\s*원장$/,""));
+      const res= ex ? await sb.from("doctors").update({active:true}).eq("id",ex.id) : await sb.from("doctors").insert({branch_id:S.branch,name:n,sort:(Math.max(0,...all.map(d=>d.sort||0))+1),active:true});
+      if(res.error) return toast(errMsg(res.error)); toast(`${n} 추가했습니다`); S.entryDate=date; renderEntry(); };
+    b.onclick=go; $("nd_name").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); go(); } }; },0);
   main.innerHTML=`<div class="wrap"><form id="ef" novalidate>
     <div class="page-h" style="margin-bottom:16px"><div><h2>마감일지 입력</h2><div class="meta"><span id="asv">${row?`<span class="pill ok">저장됨</span> 마지막 저장 ${esc(new Date(r.updated_at).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}))}`:`<span class="pill wait">새로 입력</span>`}</span> · 칸에 숫자를 쓰면 <b>자동 저장</b>됩니다 · 틀리면 지우고 다시 쓰면 됩니다</div></div>
       <div class="field" style="margin:0;min-width:180px"><label for="edate">마감 날짜</label><input id="edate" type="date" value="${date}" min="${minDate}" max="${today}"></div></div>
@@ -931,7 +937,8 @@ async function renderEntry(){
         </div></fieldset>
       <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
-        <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div></div></fieldset>
+        <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div></div>
+        ${lv<=2?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>
       <fieldset><legend>예약</legend><p class="fs-note">예약 명단은 예약용 구글시트에 두고, 여기에는 건수만 적습니다.</p>
         <div class="grid3h"><span>구분</span><span>예약</span><span>변경</span><span>취소</span></div><div class="rows" style="margin-top:6px">
         ${RESV_ITEMS.map((it,i)=>`<div class="grid3"><label>${it}</label>${["resv","change","cancel"].map(k=>`<input id="rv_${i}_${k}" inputmode="numeric" data-n aria-label="${it} ${k}" value="${ri[it]?.[k]?won(ri[it][k]):""}">`).join("")}</div>`).join("")}
@@ -2068,8 +2075,8 @@ async function renderResv(){
       </section>
       <div class="sh-tools"><div class="chips">${["전체","확인 전",...VISITS].map(k=>`<button class="fchip" data-vf="${k}" aria-pressed="${st.f===k}">${k}</button>`).join("")}</div>
         <div style="display:flex;gap:8px"><input id="vq" placeholder="차트번호·이름·메모" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:170px"><button class="btn ghost sm" id="vadd">+ 예약 추가</button></div></div>
-      <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 330px)"><table class="resv"><thead><tr><th>시간</th><th>차트</th><th>환자명</th><th>예약과목</th><th>예약메모</th><th>내원 여부</th><th>사유·비고</th><th></th></tr></thead><tbody>
-        ${list.map(r=>`<tr data-v="${r.id}" class="${r.visit==="내원"?"v-ok":r.visit==="취소"?"v-x":r.visit==="변경"?"v-b":""}"><td class="num">${esc(r.resv_time||"")}</td><td class="num">${esc(r.chart_no||"")}</td><td><b>${esc(r.patient_name||"")}</b></td><td>${esc(r.subject||"")}${r.doctor?` <small class="meta">${esc(r.doctor)}</small>`:""}</td><td>${esc(r.memo||"")}</td>
+      <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 330px)"><table class="resv"><thead><tr><th>시간</th><th>차트</th><th>환자명</th><th>주치의</th><th>예약메모</th><th>내원 여부</th><th>사유·비고</th><th></th></tr></thead><tbody>
+        ${list.map(r=>`<tr data-v="${r.id}" class="${r.visit==="내원"?"v-ok":r.visit==="취소"?"v-x":r.visit==="변경"?"v-b":""}"><td class="num">${esc(r.resv_time||"")}</td><td class="num">${esc(r.chart_no||"")}</td><td><b>${esc(r.patient_name||"")}</b></td><td>${esc(r.doctor||"")}</td><td>${esc(r.memo||"")}</td>
           <td><div class="vbtns">${VISITS.map(k=>`<button class="vb ${k}" data-vs="${k}" aria-pressed="${r.visit===k}">${k==="취소"?"취소·노쇼":k}</button>`).join("")}</div></td>
           <td>${r.visit==="취소"||r.visit==="변경"?`<select data-vw="${r.id}" style="height:28px;max-width:150px"><option value="">사유 선택</option>${RESV_WHY.map(w=>`<option ${r.reason===w?"selected":""}>${w}</option>`).join("")}${r.reason&&!RESV_WHY.includes(r.reason)?`<option selected>${esc(r.reason)}</option>`:""}</select>`:""}${r.note?` <small class="meta">${esc(r.note)}</small>`:""}</td>
           <td><button class="nmbtn" data-ve="${r.id}" aria-label="수정">⋯</button></td></tr>`).join("")||`<tr><td colspan="8" class="empty">이 날 예약이 없습니다. EMR 예약 목록 엑셀을 올려주세요.</td></tr>`}
@@ -2110,20 +2117,21 @@ async function renderResv(){
   }
   document.querySelectorAll("[data-rvm]").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.rvm; if(st.mode==="month") st.month=st.date.slice(0,7); renderResv(); });
 }
-function resvDialog(r,date,reload){ const dlg=$("dlg");
+async function resvDialog(r,date,reload){ const dlg=$("dlg");
+  const docs=((S.doctors&&S.doctors.length?S.doctors:await loadDoctors())||[]).filter(d=>d.active).map(d=>d.name); const curD=r?.doctor||"";
+  const docOpts=`<option value="">선택 안 함</option>${docs.map(n=>`<option ${n===curD?"selected":""}>${esc(n)}</option>`).join("")}${curD&&!docs.includes(curD)?`<option selected>${esc(curD)}</option>`:""}`;
   dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${r?"예약 수정":"예약 추가"}</h3><div class="form-2">
     <div class="field"><label for="r_d">날짜</label><input type="date" id="r_d" value="${r?.resv_date||date}"></div>
     <div class="field"><label for="r_t">시간</label><input id="r_t" value="${esc(r?.resv_time||"")}" placeholder="09:30"></div>
     <div class="field"><label for="r_c">차트번호</label><input id="r_c" value="${esc(r?.chart_no||"")}"></div>
     <div class="field"><label for="r_n">환자명</label><input id="r_n" value="${esc(r?.patient_name||"")}"></div>
-    <div class="field"><label for="r_s">예약과목</label><input id="r_s" value="${esc(r?.subject||"")}"></div>
-    <div class="field"><label for="r_o">주치의</label><input id="r_o" value="${esc(r?.doctor||"")}"></div>
+    <div class="field" style="grid-column:1/-1"><label for="r_o">주치의</label><select id="r_o">${docOpts}</select></div>
     <div class="field" style="grid-column:1/-1"><label for="r_m">예약메모</label><input id="r_m" value="${esc(r?.memo||"")}"></div>
     <div class="field" style="grid-column:1/-1"><label for="r_b">비고</label><input id="r_b" value="${esc(r?.note||"")}"></div></div>
     <p class="err" id="r_e"></p>
     <div style="display:flex;justify-content:space-between;gap:8px">${r?`<button type="button" class="btn ghost" id="r_x" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:"<span></span>"}<div style="display:flex;gap:8px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button type="button" class="btn" id="r_ok">저장</button></div></div></form>`;
   dlg.showModal();
-  $("r_ok").onclick=async()=>{ const nz=id=>$(id).value.trim()||null; const row={resv_date:$("r_d").value,resv_time:nz("r_t"),chart_no:nz("r_c"),patient_name:nz("r_n"),subject:nz("r_s"),doctor:nz("r_o"),memo:nz("r_m"),note:nz("r_b")};
+  $("r_ok").onclick=async()=>{ const nz=id=>$(id).value.trim()||null; const row={resv_date:$("r_d").value,resv_time:nz("r_t"),chart_no:nz("r_c"),patient_name:nz("r_n"),doctor:$("r_o").value||null,memo:nz("r_m"),note:nz("r_b")};
     if(!row.resv_date){ $("r_e").textContent="날짜를 고르세요."; return; }
     const res=r?await sb.from("reservations").update(row).eq("id",r.id):await sb.from("reservations").insert({...row,branch_id:S.branch,source:"manual"}); if(res.error){ $("r_e").textContent=errMsg(res.error); return; } dlg.close(); reload(); };
   if($("r_x")) $("r_x").onclick=async()=>{ const b=$("r_x"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; } const {error}=await sb.from("reservations").delete().eq("id",r.id); if(error){ $("r_e").textContent=errMsg(error); return; } dlg.close(); reload(); };
