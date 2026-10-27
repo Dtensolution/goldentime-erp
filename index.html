@@ -504,9 +504,9 @@ const addDays = (iso,n) => { const d=new Date(iso+"T00:00:00Z"); d.setUTCDate(d.
 const ymd = d => d.toISOString().slice(0,10);
 const monthRange = ym => { const [y,m]=ym.split("-").map(Number); const s=new Date(Date.UTC(y,m-1,1)), e=new Date(Date.UTC(y,m,0)); return {start:ymd(s), end:ymd(e), days:e.getUTCDate(), y, m}; };
 const shiftMonth = (ym,n) => { const [y,m]=ym.split("-").map(Number); const d=new Date(Date.UTC(y,m-1+n,1)); return d.toISOString().slice(0,7); };
-// 주차: 월~일, 일요일이 속한 달의 n주차 (9/28~10/4 = 10월 1주차)
+// 주: 달과 상관없이 월~일 한 주, 이름은 날짜 범위 (예: 10.19~10.25)
 function weekOf(iso){ const d=new Date(iso+"T00:00:00Z"); const dow=(d.getUTCDay()+6)%7; const mon=new Date(d.getTime()-dow*864e5); const sun=new Date(mon.getTime()+6*864e5);
-  return { key:ymd(mon), mon, sun, label:`${sun.getUTCMonth()+1}월 ${Math.ceil(sun.getUTCDate()/7)}주차` }; }
+  const f=x=>`${x.getUTCMonth()+1}.${String(x.getUTCDate()).padStart(2,"0")}`; return { key:ymd(mon), mon, sun, label:`${f(mon)}~${f(sun)}` }; }
 function bindSearch(id,run){ const inp=$(id); if(!inp) return; inp.type="search"; inp.autocomplete="off";
   if(!inp.placeholder.includes("Enter")) inp.placeholder=(inp.placeholder||"찾기")+" (Enter)";
   const btn=document.createElement("button"); btn.type="button"; btn.className="btn sm"; btn.textContent="🔍"; btn.title="찾기"; btn.setAttribute("aria-label","찾기"); btn.style.marginLeft="4px"; btn.style.flex="none";
@@ -690,7 +690,7 @@ function bucketize(rows,mode,md){
   const B=new Map();
   rows.forEach(r=>{ let key,label;
     if(mode==="day"){ key=r.close_date; const d=new Date(key+"T00:00:00Z"); label=md?`${d.getUTCMonth()+1}/${d.getUTCDate()}`:`${d.getUTCDate()}(${WD[d.getUTCDay()]})`; }
-    else if(mode==="week"){ const w=weekOf(r.close_date); key=w.key; label=w.label.replace("주차","주"); }
+    else if(mode==="week"){ const w=weekOf(r.close_date); key=w.key; label=w.label; }
     else if(mode==="month"){ key=r.close_date.slice(0,7); label=`${+key.slice(5)}월`; }
     else { key=r.close_date.slice(0,4); label=key+"년"; }
     if(!B.has(key)) B.set(key,{key,label,rows:[]}); B.get(key).rows.push(r); });
@@ -731,12 +731,12 @@ async function renderDash(){
   ];
   const docNames=Object.keys(T.docs).sort((a,b)=>(T.docs[b].nw+T.docs[b].re)-(T.docs[a].nw+T.docs[a].re));
   const L=B.map(b=>b.label);
-  const tbl=`<table><thead><tr><th>${{day:"날짜",week:"주차",month:"월",year:"연도"}[bm]}</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
+  const tbl=`<table><thead><tr><th>${{day:"날짜",week:"주 (월~일)",month:"월",year:"연도"}[bm]}</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
     <tr class="cur"><td>합계</td>${rowCells(T)}</tr>
     ${B.slice().reverse().map(b=>`<tr><td>${bm==="day"?`<button class="linkbtn" data-one="${b.key}">${b.label}</button>`:b.label}${bm==="day"?"":` <span class="meta">${b.a.days}일</span>`}</td>${rowCells(b.a)}</tr>`).join("")}</tbody></table>`;
   main.innerHTML=`<div class="wrap">${head}
     <section class="kpis">${kpis.map(x=>`<div class="kpi ${x.lead?"lead":""}"><span class="k">${x.k}</span><span class="v num">${x.v}<small>${x.u}</small></span><span class="d">${x.d}</span></div>`).join("")}</section>
-    ${mode==="week"?(()=>{ const W=weekTrend(B); if(!W.focus) return ""; const fk=W.focus.key; const t=`${W.focus.label.replace("주","주차")}(${+fk.slice(5,7)}.${+fk.slice(8)}~${+addDays(fk,6).slice(5,7)}.${+addDays(fk,6).slice(8)}) 주간 매출 추세${W.vsAvg!=null?` <span>직전 4주 평균 대비 ${updown(W.vsAvg)} ${W.vsAvg>=0?"상승":"하락"}</span>`:""}`; window.__wk=W; return trendPanel("trw",t,W,"week"); })():""}
+    ${mode==="week"?(()=>{ const W=weekTrend(B); if(!W.focus) return ""; const fk=W.focus.key; const t=`${W.focus.label}(월~일) 주간 매출 추세${W.vsAvg!=null?` <span>직전 4주 평균 대비 ${updown(W.vsAvg)} ${W.vsAvg>=0?"상승":"하락"}</span>`:""}`; window.__wk=W; return trendPanel("trw",t,W,"week"); })():""}
     <section class="panel"><h3>총진료비 <span>외래 + 입원, 원 · 선은 비급여 비중</span></h3><div class="cbox tall"><canvas id="c1" role="img" aria-label="총진료비 그래프"></canvas></div></section>
     <div class="grid2">
       <section class="panel"><h3>진료 인원 <span>신환 / 재진, 명</span></h3><div class="cbox"><canvas id="c2" role="img" aria-label="진료 인원 그래프"></canvas></div></section>
@@ -1094,7 +1094,7 @@ async function renderSched(kind){
   const staffNames=[...new Set(appts.map(a=>a.staff).filter(Boolean))];
   const d0=new Date(st.date+"T00:00:00Z");
   const md=iso=>`${+iso.slice(5,7)}/${+iso.slice(8)}`;
-  const label = st.mode==="week" ? `${weekOf(st.date).label} (${md(start)}~${md(end)})` : st.mode==="month" ? `${st.date.slice(0,4)}년 ${+st.date.slice(5,7)}월` : st.mode==="year" ? `${st.date.slice(0,4)}년` : st.mode==="range" ? `${start.replace(/-/g,".")} ~ ${end.slice(5).replace("-",".")} (${Math.round((new Date(end)-new Date(start))/864e5)+1}일)` : `${st.date.slice(0,4)}. ${+st.date.slice(5,7)}. ${+st.date.slice(8)} (${WD[d0.getUTCDay()]})`;
+  const label = st.mode==="week" ? `${weekOf(st.date).label} 주` : st.mode==="month" ? `${st.date.slice(0,4)}년 ${+st.date.slice(5,7)}월` : st.mode==="year" ? `${st.date.slice(0,4)}년` : st.mode==="range" ? `${start.replace(/-/g,".")} ~ ${end.slice(5).replace("-",".")} (${Math.round((new Date(end)-new Date(start))/864e5)+1}일)` : `${st.date.slice(0,4)}. ${+st.date.slice(5,7)}. ${+st.date.slice(8)} (${WD[d0.getUTCDay()]})`;
   const periodName = {day:"오늘",week:"이번 주",month:"이번 달",year:"올해",range:"선택 기간"}[st.mode]||"";
   const rows=(cfg.to-cfg.from)/10, H=rows*SLOT_H;
   // 열 구성: 일별=방, 주별=요일
@@ -1278,7 +1278,7 @@ async function renderSchedStats(kind){
   const liveAll=all.filter(a=>a.status==="예약"||a.status==="완료");
   const newcomers=list=>{ const firsts=list.filter(a=>a.is_new&&a.chart_no); const back=firsts.filter(f=>liveAll.some(b=>b.chart_no===f.chart_no&&(b.appt_date>f.appt_date||(b.appt_date===f.appt_date&&b.start_min>f.start_min)))); return {n:firsts.length,back:back.length}; };
   const T=agg(live), TN=newcomers(live);
-  const weeks={}; live.forEach(a=>{ const w=weekOf(a.appt_date); (weeks[w.key] ||= {label:w.label, mon:w.mon, sun:w.sun, list:[]}).list.push(a); });
+  const weekKeys=new Set(live.map(a=>weekOf(a.appt_date).key)); const weeks={}; liveAll.forEach(a=>{ const w=weekOf(a.appt_date); if(!weekKeys.has(w.key)) return; (weeks[w.key] ||= {label:w.label, mon:w.mon, sun:w.sun, list:[]}).list.push(a); });
   const W=Object.values(weeks).sort((a,b)=>a.mon-b.mon);
   const staffs={}; live.forEach(a=>{ (staffs[a.staff||"(미지정)"] ||= []).push(a); });
   const docs={}; if(kind==="emg"){ live.forEach(a=>{ if(a.doctor) (docs[a.doctor] ||= {order:0,needle:0}).order++; if(a.needle_doctor) (docs[a.needle_doctor] ||= {order:0,needle:0}).needle++; }); }
@@ -1296,8 +1296,8 @@ async function renderSchedStats(kind){
       <div class="kpi"><span class="k">예상 매출</span><span class="v num">${won(T.amt)}<small>원</small></span><span class="d">치료 단가 기준</span></div>
       <div class="kpi"><span class="k">일 평균</span><span class="v num">${(T.n/Math.max(1,new Set(live.map(a=>a.appt_date)).size)).toFixed(1)}<small>건</small></span><span class="d">예약 있는 날 기준</span></div>
     </section>
-    <section class="panel"><h3>주차별 합계 <span>월~일, 달을 걸친 주는 다음 달 1주차</span></h3><div class="tbl-box"><table><thead>${head}</thead><tbody>
-      ${W.map(w=>{ const a=ymd(w.mon)<R.start?R.start:ymd(w.mon), b=ymd(w.sun)>R.end?R.end:ymd(w.sun); const part=a!==ymd(w.mon)||b!==ymd(w.sun); return line(`${w.label}${part?` 중 ${R.m}월분`:""} <span class="meta">${+a.slice(5,7)}/${+a.slice(8)}~${+b.slice(5,7)}/${+b.slice(8)}</span>`,agg(w.list)); }).join("")}
+    <section class="panel"><h3>주별 합계 <span>월~일 기준 · 달에 걸친 주도 한 주 전체로 셉니다 (총 합계는 이 달만)</span></h3><div class="tbl-box"><table><thead>${head}</thead><tbody>
+      ${W.map(w=>line(`${w.label} <span class="meta">월~일</span>`,agg(w.list))).join("")}
       ${line("<b>총 합계</b>",T,"cur")}</tbody></table></div></section>
     <section class="panel"><h3>치료사(담당자)별 <span>신환 재방문율 = 그 담당자가 본 신환 중 다시 예약한 비율</span></h3><div class="tbl-box"><table><thead><tr><th>담당</th>${itemNames.map(n=>`<th>${esc(n)}</th>`).join("")}<th>총 건수</th><th>신환</th><th>재진</th><th>재진율</th><th>신환 재방문율</th><th>예상 매출</th></tr></thead><tbody>
       ${Object.entries(staffs).sort((a,b)=>b[1].length-a[1].length).map(([k,list])=>{ const o=agg(list), nn=newcomers(list); return `<tr><td>${esc(k)}</td>${itemNames.map(n=>`<td class="num">${o.by[n]||0}</td>`).join("")}<td class="num"><b>${o.n}</b></td><td class="num">${o.nw}</td><td class="num">${o.re}</td><td class="num">${pctS(o.re,o.n)}</td><td class="num">${nn.n?pctS(nn.back,nn.n)+` <span class="meta">(${nn.back}/${nn.n})</span>`:"–"}</td><td class="num">${won(o.amt)}원</td></tr>`; }).join("")||`<tr><td colspan="99" class="meta">자료가 없습니다.</td></tr>`}
@@ -1382,7 +1382,7 @@ async function renderStaff(){
   const anyEdit=deptsPresent.some(canEditDept);
   const today=kstToday();
   const dLabel=d=>{ const x=new Date(d+"T00:00:00Z"); return {d:+d.slice(8), m:+d.slice(5,7), w:WD[x.getUTCDay()], we:x.getUTCDay()===0||x.getUTCDay()===6, sun:x.getUTCDay()===0}; };
-  const title = st.mode==="month" ? `${start.slice(0,4)}년 ${+start.slice(5,7)}월` : st.mode==="week" ? `${weekOf(st.date).label} (${start.slice(5).replace("-","/")}~${end.slice(5).replace("-","/")})` : `${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${dLabel(st.date).w})`;
+  const title = st.mode==="month" ? `${start.slice(0,4)}년 ${+start.slice(5,7)}월` : st.mode==="week" ? `${weekOf(st.date).label} 주 (월~일)` : `${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${dLabel(st.date).w})`;
   st.color ||= (lsGet("gt-shcolor")||"dept");
   const colOf=(v,dept)=> isOffVal(v,codes) ? SH_COLORS.gray : (st.color==="dept" ? deptColor(dept) : shiftColor(v,codes));
   const sel=k=>st.sel===k?" sel":"";
@@ -2028,19 +2028,20 @@ async function renderResv(){
     $("vup").onclick=()=>$("vf").click(); $("vf").onchange=()=>resvUpload($("vf").files[0],st);
   } else {
     const R=monthRange(st.month);
-    const {data,error}=await sb.from("reservations").select("resv_date,visit,reason,subject").eq("branch_id",S.branch).gte("resv_date",R.start).lte("resv_date",R.end).limit(20000);
+    const wS=mondayOf(R.start), wE=addDays(mondayOf(R.end),6);
+    const {data,error}=await allRows(()=>sb.from("reservations").select("resv_date,visit,reason,subject").eq("branch_id",S.branch).gte("resv_date",wS).lte("resv_date",wE).order("id"));
     if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
-    const all=data||[]; const by={}; all.forEach(r=>{ const o=by[r.resv_date] ||= {n:0,"내원":0,"변경":0,"취소":0,none:0}; o.n++; if(r.visit) o[r.visit]++; else o.none++; });
+    const full=data||[]; const all=full.filter(r=>r.resv_date>=R.start&&r.resv_date<=R.end); const by={}; all.forEach(r=>{ const o=by[r.resv_date] ||= {n:0,"내원":0,"변경":0,"취소":0,none:0}; o.n++; if(r.visit) o[r.visit]++; else o.none++; });
     const tot={n:all.length}; VISITS.forEach(k=>tot[k]=all.filter(r=>r.visit===k).length); tot.none=all.filter(r=>!r.visit).length; const rate=o=>{ const real=o.n-o["변경"]; return real?(o["내원"]/real*100).toFixed(1)+"%":"–"; };
     const why={}; all.filter(r=>r.visit==="취소"&&r.reason).forEach(r=>why[r.reason]=(why[r.reason]||0)+1);
-    const W={}; all.forEach(r=>{ const w=weekOf(r.resv_date); const o=W[w.key] ||= {label:w.label,n:0,"내원":0,"변경":0,"취소":0}; o.n++; if(r.visit) o[r.visit]++; });
+    const W={}; full.forEach(r=>{ const w=weekOf(r.resv_date); const o=W[w.key] ||= {label:w.label,n:0,"내원":0,"변경":0,"취소":0}; o.n++; if(r.visit) o[r.visit]++; });
     main.innerHTML=`<div class="wrap">
       <div class="page-h"><div><h2>예약관리 · 월별 통계</h2><div class="meta">${R.y}년 ${R.m}월 · 예약율 = 내원 ÷ (전체 − 변경)</div></div>
         <div style="display:flex;gap:8px;align-items:center"><div class="seg" role="group" aria-label="보기"><button data-rvm="day" aria-pressed="false">일별</button><button data-rvm="month" aria-pressed="true">월별 통계</button></div>
         <div class="monthnav"><button class="btn ghost sm" id="mp" aria-label="이전 달">◀</button><b class="num">${st.month.replace("-",". ")}</b><button class="btn ghost sm" id="mn" aria-label="다음 달">▶</button></div></div></div>
       <section class="kpis"><div class="kpi lead"><span class="k">월 예약율</span><span class="v num">${rate(tot)}</span><span class="d">내원 ${tot["내원"]} / 실예약 ${tot.n-tot["변경"]}</span></div>
         <div class="kpi"><span class="k">전체 예약</span><span class="v num">${won(tot.n)}</span><span class="d">확인 전 ${tot.none}</span></div><div class="kpi"><span class="k">변경</span><span class="v num">${tot["변경"]}</span></div><div class="kpi"><span class="k">취소·노쇼</span><span class="v num">${tot["취소"]}</span></div></section>
-      <div class="grid2"><section class="panel"><h3>주차별</h3><div class="tbl-box"><table><thead><tr><th>주차</th><th>전체</th><th>내원</th><th>변경</th><th>취소</th><th>예약율</th></tr></thead><tbody>${Object.entries(W).sort().map(([k,o])=>`<tr><td>${o.label}</td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num"><b>${rate(o)}</b></td></tr>`).join("")}</tbody></table></div></section>
+      <div class="grid2"><section class="panel"><h3>주별 <span>월~일 · 달에 걸친 주도 한 주 전체</span></h3><div class="tbl-box"><table><thead><tr><th>주 (월~일)</th><th>전체</th><th>내원</th><th>변경</th><th>취소</th><th>예약율</th></tr></thead><tbody>${Object.entries(W).sort().map(([k,o])=>`<tr><td>${o.label}</td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num"><b>${rate(o)}</b></td></tr>`).join("")}</tbody></table></div></section>
         <section class="panel"><h3>취소 사유</h3><div class="tbl-box"><table><tbody>${Object.entries(why).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join("")||`<tr><td class="meta">기록된 사유가 없습니다.</td></tr>`}</tbody></table></div></section></div>
       <section class="panel"><h3>일별 <span>날짜를 누르면 그날 목록으로 갑니다</span></h3><div class="tbl-box"><table><thead><tr><th>날짜</th><th>전체</th><th>내원</th><th>변경</th><th>취소·노쇼</th><th>확인 전</th><th>예약율</th></tr></thead><tbody>
         ${Object.entries(by).sort().map(([d,o])=>{ const x=new Date(d+"T00:00:00Z"); return `<tr><td><button class="linkbtn" data-gd="${d}">${+d.slice(5,7)}/${+d.slice(8)} (${WD[x.getUTCDay()]})</button></td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num">${o.none||""}</td><td class="num"><b>${rate(o)}</b></td></tr>`; }).join("")||`<tr><td colspan="7" class="meta">자료가 없습니다.</td></tr>`}
@@ -2990,7 +2991,7 @@ function trendPanel(id,title,T,kind){
   return `<section class="panel trend"><h3>${title}</h3>
     <ol class="tlines">${line(`${day?"같은 요일 ":""}직전 4주 평균(${T.cur.base?wonMan(Math.round(T.cur.base)):"–"}) 대비`,T.vsAvg)}${line(`${day?"1주 전 같은 요일":"직전 1주"}(${T.wkAmt?wonMan(T.wkAmt):"–"}) 대비`,T.vsWeek)}</ol>
     <div class="cbox"><canvas id="${id}" role="img" aria-label="${esc(title)}"></canvas></div>
-    <div class="tbl-box" style="margin-top:10px"><table class="trendtbl"><thead><tr><th>${day?"날짜":"주차"}</th><th>매출</th><th>직전 4주 평균</th><th>증감</th></tr></thead><tbody>
+    <div class="tbl-box" style="margin-top:10px"><table class="trendtbl"><thead><tr><th>${day?"날짜":"주 (월~일)"}</th><th>매출</th><th>직전 4주 평균</th><th>증감</th></tr></thead><tbody>
       ${T.pts.slice().reverse().map((p,i)=>`<tr class="${i===0?"cur":""}"><td>${esc(p.label)}${p.days!=null?` <span class="meta">${p.days}일</span>`:""}</td><td class="num">${p.amt!=null?won(p.amt):"–"}</td><td class="num">${p.base?won(Math.round(p.base)):"–"}</td><td class="num">${p.pct!=null?updown(p.pct):"–"}</td></tr>`).join("")}</tbody></table></div></section>`;
 }
 const trendLabelPlugin={id:"trendLabels",afterDatasetsDraw(ch){ const ds=ch.data.datasets[0]; const meta=ch.getDatasetMeta(0); const ctx=ch.ctx; const P=ch.options.plugins.trendLabels?.pts||[];
