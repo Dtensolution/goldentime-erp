@@ -83,7 +83,7 @@ nav.side button:disabled{color:var(--muted);cursor:default;opacity:.6}
 nav.side .soon{font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
 nav.side .sep{font-size:11px;color:var(--muted);letter-spacing:.06em;padding:14px 12px 4px}
 main{min-width:0;padding-block:20px 64px}
-.wrap{max-width:1120px;margin:0 auto;display:grid;gap:20px}
+.wrap{max-width:min(1800px,100%);margin:0 auto;display:grid;gap:20px}
 .page-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .page-h h2{margin:0;font-size:20px;text-wrap:balance}
 .meta{color:var(--muted);font-size:13px}
@@ -223,6 +223,40 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
 .trend .cbox{height:300px}
 table.trendtbl tr.cur td{font-weight:600;background:var(--navy-soft)}
+.shtab thead th,.sc-h{will-change:transform}
+.shtab thead th.stuck,.sc-h.stuck{box-shadow:0 2px 0 var(--line)}
+.blk{position:absolute;left:0;right:0;z-index:1;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 6px,color-mix(in srgb,var(--muted) 8%,transparent) 6px 12px);border-top:1px solid color-mix(in srgb,var(--muted) 35%,transparent);border-bottom:1px solid color-mix(in srgb,var(--muted) 35%,transparent);cursor:not-allowed;display:flex;align-items:flex-start;justify-content:center}
+.blk span{font-size:10.5px;color:var(--muted);background:var(--surface);padding:0 4px;border-radius:3px;margin-top:2px}
+.ap{z-index:2}
+.ap.dragsrc{opacity:.35}
+.ap.ghost{opacity:.9;box-shadow:0 8px 20px rgb(0 0 0 / .25);cursor:grabbing}
+.dghint{position:fixed;z-index:60;background:var(--ink);color:var(--surface);font-size:12px;padding:3px 8px;border-radius:5px;pointer-events:none}
+.ap em{font-style:normal;font-size:10px;margin-right:3px;padding:0 3px;border-radius:3px}
+.ap em.nth,.nth{font-style:normal;font-weight:700;padding:0 4px;border-radius:3px;font-size:10.5px}
+.nth.n1{background:#e3efff;color:#1a5fd0}.nth.n2{background:#e2f6e7;color:#1f7a3a}.nth.n3{background:#fff0d9;color:#b86200}
+.ap.nth1{border-color:#1a5fd0;background:#eef5ff}.ap.nth2{border-color:#2f8f4e;background:#eaf7ee}.ap.nth3{border-color:#d17a12;background:#fff5e6}
+.ap em.cti.o{background:#e2f6e7;color:#1f7a3a}.ap em.cti.x{background:#fde7e7;color:#c0392b}
+.ckb{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border:1px solid var(--line);border-radius:6px;font-weight:700;cursor:pointer;color:var(--muted)}
+.ckb.o{background:#e2f6e7;color:#1f7a3a;border-color:#9ed4ad}.ckb.x{background:#fde7e7;color:#c0392b;border-color:#f0b3ad}
+.ckb:disabled{cursor:default}
+.ctsel{display:inline-flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}.ctsel select{height:30px}
+.blkadd{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}.blkadd select{height:32px}
+.dowck{display:inline-flex;gap:2px;align-items:center;font-size:13px;margin-right:4px}
+.cmgrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1100px){.cmgrid{grid-template-columns:1fr}}
+table.cmtab{border-collapse:collapse;width:100%;font-size:13px}
+table.cmtab th,table.cmtab td{border:1px solid var(--line);padding:0;text-align:center;height:26px}
+table.cmtab th{background:var(--sunk);padding:4px 6px;white-space:nowrap}
+table.cmtab td.cmd{background:var(--sunk);font-weight:600;width:56px}
+table.cmtab td.cmd.sat{color:#1a8fd0}table.cmtab td.cmd.sun{color:#d93025}
+table.cmtab td.tot,table.cmtab th.tot{background:color-mix(in srgb,var(--navy) 6%,var(--surface));font-weight:600;width:60px}
+table.cmtab td.cm input{all:unset;box-sizing:border-box;width:100%;height:26px;text-align:center;font-family:var(--f-num)}
+table.cmtab td.cm input:focus{outline:2px solid var(--navy);outline-offset:-2px;background:var(--navy-soft)}
+table.cmtab td.cm input.saved{background:color-mix(in srgb,var(--good) 8%,transparent)}table.cmtab td.cm input.err{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+table.cmtab tr.sumrow td{background:#2f8f4e;color:#fff;font-weight:700}table.cmtab tr.sumrow td.tot{background:#24713d}
+.cmx{all:unset;cursor:pointer;color:var(--muted);font-size:11px;margin-left:2px}.cmx:hover{color:var(--bad)}
+.cmadd{display:flex;gap:6px;margin-top:8px}
+table.ctab td,table.ctab th{white-space:nowrap}
 .inline-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:end}
 .inline-form .field{margin:0}
 .inline-form .field input,.inline-form .field select{height:36px}
@@ -282,7 +316,7 @@ dialog{width:min(520px,94vw)}
 .brush{border:1.5px solid var(--sc,var(--line));background:color-mix(in srgb,var(--sc,var(--line)) 12%,var(--surface));color:var(--ink);border-radius:6px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--f-num)}
 .brush[aria-pressed="true"]{background:var(--sc,var(--navy));color:#fff;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--sc,var(--navy))}
 .brush.clear{--sc:var(--bad);font-family:var(--f-body)}
-.sh-wrap{overflow:auto;max-height:calc(100vh - 230px);border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.sh-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
 .shtab{border-collapse:separate;border-spacing:0;font-size:12px;width:max-content;min-width:100%}
 .shtab th,.shtab td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:0;text-align:center;white-space:nowrap}
 .shtab thead th{position:sticky;top:0;z-index:3;background:var(--sunk);padding:4px 2px;font-weight:600;min-width:38px}
@@ -619,6 +653,7 @@ function render(){
     {id:"ot",label:"연장근무"},
     {id:"leave",label:"연차관리"},
     {id:"inv",label:"물품·재고"},
+    {id:"carm",label:"씨암 카운트",ok:lv<=3||S.me.dept==="영상의학"},
     {id:"docs",label:"업무게시판"},
     {id:"reg",label:"업무 기록부"},
     {id:"info",label:"기본정보·연락망"},
@@ -639,7 +674,7 @@ function render(){
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; } S.view=b.dataset.v; render(); });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals();
+  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -1079,19 +1114,22 @@ async function renderSched(kind){
   S.sched ||= {}; const st = S.sched[kind] ||= { date:kstToday(), mode: kind==="emg"?"week":"day" };
   const perm=schedPerm(kind), canEdit=perm==="edit", cfg=SCHED[kind];
   const {start,end}=schedRange(st); const grid = st.mode==="day"||st.mode==="week";
-  const [lr, ir, ar, nr, dr] = await Promise.all([
+  const [lr, ir, ar, nr, dr, br] = await Promise.all([
     sb.from("sched_lanes").select("*").eq("branch_id",S.branch).eq("kind",kind).order("sort"),
     sb.from("sched_items").select("*").eq("branch_id",S.branch).eq("kind",kind).order("sort"),
     allRows(()=>sb.from("appointments").select("*").eq("branch_id",S.branch).eq("kind",kind).gte("appt_date",start).lte("appt_date",end).order("appt_date").order("start_min").order("id")),
     sb.from("sched_day_notes").select("*").eq("branch_id",S.branch).eq("kind",kind).gte("note_date",start).lte("note_date",end),
-    kind==="emg" ? sb.from("doctors").select("name,active").eq("branch_id",S.branch).order("sort") : Promise.resolve({data:[]})
+    kind==="emg" ? sb.from("doctors").select("name,active").eq("branch_id",S.branch).order("sort") : Promise.resolve({data:[]}),
+    sb.from("sched_blocks").select("*").eq("branch_id",S.branch).eq("kind",kind).order("id")
   ]);
+  const blocks=br&&!br.error?(br.data||[]):[];
   const err = lr.error||ir.error||ar.error||nr.error;
   if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const lanes=(lr.data||[]).filter(l=>l.active), items=ir.data||[], appts=ar.data||[], notes=nr.data||[];
   const itemBy=Object.fromEntries(items.map(i=>[i.name,i]));
   const docNames=(dr.data||[]).filter(d=>d.active).map(d=>d.name);
   const staffNames=[...new Set(appts.map(a=>a.staff).filter(Boolean))];
+  if(kind==="emg") await emgOrder(appts,end).catch(()=>{});
   const d0=new Date(st.date+"T00:00:00Z");
   const md=iso=>`${+iso.slice(5,7)}/${+iso.slice(8)}`;
   const label = st.mode==="week" ? `${weekOf(st.date).label} 주` : st.mode==="month" ? `${st.date.slice(0,4)}년 ${+st.date.slice(5,7)}월` : st.mode==="year" ? `${st.date.slice(0,4)}년` : st.mode==="range" ? `${start.replace(/-/g,".")} ~ ${end.slice(5).replace("-",".")} (${Math.round((new Date(end)-new Date(start))/864e5)+1}일)` : `${st.date.slice(0,4)}. ${+st.date.slice(5,7)}. ${+st.date.slice(8)} (${WD[d0.getUTCDay()]})`;
@@ -1111,10 +1149,11 @@ async function renderSched(kind){
     const n=Math.max(1,tracks.length);
     const cards=list.map(a=>{ const top=(a.start_min-cfg.from)/10*SLOT_H+1, h=Math.max(SLOT_H-2,a.minutes/10*SLOT_H-2);
       const laneName = "";
-      return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
-        <b>${hhmm(a.start_min)} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")}</b><span>${esc(a.item)}${a.is_new?" · 신환":""}${a.inpatient?" · 입원":""}${a.staff?" · "+esc(a.staff):""}${a.doctor?" · "+esc(a.doctor):""}${a.needle_doctor?" · 니들링 "+esc(a.needle_doctor):""}${laneName?" · "+esc(laneName):""}${a.status!=="예약"?" · "+a.status:""}</span></button>`; }).join("");
+      const ct=a.contact||{}; const badges=kind==="emg"?`${a._n?`<em class="nth n${Math.min(a._n,3)}">${a._n}차</em>`:""}${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
+      return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._n?" nth"+Math.min(a._n,3):""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
+        <b>${badges}${hhmm(a.start_min)} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")}</b><span>${esc(a.item)}${a.is_new?" · 신환":""}${a.inpatient?" · 입원":""}${a.staff?" · "+esc(a.staff):""}${a.doctor?" · "+esc(a.doctor):""}${a.needle_doctor?" · 니들링 "+esc(a.needle_doctor):""}${laneName?" · "+esc(laneName):""}${a.status!=="예약"?" · "+a.status:""}</span></button>`; }).join("");
     return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h">${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
-      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${cards}</div></div>`;
+      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>예약 불가${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
   // 집계
   const live=appts.filter(a=>a.status!=="취소"&&a.status!=="노쇼");
@@ -1151,12 +1190,15 @@ async function renderSched(kind){
         <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div>${S.me.level<=2?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
         <div class="monthnav"><button class="btn ghost sm" id="sp" aria-label="이전">◀</button><b class="num" style="min-width:150px">${label}</b><button class="btn ghost sm" id="sn" aria-label="다음">▶</button></div>
         <button class="btn ghost sm" id="st">오늘</button>${st.mode==="range"?`<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="rf" value="${start}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="rt" value="${end}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-rq="${k}">${t}</button>`).join("")}</span>`:st.mode==="month"?`<input type="month" id="sm" value="${st.date.slice(0,7)}" aria-label="월 선택" style="height:30px;padding:0 6px">`:st.mode==="year"?`<select id="sy" aria-label="연도 선택" style="height:30px">${[...Array(7)].map((_,i)=>+kstToday().slice(0,4)-4+i).map(y=>`<option ${String(y)===st.date.slice(0,4)?"selected":""}>${y}</option>`).join("")}</select>`:`<input type="date" id="sd" value="${st.date}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`}
+        ${canEdit&&grid?`<button class="btn ghost sm" id="sundo" ${(S.schedUndo[kind]||[]).length?"":"disabled"} title="끌어서 옮긴 예약을 원래대로">↶ 되돌리기${(S.schedUndo[kind]||[]).length?` (${S.schedUndo[kind].length})`:""}</button>`:""}
         ${canEdit?`<button class="btn sm" id="sa">+ 예약 추가</button>`:""}
       </div></div>
     ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
     `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px repeat(${cols.length},minmax(${st.mode==="week"?(lanes.length>1?92:120):150}px,1fr))">
-      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>`}
+      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소)</p>`:""}`}
+    ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
+    ${blocksPanel(kind,blocks,lanes,canEdit,cfg)}
     <div class="grid2">
       <section class="panel"><h3>치료별 집계 <span>${periodName} · 예상 매출은 예약+완료 × 단가</span></h3>${byItem.length?`<div class="tbl-box"><table><thead><tr><th>치료</th><th>예약</th><th>완료</th><th>취소·노쇼</th><th>예상 매출</th></tr></thead><tbody>
         ${byItem.map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${x.r}</td><td class="num">${x.d}</td><td class="num">${x.x}</td><td class="num">${won(x.amt)}원</td></tr>`).join("")}
@@ -1188,12 +1230,19 @@ async function renderSched(kind){
   if($("goPrice")) $("goPrice").onclick=()=>{ S.priceKind=kind; S.priceBack=S.view; S.view="price"; render(); };
   document.querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{ if(b.dataset.sm==="stats"){ S.view=kind==="pt"?"spts":"semgs"; render(); return; } st.mode=b.dataset.sm; renderSched(kind); });
   if($("dns")) $("dns").onclick=async()=>{ const {error}=await sb.from("sched_day_notes").upsert({branch_id:S.branch,kind,note_date:st.date,note:$("dn").value.trim()||null,updated_by:S.user.id,updated_at:new Date().toISOString()}); toast(error?errMsg(error):"메모 저장됨"); };
-  const ctx={kind,lanes,items,itemBy,docNames,staffNames,canEdit,cfg,reload:()=>renderSched(kind)};
-  document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); apptDialog(ctx, appts.find(a=>a.id==b.dataset.ap)); });
+  const ctx={kind,lanes,items,itemBy,docNames,staffNames,canEdit,cfg,blocks,reload:()=>{ const y=window.scrollY; return renderSched(kind).then(()=>window.scrollTo(0,y)); }};
+  document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); if(b.dataset.nodlg) return; apptDialog(ctx, appts.find(a=>a.id==b.dataset.ap)); });
+  document.querySelectorAll(".blk").forEach(b=>b.onclick=e=>{ e.stopPropagation(); toast(b.title||"예약 불가 시간입니다"); });
+  stickHead(document.querySelector(".sc-wrap"),".sc-h");
+  if(kind==="emg") bindContact(appts);
+  bindBlocks(kind,ctx.reload);
+  if($("sundo")) $("sundo").onclick=()=>undoMove(kind,ctx.reload);
+  if(canEdit&&grid) bindApptDrag(kind,cols,appts,cfg,lanes,blocks,ctx.reload);
   if(canEdit){
     if($("sa")) $("sa").onclick=()=>apptDialog(ctx,null,{date:st.date,start:Math.max(cfg.from,Math.min(cfg.to-30,Math.ceil(((Date.now()/6e4+540)%1440)/laneStep(kind,lanes[0]))*laneStep(kind,lanes[0]))),lane:lanes[0]?.id});
     document.querySelectorAll(".sc-body[data-col]").forEach(body=>body.onclick=e=>{ if(e.target!==body) return;
       const c=cols[+body.dataset.col]; const y=e.offsetY; const step=laneStep(kind,c.lane); const m=cfg.from+Math.floor(y/(SLOT_H*step/10))*step;
+      const hit=blockHit(blocks,{appt_date:c.date,lane_id:c.lane.id,start_min:m,minutes:step}); if(hit.length){ toast("예약 불가 시간입니다: "+blkLabel(hit[0])); return; }
       apptDialog(ctx,null,{date:c.date,start:Math.min(m,cfg.to-step),lane:c.lane?c.lane.id:lanes[0]?.id}); });
   }
   // 설정
@@ -1208,7 +1257,8 @@ async function renderSched(kind){
 
 function apptDialog(ctx, a, preset){
   const {kind,lanes,items,itemBy,docNames,staffNames,canEdit,cfg}=ctx; const dlg=$("dlg");
-  const v = a || {appt_date:preset.date,start_min:preset.start,lane_id:preset.lane,minutes:(items.find(i=>i.active)?.minutes)||30,item:(items.find(i=>i.active)?.name)||"",status:"예약"};
+  const v = a || {appt_date:preset.date,start_min:preset.start,lane_id:preset.lane,minutes:kind==="emg"?30:((items.find(i=>i.active)?.minutes)||30),item:(items.find(i=>i.active)?.name)||"",status:"예약"};
+  const ct=v.contact||{};
   const timeOpts=(lid,cur)=>{ const step=laneStep(kind,lanes.find(l=>l.id===+lid)); const times=[]; for(let m=cfg.from-60;m<=cfg.to;m+=step) times.push(m); if(cur!=null&&!times.includes(cur)){ times.push(cur); times.sort((x,y)=>x-y); } return times.map(m=>`<option value="${m}" ${m===cur?"selected":""}>${hhmm(m)}</option>`).join(""); };
   const ro=canEdit?"":"disabled";
   dlg.innerHTML=`<form method="dialog" id="apf"><h3 style="margin:0 0 12px">${a?"예약 보기·수정":"예약 추가"} <span class="meta" style="font-weight:400">${kind==="pt"?"도수·충격파":"근전도"}</span></h3>
@@ -1221,11 +1271,13 @@ function apptDialog(ctx, a, preset){
       <div class="field"><label for="a_n">환자 이름</label><input id="a_n" value="${esc(v.patient_name||"")}" autocomplete="off" ${ro}></div>
       <div class="field"><label for="a_s">담당자</label><input id="a_s" list="a_sl" value="${esc(v.staff||"")}" autocomplete="off" ${ro}><datalist id="a_sl">${staffNames.map(n=>`<option value="${esc(n)}">`).join("")}</datalist></div>
       ${kind==="emg"?`<div class="field"><label for="a_dr">담당 원장</label><select id="a_dr" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="${v.minutes}" inputmode="numeric" ${ro}></div>`}
-      ${kind==="emg"?`<div class="field"><label for="a_nd">니들링 원장</label><select id="a_nd" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.needle_doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div><div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="${v.minutes}" inputmode="numeric" ${ro}></div>`:""}
+      ${kind==="emg"?`<div class="field"><label for="a_nd">니들링 원장</label><select id="a_nd" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.needle_doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div><div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="30" readonly title="근전도는 30분 고정" style="background:var(--sunk)"></div>
+        <div class="field"><label for="a_ph">전화번호</label><input id="a_ph" value="${esc(v.phone||"")}" inputmode="tel" placeholder="010-0000-0000" ${ro}></div>
+        <div class="field"><label>연락 체크</label><div style="display:flex;gap:6px;flex-wrap:wrap">${CT_KEYS.map(([k,l])=>`<label class="ctsel">${l}<select data-ctk="${k}" ${ro}><option value="">-</option><option ${ct[k]==="O"?"selected":""}>O</option><option ${ct[k]==="X"?"selected":""}>X</option></select></label>`).join("")}</div></div>`:""}
       <div class="field"><label for="a_st">상태</label><select id="a_st" ${ro}>${["예약","완료","취소","노쇼"].map(s=>`<option ${s===v.status?"selected":""}>${s}</option>`).join("")}</select></div>
     </div>
     <div style="display:flex;gap:16px;margin:2px 0 12px;font-size:13px"><label><input type="checkbox" id="a_new" ${v.is_new?"checked":""} ${ro}> 신환</label><label><input type="checkbox" id="a_in" ${v.inpatient?"checked":""} ${ro}> 입원 환자</label></div>
-    <div class="field"><label for="a_note">메모</label><input id="a_note" value="${esc(v.note||"")}" placeholder="부위, 특이사항 (전화번호는 적지 마세요)" ${ro}></div>
+    <div class="field"><label for="a_note">메모</label><input id="a_note" value="${esc(v.note||"")}" placeholder="부위, 특이사항" ${ro}></div>
     <div id="a_hist" class="ahist"></div>
     <p class="err" id="a_err"></p>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
@@ -1236,17 +1288,18 @@ function apptDialog(ctx, a, preset){
   if(!canEdit) return;
   $("apf").addEventListener("input",()=>{ const b=$("a_ok"); if(b&&b.dataset.force){ delete b.dataset.force; b.textContent="저장"; b.classList.remove("warnbtn"); } });
   $("apf").addEventListener("change",()=>{ const b=$("a_ok"); if(b&&b.dataset.force){ delete b.dataset.force; b.textContent="저장"; b.classList.remove("warnbtn"); } });
-  $("a_i").onchange=()=>{ const it=itemBy[$("a_i").value]; if(it) $("a_m").value=it.minutes; };
+  $("a_i").onchange=()=>{ const it=itemBy[$("a_i").value]; if(it&&kind!=="emg") $("a_m").value=it.minutes; };
   $("a_l").onchange=()=>{ const cur=+$("a_t").value; const step=laneStep(kind,lanes.find(l=>l.id===+$("a_l").value)); const snap=Math.floor(cur/step)*step; $("a_t").innerHTML=timeOpts($("a_l").value,snap); };
   $("a_ok").onclick=async()=>{
-    const start=+$("a_t").value, minutes=Math.max(5,Math.min(240,+$("a_m").value||30));
+    const start=+$("a_t").value, minutes=kind==="emg"?30:Math.max(5,Math.min(240,+$("a_m").value||30));
     if(!$("a_c").value.trim() && !$("a_n").value.trim()){ $("a_err").textContent="차트번호나 이름 중 하나는 적어주세요."; return; }
     const row={branch_id:S.branch,kind,appt_date:$("a_d").value,start_min:start,minutes,lane_id:+$("a_l").value||null,item:$("a_i").value,
       chart_no:$("a_c").value.trim()||null,patient_name:$("a_n").value.trim()||null,staff:$("a_s").value.trim()||null,
       doctor:$("a_dr")?($("a_dr").value||null):null, needle_doctor:$("a_nd")?($("a_nd").value||null):null,status:$("a_st").value,is_new:$("a_new").checked,inpatient:$("a_in").checked,note:$("a_note").value.trim()||null};
+    if(kind==="emg"){ row.phone=$("a_ph").value.trim()||null; const c={}; document.querySelectorAll("[data-ctk]").forEach(x=>{ if(x.value) c[x.dataset.ctk]=x.value; }); row.contact=c; }
     if(!$("a_ok").dataset.force && row.status!=="취소" && row.status!=="노쇼"){
-      $("a_ok").disabled=true; const w=await apptConflicts(row, a?.id, lanes); $("a_ok").disabled=false;
-      if(w.length){ $("a_err").innerHTML=`<b>⚠ 겹치는 예약이 있습니다</b><br>${w.map(x=>"· "+esc(x)).join("<br>")}<br><span class="meta">확인했으면 [그래도 저장]을 누르세요.</span>`; const b=$("a_ok"); b.dataset.force=1; b.textContent="그래도 저장"; b.classList.add("warnbtn"); return; } }
+      $("a_ok").disabled=true; const w=[...blockHit(ctx.blocks||[],row).map(b=>"예약 불가 시간: "+blkLabel(b)), ...await apptConflicts(row, a?.id, lanes)]; $("a_ok").disabled=false;
+      if(w.length){ $("a_err").innerHTML=`<b>⚠ 확인해 주세요</b><br>${w.map(x=>"· "+esc(x)).join("<br>")}<br><span class="meta">확인했으면 [그래도 저장]을 누르세요.</span>`; const b=$("a_ok"); b.dataset.force=1; b.textContent="그래도 저장"; b.classList.add("warnbtn"); return; } }
     $("a_ok").disabled=true;
     const {error} = a ? await sb.from("appointments").update(row).eq("id",a.id) : await sb.from("appointments").insert(row);
     $("a_ok").disabled=false;
@@ -1439,6 +1492,7 @@ async function renderStaff(){
         <tr><td><input id="ncc" placeholder="코드" style="height:28px;width:70px;padding:0 6px"></td><td><input id="ncl" placeholder="설명" style="height:28px;width:110px;padding:0 6px"></td><td><select id="nccol" style="height:28px">${Object.keys(SH_COLORS).map(k=>`<option>${k}</option>`).join("")}</select></td><td><input type="checkbox" id="nco"></td><td><button class="btn sm" id="nca">추가</button></td></tr></tbody></table></div></div>`:""}
     </div></details>`:""}
   </div>`;
+  stickHead(document.querySelector(".sh-wrap"),"thead th");
   $("hp").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),-1)+"-01" : addDays(st.date, st.mode==="week"?-7:-1); renderStaff(); };
   $("hn").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),1)+"-01" : addDays(st.date, st.mode==="week"?7:1); renderStaff(); };
   $("ht").onclick=()=>{ st.date=kstToday(); renderStaff(); };
@@ -1671,7 +1725,7 @@ async function renderOvertime(){
   const R=monthRange(st.month); const lv=S.me.level;
   const [or,sr]=await Promise.all([
     sb.from("overtime").select("*").eq("branch_id",S.branch).gte("work_date",R.start).lte("work_date",R.end).order("work_date").order("start_min"),
-    sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).eq("active",true).order("sort")]);
+    sb.from("staff").select("id,name,dept,sort,active,title").eq("branch_id",S.branch).eq("active",true).order("sort")]);
   if(or.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(or.error))}</div></div>`; return; }
   const rows=or.data||[], staff=sr.data||[];
   const depts=[...new Set(rows.map(r=>r.dept||"기타"))];
@@ -1681,7 +1735,10 @@ async function renderOvertime(){
   const kindTot=k=>shown.filter(r=>r.kind===k).reduce((s,r)=>s+r.minutes,0);
   const canWrite=true; const canApprove=lv<=3;
   const list=st.who?shown.filter(r=>r.staff_name===st.who):shown.slice(-60).reverse();
-  const myStaff = lv<=2 ? staff : lv===3 ? staff.filter(s=>s.dept===S.me.dept) : staff.filter(s=>s.name===S.me.name);
+  const dOrd=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
+  const myStaff = (lv<=2 ? staff : lv===3 ? staff.filter(s=>s.dept===S.me.dept) : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
+  const otDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = otDepts.includes(st.fdept)?st.fdept:(otDepts.includes(S.me.dept)?S.me.dept:otDepts[0]);
+  const otOpts=()=>myStaff.filter(s=>otDepts.length<=1||s.dept===st.fdept).map(s=>`<option value="${s.id}" data-n="${esc(s.name)}" data-d="${esc(s.dept)}">${esc(s.name)}${s.title?" "+esc(s.title):""}</option>`).join("");
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>연장근무</h2><div class="meta">${R.y}년 ${R.m}월 · 기록한 시간을 정리만 합니다 (수당 계산 없음) · 직원이 적으면 부서장이 확인</div></div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn ghost sm" id="otcsv">엑셀(CSV) 받기</button>
@@ -1697,7 +1754,8 @@ async function renderOvertime(){
     <div class="grid2">
       <section class="panel"><h3>기록 추가</h3>
         <form id="otf" class="form-2">
-          <div class="field"><label for="o_s">직원</label><select id="o_s">${myStaff.map(s=>`<option value="${s.id}" data-n="${esc(s.name)}" data-d="${esc(s.dept)}">${esc(s.name)} (${esc(s.dept)})</option>`).join("")||`<option value="">${esc(S.me.name)}</option>`}</select></div>
+          ${otDepts.length>1?`<div class="field" style="grid-column:1/-1;margin:0"><label>부서</label><div class="chips" style="margin:0">${otDepts.map(d=>`<button type="button" class="fchip" data-ofd="${esc(d)}" aria-pressed="${d===st.fdept}">${esc(d)}</button>`).join("")}</div></div>`:""}
+          <div class="field"><label for="o_s">직원</label><select id="o_s">${otOpts()||`<option value="">${esc(S.me.name)}</option>`}</select></div>
           <div class="field"><label for="o_d">날짜</label><input type="date" id="o_d" value="${kstToday()}" required></div>
           <div class="field"><label for="o_a">시작</label><input type="time" id="o_a" value="08:30" required></div>
           <div class="field"><label for="o_b">끝</label><input type="time" id="o_b" value="09:00" required></div>
@@ -1719,6 +1777,7 @@ async function renderOvertime(){
   if($("owx")) $("owx").onclick=()=>{ st.who=null; renderOvertime(); };
   const mins=()=>{ const a=toMin($("o_a").value.replace(":","")), b=toMin($("o_b").value.replace(":","")); if(a==null||b==null) return null; return [a, b<=a?b+1440:b]; };
   const showM=()=>{ const m=mins(); $("o_m").textContent=m?`${hm(m[1]-m[0])} 으로 기록됩니다.`:""; }; ["o_a","o_b"].forEach(i=>$(i).oninput=showM); showM();
+  document.querySelectorAll("[data-ofd]").forEach(b=>b.onclick=()=>{ st.fdept=b.dataset.ofd; document.querySelectorAll("[data-ofd]").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("o_s").innerHTML=otOpts(); });
   $("otf").onsubmit=async e=>{ e.preventDefault(); const m=mins(); if(!m) return toast("시간을 확인하세요");
     const o=$("o_s").selectedOptions[0]; const name=o?.dataset.n||S.me.name, dept=o?.dataset.d||S.me.dept;
     const row={branch_id:S.branch,staff_id:o&&o.value?+o.value:null,staff_name:name,dept,work_date:$("o_d").value,start_min:m[0],end_min:m[1],minutes:m[1]-m[0],kind:$("o_k").value,note:$("o_n").value.trim()||null,approved:lv<=3};
@@ -2093,6 +2152,14 @@ async function resvUpload(file,st){ if(!file) return;
   }catch(e){ toast(e.message||String(e)); } }
 
 // ── 연차관리 ──
+// 근로기준법 제60조: 1년 미만은 1개월 개근마다 1일(최대 11일), 1년 이상 15일, 3년차부터 2년마다 1일 가산(최대 25일)
+// 입사일 기준으로, 해당 연도(1~12월) 안에 생기는 연차를 합산합니다.
+function addMonthsISO(iso,n){ const [y,m,d]=iso.split("-").map(Number); const t=new Date(Date.UTC(y,m-1+n,1)); const last=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth()+1,0)).getUTCDate(); t.setUTCDate(Math.min(d,last)); return t.toISOString().slice(0,10); }
+function legalLeave(hire,year){ if(!hire||!/^\d{4}-\d{2}-\d{2}$/.test(hire)) return null; const ys=`${year}-01-01`, ye=`${year}-12-31`;
+  let monthly=0; for(let m=1;m<=11;m++){ const d=addMonthsISO(hire,m); if(d>=ys&&d<=ye) monthly++; }
+  let ann=0, yrs=0; for(let k=1;k<=45;k++){ const d=addMonthsISO(hire,12*k); if(d>ye) break; if(d>=ys){ ann=Math.min(25,15+Math.floor((k-1)/2)); yrs=k; } }
+  const why=[monthly?`1년 미만 월차 ${monthly}일`:"", ann?`${yrs}년 근속(${addMonthsISO(hire,12*yrs).slice(5).replace("-","/")}) ${ann}일`:""].filter(Boolean).join(" + ")||`${year}년에 새로 생기는 연차 없음`;
+  return {days:monthly+ann, monthly, ann, yrs, why}; }
 const LEAVE_KINDS={"연차":1,"오전반차":0.5,"오후반차":0.5,"반차":0.5,"병가":1,"경조사":1,"기타":1};
 async function renderLeave(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
@@ -2115,9 +2182,10 @@ async function renderLeave(){
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용(병가 제외) · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>${lv<=2?"발생 일수 칸을 눌러 고칠 수 있습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
-      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${p.g?.hire_date?esc(p.g.hire_date):""}</td>
-        <td class="num">${lv<=2?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="8" class="meta">자료가 없습니다.</td></tr>`}
+    <section class="panel"><h3>직원별 연차 <span>${lv<=2?"발생 일수 칸을 눌러 고칠 수 있습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>법정 기준</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
+      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=2?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
+        <td class="num">${lv<=2?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
+        <td class="num">${(()=>{ const L=legalLeave(p.g?.hire_date,st.year); if(!L) return `<span class="meta">입사일 필요</span>`; const same=+L.days===+p.grant; return `<span title="${esc(L.why)}">${L.days}일</span>${lv<=2&&!same?` <button class="btn ghost sm" data-lapply="${esc(p.name)}" data-v="${L.days}" data-dept="${esc(p.dept)}">적용</button>`:same?` <span class="pill ok" style="font-size:10px">일치</span>`:""}`; })()}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="9" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
     ${lv<=2?`<div style="margin-top:10px"><button class="btn ghost sm" id="lg_add">+ 직원 추가</button></div>`:""}</section>
     <div class="grid2">
@@ -2147,6 +2215,12 @@ async function renderLeave(){
     if(error) return toast(errMsg(error)); toast(lv<=3?"기록했습니다":"신청했습니다"); st.year=+$("l_d").value.slice(0,4); renderLeave(); };
   document.querySelectorAll("[data-lap]").forEach(b=>b.onclick=async()=>{ const {error}=await sb.from("leave_uses").update({approved:true}).eq("id",b.dataset.lap); if(error) return toast(errMsg(error)); renderLeave(); });
   document.querySelectorAll("[data-ldel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더"; return; } const {error}=await sb.from("leave_uses").delete().eq("id",b.dataset.ldel); if(error) return toast(errMsg(error)); renderLeave(); });
+  const upGrant=async(n,dept,patch)=>{ const g=grants.find(x=>x.staff_name===n); const s0=staff.find(x=>x.name===n);
+    const res=g?await sb.from("leave_grants").update(patch).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s0?.id||null,staff_name:n,dept:dept||s0?.dept||null,year:st.year,days:0,...patch}); return res.error; };
+  document.querySelectorAll("[data-lh]").forEach(inp=>inp.onchange=async()=>{ const n=inp.dataset.lh; const L=legalLeave(inp.value,st.year); const g=grants.find(x=>x.staff_name===n);
+    const patch={hire_date:inp.value||null}; if(L&&(!g||!+g.days)) patch.days=L.days;
+    const e=await upGrant(n,inp.dataset.dept,patch); if(e) return toast(errMsg(e)); toast(L?`입사일 저장 · 법정 ${L.days}일${patch.days!=null?" 자동 입력":""}`:"입사일 저장"); renderLeave(); });
+  document.querySelectorAll("[data-lapply]").forEach(b=>b.onclick=async()=>{ const e=await upGrant(b.dataset.lapply,b.dataset.dept,{days:+b.dataset.v}); if(e) return toast(errMsg(e)); toast(`${b.dataset.lapply} 발생 ${b.dataset.v}일로 맞췄습니다`); renderLeave(); });
   document.querySelectorAll("[data-lg]").forEach(inp=>inp.onchange=async()=>{ const v=parseFloat(inp.value); if(isNaN(v)) return; const n=inp.dataset.lg; const g=grants.find(x=>x.staff_name===n); const s=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update({days:v}).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:inp.dataset.dept||s?.dept||null,year:st.year,days:v}); if(res.error) return toast(errMsg(res.error)); toast("발생 일수 저장"); renderLeave(); });
   if($("lg_add")) $("lg_add").onclick=()=>{ const dlg=$("dlg"); const cand=staff.filter(s=>!names.includes(s.name)&&!PLACEHOLDER.test(s.name)&&s.dept!=="의료진").sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
@@ -2155,11 +2229,12 @@ async function renderLeave(){
     dlg.innerHTML=`<form method="dialog" style="min-width:300px"><h3 style="margin:0 0 4px">직원 추가</h3><p class="meta" style="margin:0 0 12px">${st.year}년 연차 대상에 넣습니다</p>
       ${cd.length?`<div class="field"><label for="g1">부서</label><select id="g1">${cd.map(d=>`<option ${d===dsel?"selected":""}>${esc(d)}</option>`).join("")}</select></div>
       <div class="field"><label for="g2">직원</label><select id="g2">${opts()}</select></div>
-      <div class="form-2"><div class="field"><label for="g3">발생 일수</label><input id="g3" inputmode="decimal" placeholder="예: 15"></div><div class="field"><label for="g4">입사일</label><input id="g4" type="date"></div></div>`
+      <div class="form-2"><div class="field"><label for="g4">입사일</label><input id="g4" type="date"></div><div class="field"><label for="g3">발생 일수 <span class="meta">(입사일 넣으면 자동)</span></label><input id="g3" inputmode="decimal" placeholder="예: 15"></div></div>`
       :`<p class="meta">추가할 직원이 없습니다. 모든 직원이 이미 목록에 있습니다.</p>`}
       <p class="err" id="g5"></p><div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button>${cd.length?`<button type="button" class="btn" id="g6">추가</button>`:""}</div></form>`;
     dlg.showModal(); if(!cd.length) return;
     $("g1").onchange=()=>{ dsel=$("g1").value; $("g2").innerHTML=opts(); };
+    $("g4").onchange=()=>{ const L=legalLeave($("g4").value,st.year); if(L){ $("g3").value=L.days; $("g5").style.color="var(--muted)"; $("g5").textContent=`법정 ${L.days}일 자동 계산: ${L.why}`; } };
     $("g6").onclick=async()=>{ const n=$("g2").value; if(!n){ $("g5").textContent="직원을 고르세요."; return; } const s=staff.find(x=>x.name===n);
       const {error}=await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:dsel,year:st.year,days:parseFloat($("g3").value)||0,hire_date:$("g4").value||null});
       if(error){ $("g5").textContent=errMsg(error); return; } dlg.close(); toast(`${n} 추가됨`); reKeep(); }; };
@@ -3009,6 +3084,172 @@ function drawTrend(id,T){
     }));
   // 기준선(0%) 점선
   const ch=charts.at(-1); ch.options.plugins.zeroLine=true; ch.config.plugins.push({id:"zero",beforeDatasetsDraw(c){ const y=c.scales.y.getPixelForValue(0); const g=c.ctx; g.save(); g.setLineDash([5,4]); g.strokeStyle=cssv("--muted"); g.lineWidth=1; g.beginPath(); g.moveTo(c.chartArea.left,y); g.lineTo(c.chartArea.right,y); g.stroke(); g.setLineDash([]); g.fillStyle=cssv("--muted"); g.font="11px sans-serif"; g.textAlign="right"; g.fillText("직전 4주 평균 (0%)",c.chartArea.right,y-5); g.restore(); }}); ch.update();
+}
+
+// ── 표 머리줄 고정 (페이지 스크롤 하나로 쓰면서 머리줄은 위에 붙어 있게) ──
+const __sticky=[];
+function stickHead(wrap,sel){ if(!wrap) return; for(let i=__sticky.length-1;i>=0;i--) if(!__sticky[i].wrap.isConnected) __sticky.splice(i,1); __sticky.push({wrap,sel}); stickRun(); }
+function stickTop(){ let t=0; const tb=document.querySelector("header.top"); if(tb&&getComputedStyle(tb).position==="sticky") t=Math.max(t,tb.getBoundingClientRect().bottom);
+  const nv=document.querySelector("nav.side"); if(nv&&getComputedStyle(nv).position==="sticky"){ const r=nv.getBoundingClientRect(); if(r.width>r.height) t=Math.max(t,r.bottom); } return t; }
+function stickRun(){ const top=stickTop();
+  for(const it of __sticky){ if(!it.wrap.isConnected) continue; const r=it.wrap.getBoundingClientRect(); const cells=it.wrap.querySelectorAll(it.sel); if(!cells.length) continue;
+    const h=cells[0].offsetHeight; let off=Math.min(Math.max(0,top-r.top), Math.max(0,r.height-h-6)); cells.forEach(c=>{ c.style.transform=off?`translateY(${off}px)`:""; c.classList.toggle("stuck",off>0); }); } }
+window.addEventListener("scroll",stickRun,{passive:true}); window.addEventListener("resize",stickRun);
+
+// ── 예약 불가 시간 ──
+const DOW_K=["일","월","화","수","목","금","토"];
+function blocksFor(blocks,date,laneId){ const dow=new Date(date+"T00:00:00Z").getUTCDay();
+  return (blocks||[]).filter(b=>(b.lane_id==null||b.lane_id===laneId)&&((b.bdate&&b.bdate===date)||(!b.bdate&&Array.isArray(b.dows)&&b.dows.includes(dow)))); }
+function blockHit(blocks,row){ const s=row.start_min, e=s+(+row.minutes||0); return blocksFor(blocks,row.appt_date,row.lane_id).filter(b=>b.start_min<e&&s<b.end_min); }
+const blkLabel=b=>`${b.bdate?b.bdate.slice(5).replace("-","/"):"매주 "+(b.dows||[]).slice().sort((a,c)=>((a+6)%7)-((c+6)%7)).map(d=>DOW_K[d]).join("")} ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" "+b.note:""}`;
+function blocksPanel(kind,blocks,lanes,canEdit,cfg){
+  if(!canEdit&&!(blocks||[]).length) return "";
+  const tOpts=sel=>{ const o=[]; for(let m=cfg.from-60;m<=cfg.to+60;m+=10) o.push(`<option value="${m}" ${m===sel?"selected":""}>${hhmm(m)}</option>`); return o.join(""); };
+  return `<details class="panel" id="blkp" ${S.blkOpen?"open":""}><summary><b>예약 불가 시간</b> <span class="meta">${(blocks||[]).length}개 · 회색 빗금으로 표시되고 그 시간엔 예약이 안 들어갑니다</span></summary>
+    <div class="tbl-box" style="margin-top:10px"><table class="fin"><thead><tr><th>언제</th><th>시간</th><th>방</th><th>메모</th><th></th></tr></thead><tbody>
+    ${(blocks||[]).map(b=>`<tr><td>${b.bdate?`${b.bdate} (${DOW_K[new Date(b.bdate+"T00:00:00Z").getUTCDay()]})`:"매주 "+(b.dows||[]).slice().sort((a,c)=>((a+6)%7)-((c+6)%7)).map(d=>DOW_K[d]).join("·")}</td><td class="num">${hhmm(b.start_min)}~${hhmm(b.end_min)}</td><td>${b.lane_id?esc(lanes.find(l=>l.id===b.lane_id)?.name||"(숨긴 방)"):"모든 방"}</td><td>${esc(b.note||"")}</td><td>${canEdit?`<button class="btn ghost sm" data-bdel="${b.id}">삭제</button>`:""}</td></tr>`).join("")||`<tr><td colspan="5" class="meta">아직 없습니다</td></tr>`}
+    </tbody></table></div>
+    ${canEdit?`<div class="blkadd"><div class="seg" role="group" aria-label="반복"><button type="button" data-bty="w" aria-pressed="true">매주 반복</button><button type="button" data-bty="d" aria-pressed="false">특정 날짜</button></div>
+      <span id="bdows">${[1,2,3,4,5,6,0].map(d=>`<label class="dowck"><input type="checkbox" value="${d}" ${d>=1&&d<=5?"checked":""}>${DOW_K[d]}</label>`).join("")}</span>
+      <input type="date" id="bdate" hidden style="height:32px">
+      <select id="bs" aria-label="시작">${tOpts(750)}</select>~<select id="be" aria-label="끝">${tOpts(810)}</select>
+      <select id="bl" aria-label="방"><option value="">모든 방</option>${lanes.map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join("")}</select>
+      <input id="bn" placeholder="메모 (예: 점심)" style="height:32px;padding:0 8px;width:140px">
+      <button class="btn sm" id="badd">추가</button>
+      <span class="meta">빠른 추가:</span><button type="button" class="fchip" data-bq="lunch">점심 12:30~13:30 (월~금)</button><button type="button" class="fchip" data-bq="sat">토요일 13:00 이후</button></div>`:""}
+  </details>`;
+}
+function bindBlocks(kind,reload){
+  const p=$("blkp"); if(!p) return; p.addEventListener("toggle",()=>{ S.blkOpen=p.open; });
+  let ty="w"; document.querySelectorAll("[data-bty]").forEach(b=>b.onclick=()=>{ ty=b.dataset.bty; document.querySelectorAll("[data-bty]").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("bdows").hidden=ty!=="w"; $("bdate").hidden=ty!=="d"; });
+  const ins=async row=>{ const {error}=await sb.from("sched_blocks").insert({branch_id:S.branch,kind,...row}); if(error) return toast(errMsg(error)); toast("예약 불가 시간 추가"); reload(); };
+  if($("badd")) $("badd").onclick=()=>{ const s=+$("bs").value, e=+$("be").value; if(e<=s) return toast("끝 시간을 시작보다 늦게 정하세요");
+    const row={start_min:s,end_min:e,lane_id:+$("bl").value||null,note:$("bn").value.trim()||null};
+    if(ty==="w"){ const d=[...document.querySelectorAll("#bdows input:checked")].map(x=>+x.value); if(!d.length) return toast("요일을 고르세요"); row.dows=d; } else { if(!$("bdate").value) return toast("날짜를 고르세요"); row.bdate=$("bdate").value; }
+    ins(row); };
+  document.querySelectorAll("[data-bq]").forEach(b=>b.onclick=()=>ins(b.dataset.bq==="lunch"?{dows:[1,2,3,4,5],start_min:750,end_min:810,note:"점심"}:{dows:[6],start_min:780,end_min:1320,note:"토요일 오후"}));
+  document.querySelectorAll("[data-bdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더"; return; } const {error}=await sb.from("sched_blocks").delete().eq("id",+b.dataset.bdel); if(error) return toast(errMsg(error)); reload(); });
+}
+
+// ── 근전도: 검사 차수 · 연락 체크 ──
+async function emgOrder(appts,end){
+  const charts=[...new Set(appts.map(a=>a.chart_no).filter(Boolean))]; if(!charts.length) return;
+  const all=[]; for(let i=0;i<charts.length;i+=150){ const {data}=await sb.from("appointments").select("id,chart_no,appt_date,start_min,status").eq("branch_id",S.branch).eq("kind","emg").in("chart_no",charts.slice(i,i+150)).lte("appt_date",end); all.push(...(data||[])); }
+  const by={}; all.filter(a=>a.status!=="취소"&&a.status!=="노쇼").forEach(a=>(by[a.chart_no] ||= []).push(a));
+  Object.values(by).forEach(L=>L.sort((x,y)=>x.appt_date<y.appt_date?-1:x.appt_date>y.appt_date?1:x.start_min-y.start_min||x.id-y.id));
+  appts.forEach(a=>{ if(!a.chart_no) return; const L=by[a.chart_no]||[]; const i=L.findIndex(x=>x.id===a.id); a._n=i>=0?i+1:null; });
+}
+const CT_KEYS=[["sms","문자-전날"],["call","전화-당일"],["ok","내원가능"]];
+function contactPanel(appts,dates,canEdit){
+  const L=appts.filter(a=>dates.includes(a.appt_date)&&a.status!=="취소").sort((a,b)=>a.appt_date<b.appt_date?-1:a.appt_date>b.appt_date?1:a.start_min-b.start_min);
+  const todo=L.filter(a=>!(a.contact||{}).ok).length;
+  return `<section class="panel"><h3>근전도 연락 체크 <span>${dates.length>1?"이번 주":"이 날"} ${L.length}명 · 내원 확인 안 된 ${todo}명 · 칸을 누르면 빈칸 → O → X 순서로 바뀝니다</span></h3>
+    ${L.length?`<div class="tbl-box"><table class="ctab"><thead><tr><th>날짜</th><th>시간</th><th>환자</th><th>검사</th><th>차수</th><th>전화번호</th>${CT_KEYS.map(([k,l])=>`<th>${l}</th>`).join("")}</tr></thead><tbody>
+    ${L.map(a=>{ const c=a.contact||{}; return `<tr><td>${+a.appt_date.slice(5,7)}/${+a.appt_date.slice(8)} (${WD[new Date(a.appt_date+"T00:00:00Z").getUTCDay()]})</td><td class="num">${hhmm(a.start_min)}</td><td>${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))}</td><td>${esc(a.item)}</td><td>${a._n?`<span class="nth n${Math.min(a._n,3)}">${a._n}차</span>`:""}</td><td>${a.phone?telLink(a.phone):`<span class="meta">-</span>`}</td>
+      ${CT_KEYS.map(([k])=>`<td><button type="button" class="ckb ${c[k]==="O"?"o":c[k]==="X"?"x":""}" data-ct="${a.id}" data-k="${k}" ${canEdit?"":"disabled"} aria-label="${k}">${c[k]||"·"}</button></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>`;
+}
+function bindContact(appts){
+  document.querySelectorAll("[data-ct]").forEach(b=>b.onclick=async()=>{ const a=appts.find(x=>x.id===+b.dataset.ct); const k=b.dataset.k; const c={...(a.contact||{})}; const nx=!c[k]?"O":c[k]==="O"?"X":null; if(nx) c[k]=nx; else delete c[k];
+    b.disabled=true; const {error}=await sb.from("appointments").update({contact:c}).eq("id",a.id); b.disabled=false; if(error) return toast(errMsg(error)); a.contact=c; b.textContent=nx||"·"; b.className="ckb "+(nx==="O"?"o":nx==="X"?"x":""); });
+}
+
+// ── 예약 카드 끌어서 옮기기 + 되돌리기 ──
+S.schedUndo ||= {};
+function bindApptDrag(kind,cols,appts,cfg,lanes,blocks,reload){
+  const grid=document.querySelector(".sc-grid"); if(!grid) return;
+  document.querySelectorAll(".ap[data-ap]").forEach(card=>{
+    card.addEventListener("pointerdown",ev=>{ if(ev.pointerType!=="mouse"||ev.button!==0) return; const a=appts.find(x=>x.id===+card.dataset.ap); if(!a) return;
+      const sx=ev.clientX, sy=ev.clientY; const rect=card.getBoundingClientRect(); let drag=false, ghost=null, hint=null, target=null;
+      const move=e=>{ const dx=e.clientX-sx, dy=e.clientY-sy; if(!drag&&Math.hypot(dx,dy)<6) return;
+        if(!drag){ drag=true; card.classList.add("dragsrc"); ghost=card.cloneNode(true); ghost.classList.add("ghost"); ghost.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;pointer-events:none;z-index:50`; document.body.appendChild(ghost); hint=document.createElement("div"); hint.className="dghint"; document.body.appendChild(hint); }
+        ghost.style.transform=`translate(${dx}px,${dy}px)`;
+        const el=document.elementFromPoint(e.clientX,e.clientY); const body=el&&el.closest?el.closest(".sc-body[data-col]"):null; target=null;
+        if(body){ const c=cols[+body.dataset.col]; const step=laneStep(kind,c.lane); const br=body.getBoundingClientRect(); const topY=e.clientY-br.top-(sy-rect.top); let m=cfg.from+Math.round(topY/(SLOT_H*step/10))*step; m=Math.max(cfg.from,Math.min(cfg.to-step,m)); target={c,m}; hint.textContent=`${+c.date.slice(5,7)}/${+c.date.slice(8)} ${c.lane.name} ${hhmm(m)}`; hint.style.left=(e.clientX+14)+"px"; hint.style.top=(e.clientY+12)+"px"; hint.hidden=false; } else hint.hidden=true; };
+      const up=async e=>{ window.removeEventListener("pointermove",move); window.removeEventListener("pointerup",up); if(!drag) return;
+        card.classList.remove("dragsrc"); ghost&&ghost.remove(); hint&&hint.remove(); card.dataset.nodlg="1"; setTimeout(()=>delete card.dataset.nodlg,300);
+        if(!target) return; const nv={appt_date:target.c.date,lane_id:target.c.lane.id,start_min:target.m};
+        if(nv.appt_date===a.appt_date&&nv.lane_id===a.lane_id&&nv.start_min===a.start_min) return;
+        moveConfirm(kind,a,nv,lanes,blocks,reload); };
+      window.addEventListener("pointermove",move); window.addEventListener("pointerup",up); });
+  });
+}
+async function moveConfirm(kind,a,nv,lanes,blocks,reload){
+  const ln=id=>lanes.find(l=>l.id===id)?.name||""; const dl=d=>`${+d.slice(5,7)}/${+d.slice(8)}(${WD[new Date(d+"T00:00:00Z").getUTCDay()]})`;
+  const row={...a,...nv}; const warn=[...blockHit(blocks,row).map(b=>"예약 불가 시간: "+blkLabel(b)), ...await apptConflicts(row,a.id,lanes)];
+  const dlg=$("dlg"); const who=[a.chart_no,a.patient_name].filter(Boolean).join(" ")||"(이름 없음)";
+  dlg.innerHTML=`<form method="dialog" style="min-width:min(420px,90vw)"><h3 style="margin:0 0 10px">예약을 옮길까요?</h3>
+    <p style="margin:0 0 6px"><b>${esc(who)}</b> · ${esc(a.item)}</p>
+    <table class="fin" style="width:100%;margin-bottom:10px"><tbody><tr><td class="meta">지금</td><td>${dl(a.appt_date)} ${hhmm(a.start_min)} · ${esc(ln(a.lane_id))}</td></tr><tr><td class="meta">바꿀 곳</td><td><b>${dl(nv.appt_date)} ${hhmm(nv.start_min)} · ${esc(ln(nv.lane_id))}</b></td></tr></tbody></table>
+    ${warn.length?`<p class="err" style="margin:0 0 10px"><b>⚠ 확인해 주세요</b><br>${warn.map(w=>"· "+esc(w)).join("<br>")}</p>`:""}
+    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel">취소</button><button type="button" class="btn ${warn.length?"warnbtn":""}" id="mvok">${warn.length?"그래도 옮기기":"옮기기"}</button></div></form>`;
+  dlg.showModal();
+  $("mvok").onclick=async()=>{ $("mvok").disabled=true; const prev={appt_date:a.appt_date,lane_id:a.lane_id,start_min:a.start_min};
+    const {error}=await sb.from("appointments").update(nv).eq("id",a.id); if(error){ $("mvok").disabled=false; return toast(errMsg(error)); }
+    (S.schedUndo[kind] ||= []).push({id:a.id,prev,next:nv,who,at:Date.now()}); if(S.schedUndo[kind].length>30) S.schedUndo[kind].shift();
+    dlg.close(); toast(`${who} → ${dl(nv.appt_date)} ${hhmm(nv.start_min)} 로 옮겼습니다 · [되돌리기]로 취소할 수 있어요`); reload(); };
+}
+async function undoMove(kind,reload){
+  const st=S.schedUndo[kind]||[]; const u=st.pop(); if(!u) return;
+  const {error}=await sb.from("appointments").update(u.prev).eq("id",u.id); if(error){ st.push(u); return toast(errMsg(error)); }
+  toast(`${u.who} 예약을 원래 자리(${hhmm(u.prev.start_min)})로 되돌렸습니다`); reload();
+}
+
+// ── 씨암(C-arm) 카운트 ──
+function canCarmEdit(){ return S.me.level<=2||S.me.dept==="영상의학"; }
+async function renderCarm(){
+  killCharts(); const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
+  const st=S.cmV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym); const ed=canCarmEdit();
+  const [cr,nr,set]=await Promise.all([ sb.from("carm_cols").select("*").eq("branch_id",S.branch).eq("active",true).order("sort").order("id"),
+    sb.from("carm_counts").select("cdate,kind,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end),
+    typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}) ]);
+  if(cr.error||nr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(cr.error||nr.error))}</div></div>`; return; }
+  const techs=(cr.data||[]).filter(c=>c.kind==="tech"), docs=(cr.data||[]).filter(c=>c.kind==="doc");
+  const V={}; (nr.data||[]).forEach(r=>V[`${r.cdate}|${r.kind}|${r.name}`]=+r.cnt);
+  const days=[...Array(R.days)].map((_,i)=>`${st.ym}-${String(i+1).padStart(2,"0")}`);
+  const hol=new Set((set.holidays||[]).map(h=>h.d));
+  const dcls=d=>{ const w=new Date(d+"T00:00:00Z").getUTCDay(); return hol.has(d)||w===0?"sun":w===6?"sat":""; };
+  const g=(d,k,n)=>V[`${d}|${k}|${n}`]||0;
+  const cell=(d,k,n)=>{ const v=V[`${d}|${k}|${n}`]; return `<td class="cm">${ed?`<input data-cm="${d}|${k}|${esc(n)}" value="${v?v:""}" inputmode="numeric" aria-label="${d} ${esc(n)}">`:(v||"")}</td>`; };
+  const sum=(k,list,d)=>list.reduce((s,c)=>s+g(d,k,c.name),0);
+  const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
+  const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0)};
+  const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열 숨기기" aria-label="${esc(c.name)} 열 숨기기">×</button>`:""}</th>`).join("");
+  main.innerHTML=`<div class="wrap">
+    <div class="page-h"><div><h2>씨암(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · Tab/Enter로 다음 칸 · 토요일 파랑, 일요일·공휴일 빨강</div></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><b class="num">${st.ym.replace("-",". ")}</b><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
+    <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
+      <div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>
+      <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
+    <div class="cmgrid">
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab"><thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th></tr></thead><tbody>
+        ${days.map(d=>`<tr><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}</tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td></tr></tbody></table></div>
+        ${ed?`<div class="cmadd"><input id="cmt" placeholder="방사선사 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmta">+ 방사선사 열</button></div>`:""}</section>
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab"><thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th></tr></thead><tbody>
+        ${days.map(d=>`<tr><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td></tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${docs.map(c=>`<td class="num">${colSum("doc",c.name)}</td>`).join("")}<td class="tot num">${T.doc}</td></tr></tbody></table></div>
+        ${ed?`<div class="cmadd"><input id="cmdn" placeholder="원장 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmda">+ 원장 열</button></div>`:""}</section>
+    </div></div>`;
+  $("cmp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderCarm(); }; $("cmn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderCarm(); };
+  $("cmcsv").onclick=()=>downloadCSV(`씨암카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d)]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc]]);
+  if(!ed) return;
+  const inputs=[...main.querySelectorAll("[data-cm]")];
+  const recalc=()=>{ /* 합계는 저장 후 다시 그릴 때 갱신 */ };
+  inputs.forEach((el,i)=>{ el.addEventListener("input",()=>{ el.value=el.value.replace(/[^\d]/g,""); });
+    el.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); const tbl=el.closest("table"); const same=[...tbl.querySelectorAll("[data-cm]")]; const col=[...el.closest("tr").querySelectorAll("[data-cm]")].indexOf(el); const tr=el.closest("tr").nextElementSibling; const nx=tr&&tr.querySelectorAll("[data-cm]")[col]; if(nx){ nx.focus(); nx.select(); } } });
+    el.addEventListener("change",async()=>{ const [d,k,n]=el.dataset.cm.split("|"); const v=+el.value||0; el.classList.add("saving");
+      const res = v ? await sb.from("carm_counts").upsert({branch_id:S.branch,cdate:d,kind:k,name:n,cnt:v},{onConflict:"branch_id,cdate,kind,name"}) : await sb.from("carm_counts").delete().eq("branch_id",S.branch).eq("cdate",d).eq("kind",k).eq("name",n);
+      el.classList.remove("saving"); if(res.error){ el.classList.add("err"); return toast(errMsg(res.error)); } el.classList.remove("err"); el.classList.add("saved"); V[`${d}|${k}|${n}`]=v;
+      // 줄 합계·열 합계 즉시 갱신
+      const tr=el.closest("tr"); const tot=tr.querySelector("td.tot"); if(tot){ const L=k==="doc"?docs:techs; tot.textContent=sum(k==="reduction"?"tech":k,L,d); }
+      const tb=el.closest("table"); const idx=[...tr.children].indexOf(el.closest("td")); const sr=tb.querySelector("tr.sumrow"); if(sr&&sr.children[idx]) sr.children[idx].textContent=k==="reduction"?days.reduce((s,dd)=>s+g(dd,"reduction",""),0):colSum(k,n);
+      const L=k==="doc"?docs:techs; if(k!=="reduction"){ const tt=sr.querySelector("td.tot"); if(tt) tt.textContent=days.reduce((s,dd)=>s+sum(k,L,dd),0); }
+      const tsum=(kk,LL)=>days.reduce((s,dd)=>s+sum(kk,LL,dd),0); $("cmk1").innerHTML=`${tsum("tech",techs)}<small>건</small>`; $("cmk3").innerHTML=`${tsum("doc",docs)}<small>건</small>`; $("cmk2").innerHTML=`${days.reduce((s,dd)=>s+g(dd,"reduction",""),0)}<small>건</small>`;
+      $("cmk1d").textContent=techs.map(c=>`${c.name} ${colSum("tech",c.name)}`).join(" · "); $("cmk3d").textContent=docs.map(c=>`${c.name} ${colSum("doc",c.name)}`).join(" · "); }); });
+  const addCol=async(kind,inp)=>{ const n=$(inp).value.trim(); if(!n) return toast("이름을 적어주세요"); const list=kind==="doc"?docs:techs;
+    const {error}=await sb.from("carm_cols").upsert({branch_id:S.branch,kind,name:n,sort:list.length,active:true},{onConflict:"branch_id,kind,name"}); if(error) return toast(errMsg(error)); renderCarm(); };
+  $("cmta").onclick=()=>addCol("tech","cmt"); $("cmda").onclick=()=>addCol("doc","cmdn");
+  main.querySelectorAll("[data-cmdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="숨김?"; return; } const {error}=await sb.from("carm_cols").update({active:false}).eq("id",+b.dataset.cmdel); if(error) return toast(errMsg(error)); renderCarm(); });
 }
 
 // ── 변경 기록 ──
