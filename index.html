@@ -548,6 +548,24 @@ const LOGO = SUPABASE_URL + "/storage/v1/object/public/brand/goldentime-logo.web
 const PT_ITEMS = ["도수A","도수B","도수C","도수E2A","도수E2B","충격파A","충격파B","충격파13","충격파18"];
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+// 조회 건수 제한 없이: 서버가 한 번에 1000건까지만 주므로, 목록 조회는 자동으로 끝까지 이어 받는다
+(function(){ try{
+  const PK={branch_settings:["branch_id"],carm_confirm:["branch_id","cdate"],carm_counts:["branch_id","cdate","kind","name"],doc_reads:["doc_id","user_id"],profiles:["user_id"],sched_day_notes:["branch_id","kind","note_date"],shifts:["staff_id","work_date"]};
+  let P=Object.getPrototypeOf(sb.from("staff").select("id")); while(P&&!Object.prototype.hasOwnProperty.call(P,"then")) P=Object.getPrototypeOf(P);
+  if(!P||P.__gtAll) return; P.__gtAll=1; const orig=P.then, PAGE=1000;
+  P.then=function(f,r){ const u=this.url, sp=u&&u.searchParams, h=this.headers||{};
+    const acc=(typeof h.get==="function"?h.get("Accept"):(h.Accept||h.accept))||"";
+    if(this.method!=="GET"||!sp||sp.has("offset")||this.isMaybeSingle||acc.includes("pgrst.object")||u.pathname.includes("/rpc/")) return orig.call(this,f,r);
+    const lim=sp.has("limit")?+sp.get("limit"):Infinity; if(!(lim>PAGE)) return orig.call(this,f,r);
+    const table=u.pathname.split("/").pop(), pk=PK[table]||["id"], ord=sp.get("order")||"", have=ord?ord.split(",").map(x=>x.split(".")[0]):[];
+    const add=pk.filter(c=>!have.includes(c)).map(c=>c+".asc"); if(add.length) sp.set("order",[ord,...add].filter(Boolean).join(","));
+    const run=async()=>{ let out=[], last;
+      for(let off=0; off<lim; off+=PAGE){ const n=Math.min(PAGE,lim-off); sp.set("offset",String(off)); sp.set("limit",String(n));
+        last=await orig.call(this); if(last.error) break; const d=last.data||[]; out=out.concat(d); if(d.length<n) break; }
+      sp.delete("offset"); if(lim===Infinity) sp.delete("limit"); else sp.set("limit",String(lim));
+      return last.error?last:{...last,data:out}; };
+    return run().then(f,r); };
+}catch(e){ console.warn("paging patch",e); } })();
 
 const DEPTS = ["총괄","원무","간호","병동","수술","물리치료","영상의학","임상병리","경영지원"];
 const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원"};
