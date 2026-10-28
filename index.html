@@ -540,6 +540,8 @@ table.cmtab tr.cfrow td{background:#f3f5f7}table.cmtab td.cm.lock span{color:var
 .ap em.inp{font-style:normal;font-weight:700;color:#fff;background:#c0392b;border-radius:3px;padding:0 4px;margin-right:3px;font-size:11.5px}
 .ap em.nth{margin-right:3px;font-size:11.5px}.ap i.apit{font-style:normal;font-weight:500}.ap i.apnew{font-style:normal;color:#c0392b;font-weight:700;font-size:11.5px}.ap i.apph{font-style:normal;font-weight:400;color:var(--muted);font-size:12px}
 .ap span{font-size:12px}.ap em.cti{margin-left:3px}
+.clipbar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:60;background:var(--surface);border:1.5px solid var(--navy);border-radius:10px;box-shadow:0 8px 24px -8px rgba(0,0,0,.35);padding:8px 12px;font-size:13px;display:flex;gap:8px;align-items:center;max-width:calc(100vw - 32px)}
+.stmenu button small{color:var(--muted);font-size:11px}
 .stmenu{position:fixed;z-index:1000;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px -10px rgba(0,0,0,.35);padding:6px;display:grid;gap:4px;min-width:150px}
 .stmenu .stm-h{font-size:12px;color:var(--muted);padding:2px 6px 4px}.stmenu button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 10px;text-align:left;cursor:pointer;font-size:14px}.stmenu button:hover{background:var(--accent-soft)}.stmenu button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
 .shtab thead th.gap{background:#fde2e0!important;color:#c0392b!important;box-shadow:inset 0 -3px 0 #d93025}.shtab thead th.gap small{color:#c0392b}
@@ -767,7 +769,7 @@ function topbar(){
     <div class="me"><span class="lv">${me.level}등급 ${LEVELS[me.level]}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<button class="linkbtn" id="logout">로그아웃</button></div></header>`;
 }
 function render(){
-  killCharts(); document.querySelectorAll(".shfloat").forEach(x=>x.remove());
+  killCharts(); document.querySelectorAll(".shfloat,.clipbar").forEach(x=>x.remove());
   if(S.me.level===1 && !S.branch) return renderPicker();
   if(S.me.level===1 && S.branch==="__hq") return renderHQ();
   const lv=S.me.level;
@@ -1392,7 +1394,7 @@ async function renderSched(kind){
     ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
     `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px repeat(${cols.length},minmax(${st.mode==="week"?(lanes.length>1?92:120):150}px,1fr))">
-      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
+      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
     ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
     ${blocksPanel(kind,blocks,lanes,canEdit,cfg)}
     <div class="grid2">
@@ -1430,9 +1432,10 @@ async function renderSched(kind){
   document.querySelectorAll("[data-ap]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); if(b.dataset.nodlg) return; apptDialog(ctx, appts.find(a=>a.id==b.dataset.ap)); });
   // 오른쪽 클릭(휴대폰은 길게 누르기) → 상태 바로 바꾸기
   if(canEdit) document.querySelectorAll("[data-ap]").forEach(b=>b.oncontextmenu=e=>{ e.preventDefault(); e.stopPropagation(); const a=appts.find(x=>x.id==b.dataset.ap); if(!a) return; document.querySelector(".stmenu")?.remove();
-    const m=document.createElement("div"); m.className="stmenu"; m.innerHTML=`<div class="stm-h">${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))} · 상태</div>${["예약","완료","변경","취소","노쇼"].map(k=>`<button data-qs="${k}" class="${a.status===k?"on":""}">${k}</button>`).join("")}`;
+    const m=document.createElement("div"); m.className="stmenu"; m.innerHTML=`<div class="stm-h">${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))} · 상태</div>${["예약","완료","변경","취소","노쇼"].map(k=>`<button data-qs="${k}" class="${a.status===k?"on":""}">${k}</button>`).join("")}<button data-qcopy>📋 복사 (Ctrl+C)</button>`;
     document.body.appendChild(m); const x=Math.min(e.clientX,innerWidth-170), y=Math.min(e.clientY,innerHeight-190); m.style.left=x+"px"; m.style.top=y+"px";
     const close=()=>{ m.remove(); document.removeEventListener("mousedown",out,true); }; const out=ev=>{ if(!m.contains(ev.target)) close(); }; setTimeout(()=>document.addEventListener("mousedown",out,true),0);
+    m.querySelector("[data-qcopy]").onclick=()=>{ close(); apptCopy(kind,a); };
     m.querySelectorAll("[data-qs]").forEach(q=>q.onclick=async()=>{ const v=q.dataset.qs; close(); if(v===a.status) return; const {error}=await sb.from("appointments").update({status:v}).eq("id",a.id); if(error) return toast(errMsg(error)); toast(`${a.patient_name||""} → ${v}`); ctx.reload(); }); });
   document.querySelectorAll(".blk").forEach(b=>b.onclick=e=>{ e.stopPropagation(); toast(b.title||"예약 불가 시간입니다"); });
   document.querySelectorAll("[data-goday]").forEach(h=>{ const go=()=>{ st.mode="day"; st.date=h.dataset.goday; renderSched(kind); }; h.onclick=go; h.onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } }; });
@@ -1441,6 +1444,7 @@ async function renderSched(kind){
   bindBlocks(kind,ctx.reload);
   if($("sundo")) $("sundo").onclick=()=>undoMove(kind,ctx.reload);
   if(canEdit&&grid) bindApptDrag(kind,cols,appts,cfg,lanes,blocks,ctx.reload);
+  if(canEdit&&grid) bindApptClip(kind,cols,appts,cfg,lanes,blocks,ctx.reload);
   if(canEdit){
     if($("sa")) $("sa").onclick=()=>apptDialog(ctx,null,{date:st.date,start:Math.max(cfg.from,Math.min(cfg.to-30,Math.ceil(((Date.now()/6e4+540)%1440)/laneStep(kind,lanes[0]))*laneStep(kind,lanes[0]))),lane:lanes[0]?.id});
     document.querySelectorAll(".sc-body[data-col]").forEach(body=>body.onclick=e=>{ if(e.target!==body) return;
@@ -3495,6 +3499,51 @@ function bindContact(appts){
     b.disabled=true; const {error}=await sb.from("appointments").update({contact:c}).eq("id",a.id); b.disabled=false; if(error) return toast(errMsg(error)); a.contact=c; b.textContent=nx||"·"; b.className="ckb "+(nx==="O"?"o":nx==="X"?"x":""); });
 }
 
+// ── 예약 복사·붙여넣기: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 빈 칸 위에서 Ctrl+V) · Ctrl 누르고 끌면 복사 ──
+S.apptClip ||= {};
+const CLIP_F=["chart_no","patient_name","item","minutes","staff","doctor","needle_doctor","inpatient","note","phone","exam_no"];
+function apptCopy(kind,a){ const c={}; CLIP_F.forEach(k=>{ if(a[k]!==undefined) c[k]=a[k]; }); S.apptClip[kind]=c; clipBar(kind); toast(`복사했습니다: ${[a.chart_no,a.patient_name,a.item].filter(Boolean).join(" ")} — 빈 칸 오른쪽 클릭 또는 Ctrl+V`); }
+function clipBar(kind){ document.querySelector(".clipbar")?.remove(); const c=S.apptClip[kind]; if(!c||!document.querySelector(".sc-grid")) return;
+  const b=document.createElement("div"); b.className="clipbar"; b.innerHTML=`📋 <b>${esc([c.chart_no,c.patient_name].filter(Boolean).join(" ")||"(이름 없음)")}</b> ${esc(c.item||"")} 복사됨 · 붙여넣을 빈 칸에서 <b>오른쪽 클릭</b> 또는 <b>Ctrl+V</b> <button type="button" class="btn ghost sm" id="clipx">복사 취소 (Esc)</button>`;
+  document.body.appendChild(b); $("clipx").onclick=()=>{ delete S.apptClip[kind]; b.remove(); }; }
+function bindApptClip(kind,cols,appts,cfg,lanes,blocks,reload){
+  clipBar(kind);
+  let hoverCard=null, hoverSlot=null;
+  const slotAt=(body,clientY)=>{ const c=cols[+body.dataset.col]; const step=laneStep(kind,c.lane); const y=clientY-body.getBoundingClientRect().top; let m=cfg.from+Math.floor(y/(SLOT_H*step/10))*step; m=Math.max(cfg.from,Math.min(cfg.to-step,m)); return {c,m}; };
+  document.querySelectorAll(".ap[data-ap]").forEach(card=>{ card.addEventListener("mouseenter",()=>hoverCard=card); card.addEventListener("mouseleave",()=>{ if(hoverCard===card) hoverCard=null; }); });
+  document.querySelectorAll(".sc-body[data-col]").forEach(body=>{
+    body.addEventListener("mousemove",e=>{ hoverSlot=e.target===body?slotAt(body,e.clientY):null; });
+    body.addEventListener("mouseleave",()=>{ hoverSlot=null; });
+    body.addEventListener("contextmenu",e=>{ if(e.target!==body) return; const c=S.apptClip[kind]; if(!c) return; e.preventDefault(); const t=slotAt(body,e.clientY);
+      document.querySelector(".stmenu")?.remove(); const m=document.createElement("div"); m.className="stmenu";
+      m.innerHTML=`<div class="stm-h">${+t.c.date.slice(5,7)}/${+t.c.date.slice(8)} ${esc(t.c.lane.name)} ${hhmm(t.m)}</div><button data-qp>📋 여기에 붙여넣기<br><small>${esc([c.chart_no,c.patient_name,c.item].filter(Boolean).join(" "))}</small></button>`;
+      document.body.appendChild(m); m.style.left=Math.min(e.clientX,innerWidth-200)+"px"; m.style.top=Math.min(e.clientY,innerHeight-120)+"px";
+      const close=()=>{ m.remove(); document.removeEventListener("mousedown",out,true); }; const out=ev=>{ if(!m.contains(ev.target)) close(); }; setTimeout(()=>document.addEventListener("mousedown",out,true),0);
+      m.querySelector("[data-qp]").onclick=()=>{ close(); pasteConfirm(kind,c,{appt_date:t.c.date,lane_id:t.c.lane.id,start_min:t.m},lanes,blocks,reload); }; });
+  });
+  if(window.__apKey) document.removeEventListener("keydown",window.__apKey);
+  window.__apKey=e=>{ if(!document.querySelector(".sc-grid")){ document.removeEventListener("keydown",window.__apKey); return; } if(e.target.closest&&e.target.closest("input,textarea,select,dialog")) return;
+    const k=e.key.toLowerCase();
+    if((e.ctrlKey||e.metaKey)&&k==="c"&&hoverCard){ const a=appts.find(x=>x.id===+hoverCard.dataset.ap); if(a){ e.preventDefault(); apptCopy(kind,a); } }
+    else if((e.ctrlKey||e.metaKey)&&k==="v"&&hoverSlot&&S.apptClip[kind]){ e.preventDefault(); const t=hoverSlot; pasteConfirm(kind,S.apptClip[kind],{appt_date:t.c.date,lane_id:t.c.lane.id,start_min:t.m},lanes,blocks,reload); }
+    else if(e.key==="Escape"&&S.apptClip[kind]&&!document.querySelector("dialog[open]")){ delete S.apptClip[kind]; document.querySelector(".clipbar")?.remove(); } };
+  document.addEventListener("keydown",window.__apKey);
+}
+async function pasteConfirm(kind,src,nv,lanes,blocks,reload){
+  const ln=id=>lanes.find(l=>l.id===id)?.name||""; const dl=d=>`${+d.slice(5,7)}/${+d.slice(8)}(${WD[new Date(d+"T00:00:00Z").getUTCDay()]})`;
+  const row={branch_id:S.branch,kind,status:"예약",is_new:false,...Object.fromEntries(CLIP_F.filter(k=>src[k]!==undefined).map(k=>[k,src[k]])),...nv};
+  if(kind==="emg") row.contact={};
+  const warn=[...blockHit(blocks,row).map(b=>"예약 불가 시간: "+blkLabel(b)), ...await apptConflicts(row,null,lanes)];
+  const dlg=$("dlg"); const who=[row.chart_no,row.patient_name].filter(Boolean).join(" ")||"(이름 없음)";
+  dlg.innerHTML=`<form method="dialog" style="min-width:min(420px,90vw)"><h3 style="margin:0 0 10px">예약을 붙여넣을까요?</h3>
+    <p style="margin:0 0 6px"><b>${esc(who)}</b> · ${esc(row.item||"")}${row.staff?` · ${esc(row.staff)}`:""}</p>
+    <table class="fin" style="width:100%;margin-bottom:10px"><tbody><tr><td class="meta">넣을 곳</td><td><b>${dl(nv.appt_date)} ${hhmm(nv.start_min)} · ${esc(ln(nv.lane_id))}</b></td></tr><tr><td class="meta">상태</td><td>예약 (신환 표시는 빼고 복사)</td></tr></tbody></table>
+    ${warn.length?`<p class="err" style="margin:0 0 10px"><b>⚠ 확인해 주세요</b><br>${warn.map(w=>"· "+esc(w)).join("<br>")}</p>`:""}
+    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel">취소</button><button type="button" class="btn ${warn.length?"warnbtn":""}" id="psok">${warn.length?"그래도 붙여넣기":"붙여넣기"}</button></div></form>`;
+  dlg.showModal();
+  $("psok").onclick=async()=>{ $("psok").disabled=true; const {error}=await sb.from("appointments").insert(row); if(error){ $("psok").disabled=false; return toast(errMsg(error)); }
+    dlg.close(); toast(`붙여넣었습니다 · ${dl(nv.appt_date)} ${hhmm(nv.start_min)}`); reload(); };
+}
 // ── 예약 카드 끌어서 옮기기 + 되돌리기 ──
 S.schedUndo ||= {};
 function bindApptDrag(kind,cols,appts,cfg,lanes,blocks,reload){
@@ -3510,6 +3559,7 @@ function bindApptDrag(kind,cols,appts,cfg,lanes,blocks,reload){
       const up=async e=>{ window.removeEventListener("pointermove",move); window.removeEventListener("pointerup",up); if(!drag) return;
         card.classList.remove("dragsrc"); ghost&&ghost.remove(); hint&&hint.remove(); card.dataset.nodlg="1"; setTimeout(()=>delete card.dataset.nodlg,300);
         if(!target) return; const nv={appt_date:target.c.date,lane_id:target.c.lane.id,start_min:target.m};
+        if(e.ctrlKey||e.metaKey||e.altKey) return pasteConfirm(kind,a,nv,lanes,blocks,reload);
         if(nv.appt_date===a.appt_date&&nv.lane_id===a.lane_id&&nv.start_min===a.start_min) return;
         moveConfirm(kind,a,nv,lanes,blocks,reload); };
       window.addEventListener("pointermove",move); window.addEventListener("pointerup",up); });
