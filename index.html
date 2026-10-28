@@ -518,6 +518,7 @@ table.cmtab tr.cfrow td{background:#f3f5f7}table.cmtab td.cm.lock span{color:var
 .gapnote{margin:0 0 8px;font-size:13px;color:#c0392b;font-weight:600}.gapnote.ok{color:#2e9e5b}.fchip.leadchip{border-color:#c9a227}.fchip.leadchip[aria-pressed="true"]{background:#c9a227;border-color:#c9a227;color:#fff}
 tr.retired td{color:var(--muted)}
 .oxo{color:#2e9e5b;font-weight:700}.oxx{color:#c0392b;font-weight:700}table.cstab td{white-space:nowrap}table.cstab td.csnote{white-space:normal;min-width:180px;color:var(--muted);font-size:12.5px}table.cstab tbody tr:hover td{background:var(--accent-soft)}
+.ympick{height:30px;padding:0 6px;font-family:var(--f-num);border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -996,13 +997,7 @@ async function renderEntry(){
       <fieldset><legend>수납</legend><p class="fs-note">단위 원 · 단말기·통장 기준 실제 금액</p><div class="rows">
         ${num("f_card","카드",r.pay_card)}${num("f_cash","현금",r.pay_cash)}${num("f_free","└ Free (현금 중 무료분)",r.pay_free)}${num("f_acct","계좌이체",r.pay_account)}${num("f_unpaid","미수 발생",r.unpaid)}${num("f_unpaidIn","미수 입금",r.unpaid_in)}
         <div class="row calc"><span>수납 합계</span><output id="o_pay">–</output></div></div></fieldset>
-      <fieldset><legend>일일 지출 · 추가 수입</legend><p class="fs-note">단위 원 · 현금 시재와 맞춰보는 용도</p>
-        <div class="grid2h"><span></span><span>지출</span><span>추가 수입</span></div>
-        <div class="rows" style="margin-top:6px">
-          <div class="grid2r"><label>현금</label><input id="x_cash" inputmode="numeric" data-n aria-label="지출 현금" value="${r.exp_cash?won(r.exp_cash):""}"><input id="i_cash" inputmode="numeric" data-n aria-label="추가 수입 현금" value="${r.inc_cash?won(r.inc_cash):""}"></div>
-          <div class="grid2r"><label>카드</label><input id="x_card" inputmode="numeric" data-n aria-label="지출 카드" value="${r.exp_card?won(r.exp_card):""}"><input id="i_card" inputmode="numeric" data-n aria-label="추가 수입 카드" value="${r.inc_card?won(r.inc_card):""}"></div>
-          <div class="grid2r"><label>FREE / 계좌</label><input id="x_free" inputmode="numeric" data-n aria-label="지출 FREE" value="${r.exp_free?won(r.exp_free):""}"><input id="i_acct" inputmode="numeric" data-n aria-label="추가 수입 계좌" value="${r.inc_account?won(r.inc_account):""}"></div>
-        </div></fieldset>
+      <div hidden><input id="x_cash" data-n value="${r.exp_cash?won(r.exp_cash):""}"><input id="x_card" data-n value="${r.exp_card?won(r.exp_card):""}"><input id="x_free" data-n value="${r.exp_free?won(r.exp_free):""}"><input id="i_cash" data-n value="${r.inc_cash?won(r.inc_cash):""}"><input id="i_card" data-n value="${r.inc_card?won(r.inc_card):""}"><input id="i_acct" data-n value="${r.inc_account?won(r.inc_account):""}"></div>
       <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
         <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div></div>
@@ -1012,7 +1007,7 @@ async function renderEntry(){
         ${RESV_ITEMS.map((it,i)=>`<div class="grid3"><label>${it}</label>${["resv","change","cancel"].map(k=>`<input id="rv_${i}_${k}" inputmode="numeric" data-n aria-label="${it} ${k}" value="${ri[it]?.[k]?won(ri[it][k]):""}">`).join("")}</div>`).join("")}
         </div><div class="rows" style="margin-top:12px">
         ${num("rv_real","실 예약 환자 수",rv.real)}${num("rv_visit","실제 방문 수",rv.visit)}
-        ${WHY.map((w,i)=>num("rw_"+i,"└ 취소 사유: "+w,rv.why?.[w])).join("")}
+        <div hidden>${WHY.map((w,i)=>`<input id="rw_${i}" data-n value="${rv.why?.[w]?won(rv.why[w]):""}">`).join("")}</div>
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${[...PT_ITEMS,"도수상담"].map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
       <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
@@ -3348,12 +3343,13 @@ function canCarmEdit(){ return S.me.level<=3||S.me.dept==="영상의학"; }
 async function renderCarm(){
   killCharts(); const main=$("main"); const keepY=S.cmKeepY??null; S.cmKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st=S.cmV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym); const ed=canCarmEdit(); const boss=S.me.level<=3;
-  const [cr,nr,set,fr]=await Promise.all([ sb.from("carm_cols").select("*").eq("branch_id",S.branch).eq("active",true).order("sort").order("id"),
+  const [cr,nr,set,fr]=await Promise.all([ sb.from("carm_cols").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("carm_counts").select("cdate,kind,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end),
     typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}),
     sb.from("carm_confirm").select("cdate,confirmed_name,confirmed_at").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end) ]);
   if(cr.error||nr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(cr.error||nr.error))}</div></div>`; return; }
-  const techs=(cr.data||[]).filter(c=>c.kind==="tech"), docs=(cr.data||[]).filter(c=>c.kind==="doc");
+  const allCols=cr.data||[]; const shownCol=c=>c.active!==false&&!(c.hidden_yms||[]).includes(st.ym);
+  const techs=allCols.filter(c=>c.kind==="tech"&&shownCol(c)), docs=allCols.filter(c=>c.kind==="doc"&&shownCol(c));
   const V={}; (nr.data||[]).forEach(r=>V[`${r.cdate}|${r.kind}|${r.name}`]=+r.cnt);
   const CF={}; ((fr&&!fr.error&&fr.data)||[]).forEach(r=>CF[r.cdate]=r);
   const locked=d=>!!CF[d]&&!boss;
@@ -3365,13 +3361,13 @@ async function renderCarm(){
   const sum=(k,list,d)=>list.reduce((s,c)=>s+g(d,k,c.name),0);
   const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
   const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0)};
-  const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열 숨기기" aria-label="${esc(c.name)} 열 숨기기">×</button>`:""}</th>`).join("");
+  const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기" aria-label="${esc(c.name)} 열을 이 달에서 빼기">×</button>`:""}</th>`).join("");
   const cfCell=d=>{ const c=CF[d]; if(c) return `<td class="cf"><span class="cfok" title="${esc(c.confirmed_name||"")} · ${esc(new Date(c.confirmed_at).toLocaleString("ko-KR"))}">✔ ${esc(c.confirmed_name||"확정")}</span>${boss?` <button class="cfx" data-cfx="${d}" title="확정 풀기">해제</button>`:""}</td>`;
     return `<td class="cf">${ed?`<button class="btn ghost sm cfbtn" data-cf="${d}">확정</button>`:""}</td>`; };
   const nCf=Object.keys(CF).length;
   main.innerHTML=`<div class="wrap carm">
     <div class="page-h"><div><h2>씨암(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강 · 확정 ${nCf}일</div></div>
-      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><b class="num">${st.ym.replace("-",". ")}</b><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
+      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><input type="month" id="cmym" value="${st.ym}" aria-label="월 선택" class="ympick"><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
     <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
       <div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>
       <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
@@ -3389,6 +3385,7 @@ async function renderCarm(){
   if(keepY!=null) window.scrollTo(0,keepY);
   const again=()=>{ S.cmKeepY=window.scrollY; return renderCarm(); };
   $("cmp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderCarm(); }; $("cmn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderCarm(); };
+  $("cmym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("cmym").value)){ st.ym=$("cmym").value; renderCarm(); } };
   $("cmcsv").onclick=()=>downloadCSV(`씨암카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):""]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
   // 확정·해제
   main.querySelectorAll("[data-cf]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cf; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="확정할까요?"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="확정"; b.classList.remove("sure"); } },4000); return; }
@@ -3447,10 +3444,13 @@ async function renderCarm(){
       if(await saveMany(list)){ toast(`${list.length}칸 붙여넣기`); again(); } });
     el.addEventListener("change",async()=>{ const k=keyOf(el); const v=+el.value||0; if((V[`${k.d}|${k.k}|${k.n}`]||0)===v) return; el.classList.add("saving");
       const ok=await saveMany([{...k,v}]); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); updTotals(el); }); });
-  const addCol=async(kind,inp)=>{ const n=$(inp).value.trim(); if(!n) return toast("이름을 적어주세요"); const list=kind==="doc"?docs:techs;
-    const {error}=await sb.from("carm_cols").upsert({branch_id:S.branch,kind,name:n,sort:list.length,active:true},{onConflict:"branch_id,kind,name"}); if(error) return toast(errMsg(error)); again(); };
+  const addCol=async(kind,inp)=>{ const n=$(inp).value.trim(); if(!n) return toast("이름을 적어주세요"); const list=kind==="doc"?docs:techs; const ex=allCols.find(c=>c.kind===kind&&c.name===n);
+    const res=ex ? await sb.from("carm_cols").update({active:true,hidden_yms:(ex.hidden_yms||[]).filter(y=>y!==st.ym)}).eq("id",ex.id) : await sb.from("carm_cols").insert({branch_id:S.branch,kind,name:n,sort:Math.max(0,...allCols.filter(c=>c.kind===kind).map(c=>c.sort||0))+1,active:true,hidden_yms:[]});
+    if(res.error) return toast(errMsg(res.error)); toast(ex?`${n} 다시 표시 (${R.m}월)`:`${n} 열 추가`); again(); };
   $("cmta").onclick=()=>addCol("tech","cmt"); $("cmda").onclick=()=>addCol("doc","cmdn");
-  main.querySelectorAll("[data-cmdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="숨김?"; return; } const {error}=await sb.from("carm_cols").update({active:false}).eq("id",+b.dataset.cmdel); if(error) return toast(errMsg(error)); again(); });
+  main.querySelectorAll("[data-cmdel]").forEach(b=>b.onclick=async()=>{ const c=allCols.find(x=>x.id===+b.dataset.cmdel); if(!c) return; const kk=c.kind; const nIn=days.reduce((s,d)=>s+(g(d,kk,c.name)?1:0),0);
+    if(!b.dataset.sure){ b.dataset.sure=1; b.textContent=nIn?`${R.m}월 ${nIn}칸 숫자도 숨김?`:`${R.m}월에서 뺄까요?`; return; }
+    const {error}=await sb.from("carm_cols").update({hidden_yms:[...new Set([...(c.hidden_yms||[]),st.ym])]}).eq("id",c.id); if(error) return toast(errMsg(error)); toast(`${c.name} — ${R.m}월에서만 뺐습니다 (다른 달은 그대로)`); again(); });
 }
 // ── 도수상담 (상담신환기록일지) ──
 async function renderCons(){
