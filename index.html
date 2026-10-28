@@ -519,6 +519,7 @@ table.cmtab tr.cfrow td{background:#f3f5f7}table.cmtab td.cm.lock span{color:var
 tr.retired td{color:var(--muted)}
 .oxo{color:#2e9e5b;font-weight:700}.oxx{color:#c0392b;font-weight:700}table.cstab td{white-space:nowrap}table.cstab td.csnote{white-space:normal;min-width:180px;color:var(--muted);font-size:12.5px}table.cstab tbody tr:hover td{background:var(--accent-soft)}
 .ympick{height:30px;padding:0 6px;font-family:var(--f-num);border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+table.cmtab th.sub{font-size:11px;font-weight:500;color:var(--muted);padding:2px 4px}table.cmtab.small td.cm input{min-width:38px}
 </style>
 </head>
 <body>
@@ -3360,7 +3361,12 @@ async function renderCarm(){
   const cell=(d,k,n)=>{ const v=V[`${d}|${k}|${n}`]; return `<td class="cm${locked(d)?" lock":""}">${ed&&!locked(d)?`<input data-cm="${d}|${k}|${esc(n)}" value="${v?v:""}" inputmode="numeric" autocomplete="off" aria-label="${d} ${esc(n)}">`:`<span>${v||""}</span>`}</td>`; };
   const sum=(k,list,d)=>list.reduce((s,c)=>s+g(d,k,c.name),0);
   const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
-  const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0)};
+  const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0), techS:days.reduce((s,d)=>s+sum("tech_s",techs,d),0), docS:days.reduce((s,d)=>s+sum("doc_s",docs,d),0)};
+  // 소관절 칸 사용(지점 설정 carm_small): 사람마다 소관절·씨암 두 칸
+  const small=!!(set&&set.raw&&set.raw.carm_small);
+  const headS=(list,tot,extra)=>`<thead><tr><th class="cmd" rowspan="2">${R.m}월</th>${list.map(c=>`<th colspan="2">${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot" colspan="3">합계</th>${extra?`<th class="cfh" rowspan="2">${extra}</th>`:""}</tr><tr>${list.map(()=>`<th class="sub">소관절</th><th class="sub">씨암</th>`).join("")}<th class="sub">소관절</th><th class="sub">씨암</th><th class="tot">ALL</th></tr></thead>`;
+  const rowS=(k,list,d)=>list.map(c=>cell(d,k+"_s",c.name)+cell(d,k,c.name)).join("")+`<td class="tot num">${sum(k+"_s",list,d)}</td><td class="tot num">${sum(k,list,d)}</td><td class="tot num"><b>${sum(k+"_s",list,d)+sum(k,list,d)}</b></td>`;
+  const sumS=(k,list)=>list.map(c=>`<td class="num">${colSum(k+"_s",c.name)}</td><td class="num">${colSum(k,c.name)}</td>`).join("")+`<td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k,list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d)+sum(k,list,d),0)}</td>`;
   const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기" aria-label="${esc(c.name)} 열을 이 달에서 빼기">×</button>`:""}</th>`).join("");
   const cfCell=d=>{ const c=CF[d]; if(c) return `<td class="cf"><span class="cfok" title="${esc(c.confirmed_name||"")} · ${esc(new Date(c.confirmed_at).toLocaleString("ko-KR"))}">✔ ${esc(c.confirmed_name||"확정")}</span>${boss?` <button class="cfx" data-cfx="${d}" title="확정 풀기">해제</button>`:""}</td>`;
     return `<td class="cf">${ed?`<button class="btn ghost sm cfbtn" data-cf="${d}">확정</button>`:""}</td>`; };
@@ -3369,17 +3375,17 @@ async function renderCarm(){
     <div class="page-h"><div><h2>씨암(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강 · 확정 ${nCf}일</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><input type="month" id="cmym" value="${st.ym}" aria-label="월 선택" class="ympick"><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
     <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
-      <div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>
+      ${small?`<div class="kpi"><span class="k">소관절 합계</span><span class="v num" id="cmk2">${T.techS+T.docS}<small>건</small></span><span class="d">방사선사 ${T.techS} · 원장 ${T.docS}</span></div>`:`<div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>`}
       <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
     ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다 · <b>확정</b>한 날은 1~3등급(팀장까지)만 고칠 수 있습니다</p>`:""}
     <div class="cmgrid">
-      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab" data-cmt="tech"><thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th></tr></thead><tbody>
-        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}</tr>`).join("")}
-        <tr class="sumrow"><td class="cmd">합계</td>${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td></tr></tbody></table></div>
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="tech">${small?headS(techs):`<thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th></tr></thead>`}<tbody>
+        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("tech",techs,d):`${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}`}</tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("tech",techs):`${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td>`}</tr></tbody></table></div>
         ${ed?`<div class="cmadd"><input id="cmt" placeholder="방사선사 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmta">+ 방사선사 열</button></div>`:""}</section>
-      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab" data-cmt="doc"><thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th><th class="cfh">확정</th></tr></thead><tbody>
-        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td>${cfCell(d)}</tr>`).join("")}
-        <tr class="sumrow"><td class="cmd">합계</td>${docs.map(c=>`<td class="num">${colSum("doc",c.name)}</td>`).join("")}<td class="tot num">${T.doc}</td><td class="num">${nCf}일</td></tr></tbody></table></div>
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="doc">${small?headS(docs,0,"확정"):`<thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th><th class="cfh">확정</th></tr></thead>`}<tbody>
+        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("doc",docs,d):`${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td>`}${cfCell(d)}</tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("doc",docs):`${docs.map(c=>`<td class="num">${colSum("doc",c.name)}</td>`).join("")}<td class="tot num">${T.doc}</td>`}<td class="num">${nCf}일</td></tr></tbody></table></div>
         ${ed?`<div class="cmadd"><input id="cmdn" placeholder="원장 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmda">+ 원장 열</button></div>`:""}</section>
     </div></div>`;
   if(keepY!=null) window.scrollTo(0,keepY);
@@ -3443,7 +3449,7 @@ async function renderCarm(){
       rows.forEach((row,ri)=>row.forEach((v,ci)=>{ const i=p.G[p.r+ri]?.[p.c+ci]?.querySelector("input"); if(i) list.push({...keyOf(i),v}); }));
       if(await saveMany(list)){ toast(`${list.length}칸 붙여넣기`); again(); } });
     el.addEventListener("change",async()=>{ const k=keyOf(el); const v=+el.value||0; if((V[`${k.d}|${k.k}|${k.n}`]||0)===v) return; el.classList.add("saving");
-      const ok=await saveMany([{...k,v}]); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); updTotals(el); }); });
+      const ok=await saveMany([{...k,v}]); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); if(small){ const nx=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.cm:null; await again(); if(nx){ const ne=main.querySelector(`[data-cm="${CSS.escape(nx)}"]`); if(ne){ ne.focus(); ne.select(); } } } else updTotals(el); }); });
   const addCol=async(kind,inp)=>{ const n=$(inp).value.trim(); if(!n) return toast("이름을 적어주세요"); const list=kind==="doc"?docs:techs; const ex=allCols.find(c=>c.kind===kind&&c.name===n);
     const res=ex ? await sb.from("carm_cols").update({active:true,hidden_yms:(ex.hidden_yms||[]).filter(y=>y!==st.ym)}).eq("id",ex.id) : await sb.from("carm_cols").insert({branch_id:S.branch,kind,name:n,sort:Math.max(0,...allCols.filter(c=>c.kind===kind).map(c=>c.sort||0))+1,active:true,hidden_yms:[]});
     if(res.error) return toast(errMsg(res.error)); toast(ex?`${n} 다시 표시 (${R.m}월)`:`${n} 열 추가`); again(); };
