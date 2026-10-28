@@ -242,7 +242,7 @@ table.trendtbl tr.cur td{font-weight:600;background:var(--navy-soft)}
 .ctsel{display:inline-flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}.ctsel select{height:30px}
 .blkadd{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}.blkadd select{height:32px}
 .dowck{display:inline-flex;gap:2px;align-items:center;font-size:13px;margin-right:4px}
-.cmgrid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+.cmgrid{display:grid;grid-template-columns:var(--cmcols,minmax(0,1.25fr) minmax(0,1fr));gap:14px;align-items:start}
 @media (max-width:1100px){.cmgrid{grid-template-columns:1fr}}
 table.cmtab{border-collapse:collapse;width:100%;font-size:13px}
 table.cmtab th,table.cmtab td{border:1px solid var(--line);padding:0;text-align:center;height:26px}
@@ -312,6 +312,19 @@ dialog{width:min(520px,94vw)}
 .fchip[aria-pressed="true"] small{color:#dfe9f7}
 .shproxy{position:fixed;left:-50px;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;outline:0;z-index:60;background:transparent}
 .shproxy.on{opacity:1;background:#fff;border:2px solid var(--brand,#1f5fbf);border-radius:4px;font:inherit;font-size:13px;text-align:center;padding:0 2px}
+.stdgrid{display:grid;grid-template-columns:240px minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:800px){.stdgrid{grid-template-columns:1fr}.stdnav{position:static!important;max-height:none!important}}
+.stdnav{position:sticky;top:70px;display:flex;flex-direction:column;gap:2px;background:var(--card,#fff);border:1px solid var(--line);border-radius:10px;padding:8px;max-height:calc(100vh - 90px);overflow:auto}
+.stdnav button[data-sdc]{all:unset;cursor:pointer;display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:7px;font-size:13px;line-height:1.35}
+.stdnav button[data-sdc]:hover{background:var(--sunk)}.stdnav button[aria-current="page"]{background:#e8f0fc;color:#1a4fa0;font-weight:700}
+.stdnav small{color:var(--muted);flex:none}
+.stdsec h3{font-size:15px;margin:0 0 10px}
+.stdtext{font-size:14px;line-height:1.7}.stdtext p{margin:0 0 6px}.stdtext blockquote{margin:0;padding:8px 12px;border-left:3px solid #c9d6ea;background:var(--sunk);border-radius:0 8px 8px 0}
+.stdtext table{border-collapse:collapse;width:100%;margin:8px 0;font-size:13px}.stdtext th,.stdtext td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}.stdtext th{background:var(--sunk)}
+.stdtext th blockquote{background:transparent;border:0;padding:0;font-weight:400}
+.stdtext img{max-width:100%;height:auto;border-radius:8px}.stdtext h3{font-size:14px;margin:12px 0 6px}
+.stded{border:1px solid var(--line);border-radius:8px;padding:10px;min-height:160px;background:#fff;outline:none}.stded:focus{border-color:#1a5fd0}
+.stdtool{display:flex;gap:4px;flex-wrap:wrap;margin:8px 0}
 .sh-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .sh-tools .chips{margin:10px 0}
 .brushes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;position:sticky;top:0;z-index:5}
@@ -377,6 +390,7 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .nmw{display:flex;align-items:center;justify-content:space-between;gap:4px}
 .shtab tr.dragging td{opacity:.5}
 .shtab tr.over-row td{box-shadow:inset 0 3px 0 var(--accent)}
+.lmv{white-space:nowrap}.lmv .nmbtn{opacity:.75}.lmv .nmbtn:disabled{opacity:.15;cursor:default}
 .nmbtn{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;border-radius:4px;opacity:.35}
 .shtab tr:hover .nmbtn,.nmbtn:focus{opacity:1}
 .nmbtn:hover{background:var(--sunk);color:var(--ink)}
@@ -570,9 +584,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSe
 }catch(e){ console.warn("paging patch",e); } })();
 
 const DEPTS = ["총괄","원무","간호","병동","수술","물리치료","영상의학","임상병리","경영지원"];
-const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원"};
+const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원",5:"의사"};
+// 전체 열람: 3등급(팀장)·5등급(의사)은 자기 지점의 모든 부서 화면을 본다 (의사는 보기만)
+const seeAll = () => S.me.level<=3 || S.me.level===5;
 // 부서별 메뉴 (3·4등급). 1·2등급과 총괄은 전부. 계정·원장 관리에서 1등급이 지점별로 바꿀 수 있습니다.
-const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","씨암 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["upload","엑셀 업로드"],["perf","부서 실적"]];
+const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","씨암 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"]];
 const MENU_BASE=["staff","resv","ot","leave","docs","reg","info"];
 const MENU_DEFAULT={
   "원무":["entry","cal","spt","cons","semg",...MENU_BASE,"upload"],
@@ -582,10 +598,11 @@ const MENU_DEFAULT={
   "임상병리":["semg",...MENU_BASE],
   "병동":["inv",...MENU_BASE],
   "수술":["inv",...MENU_BASE],
-  "경영지원":[...MENU_BASE]};
+  "경영지원":[...MENU_BASE],
+  "의료진":[...MENU_BASE,"std"]};
 const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원"];
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
-function fullMenu(){ return S.me.level<=2 || S.me.dept==="총괄"; }
+function fullMenu(){ return seeAll() || S.me.dept==="총괄"; }
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
 const PATHS = ["지인소개","네이버 블로그","네이버 지도","카카오맵","유튜브","병원 간판","이마트 광고","GTX 광고","지하철역 광고","기타"];
@@ -666,9 +683,9 @@ async function boot(){
   S.view = defaultView();
   render();
 }
-function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(lv<=2) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
-function canDash(){ return S.me.level<=2 || (S.me.level===3 && (S.me.dept==="원무"||S.me.dept==="총괄")); }
-function canEntry(){ return S.me.level<=2 || S.me.dept==="원무"; }
+function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(seeAll()) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
+function canDash(){ return seeAll(); }
+function canEntry(){ return S.me.level<=3 || S.me.dept==="원무"; }
 
 function renderLogin(){
   $("app").innerHTML = `<div class="login-wrap gut"><form class="login" id="lf" autocomplete="on">
@@ -745,14 +762,15 @@ function render(){
     {id:"cons",label:"도수상담",ok:schedPerm("pt")!=="none"},
     {id:"semg",label:"근전도 스케줄",ok:schedPerm("emg")!=="none"},
     {id:"staff",label:"근무 스케줄"},
-    {id:"resv",label:"예약관리",ok:lv<=3||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept)},
+    {id:"resv",label:"예약관리",ok:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept)},
     {id:"ot",label:"연장근무"},
     {id:"leave",label:"연차관리"},
     {id:"inv",label:"물품·재고"},
-    {id:"carm",label:"씨암 카운트",ok:lv<=3||S.me.dept==="영상의학"},
+    {id:"carm",label:"씨암 카운트",ok:seeAll()||S.me.dept==="영상의학"},
     {id:"docs",label:"업무게시판"},
     {id:"reg",label:"업무 기록부"},
     {id:"info",label:"기본정보·연락망"},
+    {id:"std",label:"의료진 표준화"},
     {id:"upload",label:"엑셀 업로드",ok:lv<=3||S.me.dept==="원무"},
     {id:"users",label:"계정·원장 관리",ok:lv<=2},
     {id:"log",label:"변경 기록",ok:lv<=2},
@@ -773,7 +791,7 @@ function render(){
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; } S.view=b.dataset.v; render(); });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons();
+  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -1117,14 +1135,14 @@ async function renderUsers(){
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const brName=id=>S.branches.find(b=>b.id===id)?.name||"-";
   const list=(users||[]).filter(u=>lv===1?(u.branch_id===S.branch||u.level===1):true);
-  const lvOpts=(sel)=>[1,2,3,4].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l==sel?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("");
+  const lvOpts=(sel)=>[1,2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l==sel?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("");
   const deptOpts=(sel)=>`<option value="">(없음)</option>`+DEPTS.map(d=>`<option ${d===sel?"selected":""}>${d}</option>`).join("");
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>계정·원장 관리</h2><div class="meta">${esc(brName(S.branch))} · 로그인 아이디로 들어오면 소속 지점으로 바로 입장합니다</div></div></div>
     ${reqs.length?`<section class="panel sgreq"><h3>가입 요청 <span>${reqs.length}건 · 등급·부서를 확인하고 승인하세요 (요청한 지점으로 들어갑니다)</span></h3><div class="tbl-box"><table><thead><tr><th>요청일</th><th>이름</th><th>아이디</th><th>지점</th><th>부서</th><th>직함</th><th>등급</th><th></th></tr></thead><tbody>
       ${reqs.map(r=>`<tr data-rq="${r.id}"><td class="num">${esc(new Date(r.created_at).toLocaleDateString("ko-KR"))}</td><td><b>${esc(r.name)}</b></td><td class="num">${esc(r.login_id)}</td><td>${esc(brName(r.branch_id))}</td>
         <td><select data-rqd style="height:28px">${DEPTS.map(d=>`<option ${d===r.dept?"selected":""}>${d}</option>`).join("")}${DEPTS.includes(r.dept)?"":`<option selected>${esc(r.dept)}</option>`}</select></td><td>${esc(r.title||"-")}</td>
-        <td><select data-rql style="height:28px">${[2,3,4].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("")}</select></td>
+        <td><select data-rql style="height:28px">${[2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("")}</select></td>
         <td style="white-space:nowrap"><button class="btn sm" data-rqok>승인</button> <button class="btn ghost sm" data-rqx>거절</button></td></tr>`).join("")}</tbody></table></div></section>`:""}
     <section class="panel"><h3>새 계정 만들기 <span>2~4등급은 소속 지점으로 바로 들어가고 지점 선택이 안 보입니다 · 처음 로그인 후 마이페이지에서 본인이 바꾸도록 안내하세요</span></h3>
       <form class="inline-form" id="uf" autocomplete="off">
@@ -1903,7 +1921,7 @@ async function renderOvertime(){
     fsum={}; found.forEach(r=>{ const o=fsum[r.staff_name] ||= {n:0,m:0,days:new Set()}; o.n++; o.m+=r.minutes; o.days.add(r.work_date); }); }
   const list=found?found:st.who?shown.filter(r=>r.staff_name===st.who):shown.slice().reverse();
   const dOrd=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
-  const myStaff = (lv<=2 ? staff : lv===3 ? staff.filter(s=>s.dept===S.me.dept) : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
+  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
   const otDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = otDepts.includes(st.fdept)?st.fdept:(otDepts.includes(S.me.dept)?S.me.dept:otDepts[0]);
   const otOpts=()=>myStaff.filter(s=>otDepts.length<=1||s.dept===st.fdept).map(s=>`<option value="${s.id}" data-n="${esc(s.name)}" data-d="${esc(s.dept)}">${esc(s.name)}${s.title?" "+esc(s.title):""}</option>`).join("");
   main.innerHTML=`<div class="wrap">
@@ -2136,7 +2154,7 @@ function preview(box,head,rows,n,bad,save,nSheets){
 
 // ── 업무 기록부 (구글시트처럼 쓰는 목록) ──
 const REG_DEPTS=["간호","병동","수술","원무","물리치료","영상의학","임상병리","청구","경영지원"];
-function canRegWrite(dept){ const me=S.me; return me.level<=2 || me.dept===dept || (dept==="공통"&&me.level<=3); }
+function canRegWrite(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (dept==="공통"&&me.level<=3); }
 async function renderRegisters(opts={}){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const fixed=opts.dept||null; const key=fixed?"regInfo":"regV";
@@ -2352,22 +2370,23 @@ async function renderLeave(){
   const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
   const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name)])];
   const asOf=kstToday();
-  const people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
+  let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
-    .filter(p=>st.dept==="전체"||p.dept===st.dept).sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
+    .sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return (a.g?.sort??1e6)-(b.g?.sort??1e6)||o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
+  const allPeople=people.slice(); people.splice(0,people.length,...allPeople.filter(p=>st.dept==="전체"||p.dept===st.dept));
   const depts=[...new Set(names.map(n=>(grants.find(x=>x.staff_name===n)||uses.find(x=>x.staff_name===n))?.dept||""))].filter(Boolean);
   const lq=(st.lq||"").trim(); const list=lq?uses.filter(u=>u.staff_name.includes(lq)).slice().reverse():st.who?uses.filter(u=>u.staff_name===st.who).slice().reverse():uses.slice(-40).reverse();
   const dOrder=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
-  const myStaff = (lv<=2 ? staff : lv===3 ? staff.filter(s=>s.dept===S.me.dept) : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
+  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
   const myDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = myDepts.includes(st.fdept) ? st.fdept : (myDepts.includes(S.me.dept)?S.me.dept:myDepts[0]);
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용(병가 제외) · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
-      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr>${lv<=3?`<th style="width:56px">순서</th>`:""}<th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
+      ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}">${lv<=3?`<td class="lmv"><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="-1" aria-label="${esc(p.name)} 위로" ${ix===0?"disabled":""}>▲</button><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="1" aria-label="${esc(p.name)} 아래로" ${ix===people.length-1?"disabled":""}>▼</button></td>`:""}<td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
         <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=3?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
-        <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="9" class="meta">자료가 없습니다.</td></tr>`}
+        <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="10" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
     ${lv<=3?`<div style="margin-top:10px"><button class="btn ghost sm" id="lg_add">+ 직원 추가</button></div>`:""}</section>
     <div class="grid2">
@@ -2399,13 +2418,16 @@ async function renderLeave(){
   document.querySelectorAll("[data-ldel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더"; return; } const {error}=await sb.from("leave_uses").delete().eq("id",b.dataset.ldel); if(error) return toast(errMsg(error)); renderLeave(); });
   const upGrant=async(n,dept,patch)=>{ const g=grants.find(x=>x.staff_name===n); const s0=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update(patch).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s0?.id||null,staff_name:n,dept:dept||s0?.dept||null,year:st.year,days:0,...patch}); return res.error; };
+  document.querySelectorAll("[data-lmv]").forEach(b=>b.onclick=async()=>{ const n=b.dataset.lmv, dir=+b.dataset.dir; const i=people.findIndex(p=>p.name===n), j=i+dir; if(i<0||j<0||j>=people.length) return;
+    const A=allPeople.slice(), ia=A.findIndex(p=>p.name===n), ib=A.findIndex(p=>p.name===people[j].name); [A[ia],A[ib]]=[A[ib],A[ia]];
+    b.disabled=true; for(let k=0;k<A.length;k++){ if((A[k].g?.sort??null)===k+1) continue; const e=await upGrant(A[k].name,A[k].dept,{sort:k+1}); if(e){ toast(errMsg(e)); break; } } reKeep(); });
   document.querySelectorAll("[data-lh]").forEach(inp=>inp.onchange=async()=>{ const n=inp.dataset.lh; const L=legalLeave(inp.value,st.year); const g=grants.find(x=>x.staff_name===n);
     const patch={hire_date:inp.value||null}; const L2=legalLeave(inp.value,st.year,kstToday()); if(L2) patch.days=L2.days;
     const e=await upGrant(n,inp.dataset.dept,patch); if(e) return toast(errMsg(e)); toast(L2?`입사일 저장 · 오늘까지 ${L2.days}일 발생`:"입사일 저장"); renderLeave(); });
   document.querySelectorAll("[data-lapply]").forEach(b=>b.onclick=async()=>{ const e=await upGrant(b.dataset.lapply,b.dataset.dept,{days:+b.dataset.v}); if(e) return toast(errMsg(e)); toast(`${b.dataset.lapply} 발생 ${b.dataset.v}일로 맞췄습니다`); renderLeave(); });
   document.querySelectorAll("[data-lg]").forEach(inp=>inp.onchange=async()=>{ const v=parseFloat(inp.value); if(isNaN(v)) return; const n=inp.dataset.lg; const g=grants.find(x=>x.staff_name===n); const s=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update({days:v}).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:inp.dataset.dept||s?.dept||null,year:st.year,days:v}); if(res.error) return toast(errMsg(res.error)); toast("발생 일수 저장"); renderLeave(); });
-  if($("lg_add")) $("lg_add").onclick=()=>{ const dlg=$("dlg"); const cand=staff.filter(s=>(lv<=2||s.dept===S.me.dept)&&!names.includes(s.name)&&!PLACEHOLDER.test(s.name)&&s.dept!=="의료진").sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
+  if($("lg_add")) $("lg_add").onclick=()=>{ const dlg=$("dlg"); const cand=staff.filter(s=>(lv<=3)&&!names.includes(s.name)&&!PLACEHOLDER.test(s.name)&&s.dept!=="의료진").sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
     const cd=[...new Set(cand.map(s=>s.dept))]; let dsel=cd.includes(st.dept)?st.dept:cd[0];
     const opts=()=>cand.filter(s=>s.dept===dsel).map(s=>`<option value="${esc(s.name)}">${esc(s.name)}${s.title?` ${esc(s.title)}`:""}</option>`).join("");
     dlg.innerHTML=`<form method="dialog" style="min-width:300px"><h3 style="margin:0 0 4px">직원 추가</h3><p class="meta" style="margin:0 0 12px">${st.year}년 연차 대상에 넣습니다</p>
@@ -2585,7 +2607,7 @@ async function renderOrg(){
 // ── 부서 실적 ──
 const PERF_TABS=[["doc","진료(원장)"],["pt","물리치료"],["emg","임상병리"],["front","원무"],["ward","수술·병동"]];
 const PERF_DEPT={"물리치료":["pt"],"임상병리":["emg"],"원무":["front","doc"],"수술":["ward"],"병동":["ward"]};
-function perfTabsFor(){ const me=S.me; if(me.level<=2) return PERF_TABS.map(t=>t[0]); return (me.level===3&&PERF_DEPT[me.dept])||[]; }
+function perfTabsFor(){ const me=S.me; if(seeAll()) return PERF_TABS.map(t=>t[0]); return (me.level===3&&PERF_DEPT[me.dept])||[]; }
 function canPerf(){ return perfTabsFor().length>0; }
 const isDosu=i=>/^도수/.test(i)&&i!=="도수상담", isShock=i=>/^충격파/.test(i);
 const liveA=a=>a.status!=="취소"&&a.status!=="노쇼";
@@ -2841,7 +2863,7 @@ async function renderMe(){
   if(myStaff){ const {data}=await sb.from("shifts").select("work_date,value").eq("staff_id",myStaff.id).gte("work_date",mon).lte("work_date",sun); shifts=data||[]; }
   const codes=Object.fromEntries((cr.data||[]).map(c=>[c.code,c]));
   const readSet=new Set((rd.data||[]).map(r=>r.doc_id));
-  const notices=(dr.data||[]).filter(d=>!readSet.has(d.id)&&(me.level<=2||d.dept==="공통"||d.dept===me.dept||d.dept==="회의록"));
+  const notices=(dr.data||[]).filter(d=>!readSet.has(d.id)&&(seeAll()||d.dept==="공통"||d.dept===me.dept||d.dept==="회의록"));
   const grant0=(gr.data||[])[0]; const LL=grant0&&legalLeave(grant0.hire_date,y,kstToday()); const grant=grant0?{...grant0,days:LL?LL.days:grant0.days}:null; const uses=ur.data||[]; const used=uses.filter(u=>u.approved&&u.kind!=="병가").reduce((s,u)=>s+(+u.days),0); const pend=uses.filter(u=>!u.approved).length;
   const ot=or.data||[]; const otMin=ot.reduce((s,o)=>s+(+o.minutes||0),0);
   const appts=(ar.data||[]).filter(a=>a.status!=="취소"); const br=S.branches.find(b=>b.id===S.branch);
@@ -3172,18 +3194,18 @@ async function computeAlerts(set, opt={}){
         if(A.npchg.on&&Math.abs(np-npAvg)>A.npchg.th) out.push({lvl:"warn",k:"npchg",msg:`${lab} 비급여 비중 ${np.toFixed(1)}% — 최근 같은 요일 평균 ${npAvg.toFixed(1)}%와 ${(np-npAvg>0?"+":"")+(np-npAvg).toFixed(1)}%p 차이`}); } }
     if(A.pace.on&&opt.goal&&opt.goal.W.done>=3){ opt.goal.items.filter(g=>!g.m.ratio&&g.target>0&&g.proj!=null).forEach(g=>{ if(g.proj<g.target*A.pace.th/100) out.push({lvl:"warn",k:"pace",msg:`${g.m.label}: 지금 속도면 월말 ${fmtGoal(g.m,g.proj)} (목표의 ${(g.proj/g.target*100).toFixed(0)}%) · 남은 영업일 하루 ${fmtGoal(g.m,g.need)} 필요`}); }); }
   }
-  if(A.noshow.on&&(lv<=2||["물리치료","임상병리","원무"].includes(S.me.dept))){
+  if(A.noshow.on&&(seeAll()||["물리치료","임상병리","원무"].includes(S.me.dept))){
     const {data:ap}=await sb.from("appointments").select("kind,status").eq("branch_id",S.branch).gte("appt_date",addDays(today,-7)).lt("appt_date",today);
     const L=ap||[]; const x=L.filter(a=>a.status==="취소"||a.status==="노쇼").length; if(L.length>=10&&x/L.length*100>A.noshow.th) out.push({lvl:"warn",k:"noshow",msg:`최근 7일 스케줄 취소·노쇼 ${x}건 / ${L.length}건 (${(x/L.length*100).toFixed(1)}%)`,go:{label:"스케줄 보기",fn:()=>{ S.view="spt"; render(); }}});
   }
   if(lv<=3){
     if(A.notice.on){ const {data:ns}=await sb.from("dept_docs").select("id,title,dept,updated_at").eq("branch_id",S.branch).eq("notice",true).lt("updated_at",new Date(Date.now()-A.notice.th*864e5).toISOString()).order("updated_at",{ascending:false}).limit(5);
-      for(const d of (ns||[]).filter(d=>lv<=2||d.dept==="공통"||d.dept===S.me.dept)){ const {data:sm}=await sb.rpc("doc_read_summary",{p_doc:d.id}); const U=(sm?.unread||[]).filter(u=>lv<=2||u.dept===S.me.dept);
+      for(const d of (ns||[]).filter(d=>seeAll()||d.dept==="공통"||d.dept===S.me.dept)){ const {data:sm}=await sb.rpc("doc_read_summary",{p_doc:d.id}); const U=(sm?.unread||[]).filter(u=>seeAll()||u.dept===S.me.dept);
         if(U.length) out.push({lvl:"info",k:"notice",msg:`필독 "${d.title}" — ${A.notice.th}일 넘게 안 읽은 사람 ${U.length}명 (${U.slice(0,5).map(u=>u.name).join(", ")}${U.length>5?" 외":""})`,go:{label:"공지 열기",fn:()=>{ S.docV={dept:d.dept,id:d.id,q:"",edit:false}; S.view="docs"; render(); }}}); } }
     if(A.pending.on){ const yr=today.slice(0,4); let lq=sb.from("leave_uses").select("id,dept").eq("branch_id",S.branch).eq("approved",false).gte("use_date",`${yr}-01-01`); let oq=sb.from("overtime").select("id,dept").eq("branch_id",S.branch).eq("approved",false).gte("work_date",addDays(today,-62));
-      if(lv===3){ lq=lq.eq("dept",S.me.dept); oq=oq.eq("dept",S.me.dept); } const [lr,or]=await Promise.all([lq,oq]); const nl=(lr.data||[]).length, no=(or.data||[]).length;
-      if(nl>=A.pending.th) out.push({lvl:"info",k:"pending",msg:`연차 확인 대기 ${nl}건${lv===3?` (${S.me.dept})`:""}`,go:{label:"연차관리",fn:()=>{ S.view="leave"; render(); }}});
-      if(no>=A.pending.th) out.push({lvl:"info",k:"pending",msg:`연장근무 확인 대기 ${no}건${lv===3?` (${S.me.dept})`:""}`,go:{label:"연장근무",fn:()=>{ S.view="ot"; render(); }}}); }
+      const [lr,or]=await Promise.all([lq,oq]); const nl=(lr.data||[]).length, no=(or.data||[]).length;
+      if(nl>=A.pending.th) out.push({lvl:"info",k:"pending",msg:`연차 확인 대기 ${nl}건`,go:{label:"연차관리",fn:()=>{ S.view="leave"; render(); }}});
+      if(no>=A.pending.th) out.push({lvl:"info",k:"pending",msg:`연장근무 확인 대기 ${no}건`,go:{label:"연장근무",fn:()=>{ S.view="ot"; render(); }}}); }
   }
   return out;
 }
@@ -3458,7 +3480,7 @@ async function renderCarm(){
       ${small?`<div class="kpi"><span class="k">소관절 합계</span><span class="v num" id="cmk2">${T.techS+T.docS}<small>건</small></span><span class="d">방사선사 ${T.techS} · 원장 ${T.docS}</span></div>`:`<div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>`}
       <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
     ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다 · <b>확정</b>한 날은 1~3등급(팀장까지)만 고칠 수 있습니다</p>`:""}
-    <div class="cmgrid">
+    <div class="cmgrid" style="--cmcols:minmax(0,${(small?2:1)*techs.length+2}fr) minmax(0,${(small?2:1)*docs.length+2}fr)">
       <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="tech">${small?headS(techs):`<thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th></tr></thead>`}<tbody>
         ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("tech",techs,d):`${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}`}</tr>`).join("")}
         <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("tech",techs):`${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td>`}</tr></tbody></table></div>
@@ -3617,6 +3639,61 @@ async function renderCons(){
   main.querySelectorAll("[data-cs]").forEach(tr=>tr.onclick=()=>dlgFor(all.find(x=>x.id===+tr.dataset.cs)));
 }
 
+// ── 의료진 표준화 (분류별 문서 · 1등급만 수정) ──
+function cleanHtml(html){ const d=new DOMParser().parseFromString(`<div>${html||""}</div>`,"text/html"); const root=d.body.firstChild;
+  root.querySelectorAll("script,style,iframe,object,embed,link,meta,form,input,button").forEach(x=>x.remove());
+  root.querySelectorAll("*").forEach(el=>{ [...el.attributes].forEach(a=>{ const n=a.name.toLowerCase(), v=a.value.trim().toLowerCase();
+    if(n.startsWith("on")) el.removeAttribute(a.name);
+    else if((n==="src"||n==="href")&&!(v.startsWith("http")||v.startsWith("data:image/")||v.startsWith("#"))) el.removeAttribute(a.name);
+    else if(!["src","href","alt","colspan","rowspan","style","target"].includes(n)) el.removeAttribute(a.name);
+    else if(n==="style"&&/url\(|expression/i.test(v)) el.removeAttribute(a.name); }); });
+  root.querySelectorAll("a").forEach(a=>{ a.target="_blank"; a.rel="noopener"; });
+  return root.innerHTML; }
+async function renderStd(){
+  const main=$("main"); const st=S.stdV ||= {cat:null,q:"",edit:null};
+  main.innerHTML=`<div class="wrap"><div class="empty">불러오는 중…</div></div>`;
+  const {data,error}=await sb.from("std_docs").select("*").eq("branch_id",S.branch).order("sort").order("id");
+  if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
+  const rows=data||[], ed=S.me.level===1;
+  const cats=[...new Set(rows.map(r=>r.cat))];
+  if(!st.cat||!cats.includes(st.cat)) st.cat=cats[0]||null;
+  const q=st.q.trim(); const txt=h=>String(h||"").replace(/<[^>]+>/g," ");
+  const shown=q?rows.filter(r=>(r.title+" "+r.cat+" "+txt(r.body)).includes(q)):rows.filter(r=>r.cat===st.cat);
+  const cnt=c=>rows.filter(r=>r.cat===c).length;
+  main.innerHTML=`<div class="wrap">
+    <div class="page-h"><div><h2>의료진 표준화</h2><div class="meta">분류별 진료·처치·차팅 기준 · ${ed?"1등급만 고칠 수 있습니다":"보기 전용 (수정은 1등급)"}</div></div>
+      <form id="sdqf" style="display:flex;gap:6px;align-items:center"><input id="sdq" type="search" placeholder="전체에서 찾기" value="${esc(q)}" autocomplete="off" style="height:32px;padding:0 10px;width:200px"><button class="btn sm" aria-label="찾기">🔍</button>${q?`<button type="button" class="btn ghost sm" id="sdqx">지우기</button>`:""}</form></div>
+    <div class="stdgrid">
+      <nav class="stdnav" aria-label="분류">${cats.map(c=>`<button data-sdc="${esc(c)}" aria-current="${!q&&c===st.cat?"page":"false"}"><span>${esc(c)}</span><small>${cnt(c)}</small></button>`).join("")||`<div class="meta">아직 문서가 없습니다.</div>`}
+        ${ed?`<button class="btn ghost sm" id="sdnew" style="margin-top:8px">+ 항목 추가</button>`:""}</nav>
+      <div class="stdbody">${q?`<p class="meta">"${esc(q)}" 찾은 결과 ${shown.length}건</p>`:""}
+        ${shown.map(r=>st.edit===r.id?`<section class="panel stdsec" data-sid="${r.id}">
+            <div class="form-2"><div class="field"><label>분류</label><input id="se_c" value="${esc(r.cat)}" list="sdcats"></div><div class="field"><label>제목</label><input id="se_t" value="${esc(r.title)}"></div>
+            <div class="field"><label>순서</label><input id="se_o" value="${r.sort}" inputmode="numeric" style="width:80px"></div></div>
+            <div class="stdtool"><button type="button" class="btn ghost sm" data-cmd="bold"><b>굵게</b></button><button type="button" class="btn ghost sm" data-cmd="insertUnorderedList">• 목록</button><button type="button" class="btn ghost sm" data-cmd="insertOrderedList">1. 목록</button><button type="button" class="btn ghost sm" data-cmd="formatBlock" data-arg="h3">소제목</button><button type="button" class="btn ghost sm" data-cmd="removeFormat">서식 지우기</button></div>
+            <div class="stdtext stded" id="se_b" contenteditable="true">${cleanHtml(r.body)}</div>
+            <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" id="se_save">저장</button><button class="btn ghost sm" id="se_x">취소</button><span style="flex:1"></span><button class="btn ghost sm" id="se_del" style="color:var(--bad)">이 항목 삭제</button></div>
+            <datalist id="sdcats">${cats.map(c=>`<option value="${esc(c)}">`).join("")}</datalist></section>`
+          :`<section class="panel stdsec" data-sid="${r.id}"><h3>${q?`<small class="meta">${esc(r.cat)} › </small>`:""}${esc(r.title)}${ed?` <button class="btn ghost sm" data-sde="${r.id}" style="float:right">수정</button>`:""}</h3><div class="stdtext">${cleanHtml(r.body)}</div>
+            <div class="meta" style="margin-top:6px;font-size:11px">${r.updated_at?`고친 날 ${esc(new Date(r.updated_at).toLocaleDateString("ko-KR"))}`:""}</div></section>`).join("")||`<div class="empty">${q?"찾은 결과가 없습니다.":"이 분류에 항목이 없습니다."}</div>`}
+      </div></div></div>`;
+  document.querySelectorAll("[data-sdc]").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.sdc; st.q=""; st.edit=null; renderStd(); window.scrollTo(0,0); });
+  $("sdqf").onsubmit=e=>{ e.preventDefault(); st.q=$("sdq").value; st.edit=null; renderStd(); };
+  if($("sdqx")) $("sdqx").onclick=()=>{ st.q=""; renderStd(); };
+  if(!ed) return;
+  document.querySelectorAll("[data-sde]").forEach(b=>b.onclick=()=>{ st.edit=+b.dataset.sde; renderStd(); });
+  if($("sdnew")) $("sdnew").onclick=async()=>{ const cat=st.cat||"새 분류"; const mx=Math.max(0,...rows.map(r=>r.sort||0));
+    const {data:nr,error}=await sb.from("std_docs").insert({branch_id:S.branch,cat,title:"새 항목",body:"<p>내용을 적어주세요.</p>",sort:mx+1}).select("id").single(); if(error) return toast(errMsg(error)); st.edit=nr.id; st.q=""; renderStd(); };
+  if(st.edit&&$("se_b")){
+    document.querySelectorAll(".stdtool [data-cmd]").forEach(b=>b.onmousedown=e=>{ e.preventDefault(); document.execCommand(b.dataset.cmd,false,b.dataset.arg||null); });
+    $("se_x").onclick=()=>{ st.edit=null; renderStd(); };
+    $("se_save").onclick=async()=>{ const cat=$("se_c").value.trim(), title=$("se_t").value.trim(); if(!cat||!title) return toast("분류와 제목을 적어주세요");
+      const {error}=await sb.from("std_docs").update({cat,title,body:cleanHtml($("se_b").innerHTML),sort:parseInt($("se_o").value)||0,updated_at:new Date().toISOString(),updated_by:S.user?.id||null}).eq("id",st.edit);
+      if(error) return toast(errMsg(error)); toast("저장했습니다"); st.cat=cat; st.edit=null; renderStd(); };
+    $("se_del").onclick=async()=>{ const b=$("se_del"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; }
+      const {error}=await sb.from("std_docs").delete().eq("id",st.edit); if(error) return toast(errMsg(error)); toast("삭제했습니다"); st.edit=null; renderStd(); };
+  }
+}
 // ── 변경 기록 ──
 async function renderLog(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
