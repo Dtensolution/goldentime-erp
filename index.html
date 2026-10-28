@@ -1006,7 +1006,7 @@ async function renderEntry(){
       <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
         <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div></div>
-        ${lv<=2?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>
+        ${lv<=3?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>
       <fieldset><legend>예약</legend><p class="fs-note">예약 명단은 예약용 구글시트에 두고, 여기에는 건수만 적습니다.</p>
         <div class="grid3h"><span>구분</span><span>예약</span><span>변경</span><span>취소</span></div><div class="rows" style="margin-top:6px">
         ${RESV_ITEMS.map((it,i)=>`<div class="grid3"><label>${it}</label>${["resv","change","cancel"].map(k=>`<input id="rv_${i}_${k}" inputmode="numeric" data-n aria-label="${it} ${k}" value="${ri[it]?.[k]?won(ri[it][k]):""}">`).join("")}</div>`).join("")}
@@ -1193,7 +1193,7 @@ function schedRange(st){
 function schedPerm(kind){
   const me=S.me; if(!me||!me.active) return "none"; if(me.level===1) return "edit";
   const p=me.perms&&me.perms["sched_"+kind]; if(p) return p;
-  if(me.level===2) return "edit";
+  if(me.level<=3) return "edit";
   if(kind==="pt" && ["물리치료","원무"].includes(me.dept)) return "edit";
   if(kind==="emg" && ["임상병리","원무"].includes(me.dept)) return "edit";
   return "view";
@@ -1282,7 +1282,7 @@ async function renderSched(kind){
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>${cfg.title}</h2><div class="meta">${perm==="edit"?"빈 칸을 누르면 예약을 넣고, 예약을 누르면 고칠 수 있습니다":"보기 전용 권한입니다"} · 예약 ${live.length}건${appts.length-live.length?` · 취소/노쇼 ${appts.length-live.length}건`:""}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div>${S.me.level<=2?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
+        <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div>${S.me.level<=3?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
         <div class="monthnav"><button class="btn ghost sm" id="sp" aria-label="이전">◀</button><b class="num" style="min-width:150px">${label}</b><button class="btn ghost sm" id="sn" aria-label="다음">▶</button></div>
         <button class="btn ghost sm" id="st">오늘</button>${st.mode==="range"?`<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="rf" value="${start}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="rt" value="${end}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-rq="${k}">${t}</button>`).join("")}</span>`:st.mode==="month"?`<input type="month" id="sm" value="${st.date.slice(0,7)}" aria-label="월 선택" style="height:30px;padding:0 6px">`:st.mode==="year"?`<select id="sy" aria-label="연도 선택" style="height:30px">${[...Array(7)].map((_,i)=>+kstToday().slice(0,4)-4+i).map(y=>`<option ${String(y)===st.date.slice(0,4)?"selected":""}>${y}</option>`).join("")}</select>`:`<input type="date" id="sd" value="${st.date}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`}
         ${canEdit&&grid?`<button class="btn ghost sm" id="sundo" ${(S.schedUndo[kind]||[]).length?"":"disabled"} title="끌어서 옮긴 예약을 원래대로">↶ 되돌리기${(S.schedUndo[kind]||[]).length?` (${S.schedUndo[kind].length})`:""}</button>`:""}
@@ -1301,7 +1301,7 @@ async function renderSched(kind){
       <section class="panel"><h3>담당자별 <span>취소·노쇼 제외</span></h3>${Object.keys(byStaff).length?`<div class="tbl-box"><table><thead><tr><th>담당</th><th>건수</th><th>신환</th><th>예상 매출</th></tr></thead><tbody>
         ${Object.entries(byStaff).sort((a,b)=>b[1].n-a[1].n).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.nw}</td><td class="num">${won(v.amt)}원</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>
     </div>
-    ${S.me.level<=2?`<details class="panel"><summary><b>방·치료항목 설정</b> <span class="meta">방 이름, 치료별 소요시간·단가</span></summary><div class="grid2" style="margin-top:12px">
+    ${S.me.level<=3?`<details class="panel"><summary><b>방·치료항목 설정</b> <span class="meta">방 이름, 치료별 소요시간·단가</span></summary><div class="grid2" style="margin-top:12px">
       <div><h3 style="font-size:14px">방(열)</h3><div class="tbl-box"><table><thead><tr><th>이름</th><th>구분</th><th>순서</th><th></th></tr></thead><tbody>
         ${(lr.data||[]).map(l=>`<tr><td><input data-ln="${l.id}" value="${esc(l.name)}" style="height:30px;width:120px;padding:0 6px"></td><td><input data-lg="${l.id}" value="${esc(l.grp||"")}" style="height:30px;width:90px;padding:0 6px"></td><td><input data-ls="${l.id}" value="${l.sort}" inputmode="numeric" style="height:30px;width:48px;padding:0 6px;text-align:right"></td><td><button class="btn ghost sm" data-lsave="${l.id}">저장</button> <button class="btn ghost sm" data-lact="${l.id}" data-v="${l.active?0:1}">${l.active?"숨기기":"보이기"}</button></td></tr>`).join("")}
         <tr><td><input id="nl" placeholder="새 방 이름" style="height:30px;width:120px;padding:0 6px"></td><td><input id="nlg" placeholder="구분" style="height:30px;width:90px;padding:0 6px"></td><td></td><td><button class="btn sm" id="nla">추가</button></td></tr></tbody></table></div></div>
@@ -1520,7 +1520,7 @@ function shInterval(v,codes){ const c=codes[v]; if(c&&c.start_min!=null&&c.end_m
 function leadGap(leads,map,d,codes){ const iv=leads.map(s=>map[s.id+"|"+d]).filter(h=>h&&!isOffVal(h.value,codes)).map(h=>shInterval(h.value,codes)).filter(Boolean).sort((a,b)=>a[0]-b[0]);
   let cur=540; const gaps=[]; for(const [a,b] of iv){ if(a>cur){ gaps.push([cur,Math.min(a,1320)]); } cur=Math.max(cur,b); if(cur>=1320) break; } if(cur<1320) gaps.push([cur,1320]); return gaps.filter(g=>g[1]>g[0]); }
 const STAFF_DEPTS=["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리","경영지원"];
-function canEditDept(dept){ const me=S.me; return me.level<=2 || me.perms?.sched_staff==="edit" || (me.level===3 && me.dept===dept); }
+function canEditDept(dept){ const me=S.me; return me.level<=3 || me.perms?.sched_staff==="edit" || (me.level===3 && me.dept===dept); }
 function shiftHours(v,codes){ const c=codes[v]; if(c&&c.start_min!=null&&c.end_min!=null) return (c.end_min-c.start_min)/60;
   const t=String(v).match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/); if(!t) return 0; const a=+t[1]*60+(+t[2]||0), b=+t[3]*60+(+t[4]||0); return b>a?(b-a)/60:0; }
 function shiftColor(v,codes){ const c=codes[v]; if(c) return SH_COLORS[c.color]||SH_COLORS.blue; if(/off|휴/i.test(v)) return SH_COLORS.gray; if(/연차|반차|학회|교육/.test(v)) return SH_COLORS.orange;
@@ -1752,7 +1752,7 @@ function shiftDialog(td,map,codesL,staff,reload,save){
 
 // ── 부서별 업무게시판 ──
 const DOC_DEPTS=["공통","회의록","원무","간호","병동","수술","물리치료","영상의학","임상병리","청구","경영지원"];
-function canEditDoc(dept){ const me=S.me; return me.level<=2 || me.dept===dept || (["공통","회의록","청구"].includes(dept) && me.level<=3); }
+function canEditDoc(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (["공통","회의록","청구"].includes(dept) && me.level<=3); }
 function mdRender(src){
   const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
   const lines=String(src||"").split(/\r?\n/); let out="", list=null, tbl=null;
@@ -1922,7 +1922,7 @@ function downloadCSV(name,rows){ const csv="﻿"+rows.map(r=>r.map(v=>{ const s=
 
 // ── 물품·재고 ──
 const INV_DEPTS=["간호","병동","수술","원무","물리치료","영상의학","임상병리","경영지원"];
-function canEditInv(dept){ const me=S.me; return me.level<=2 || me.dept===dept || (me.level===3 && ["간호","병동","수술"].includes(dept) && ["간호","병동","수술"].includes(me.dept)); }
+function canEditInv(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (me.level===3 && ["간호","병동","수술"].includes(dept) && ["간호","병동","수술"].includes(me.dept)); }
 async function renderInventory(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.invV ||= {dept: INV_DEPTS.includes(S.me.dept)?S.me.dept:"간호", cat:"전체", q:"", count:false, cdate:kstToday(), low:false};
@@ -2319,12 +2319,12 @@ async function renderLeave(){
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용(병가 제외) · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=2?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
-      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=2?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
-        <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=2?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th>병가</th><th>확인 전</th></tr></thead><tbody>
+      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
+        <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=3?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
         <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="9" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
-    ${lv<=2?`<div style="margin-top:10px"><button class="btn ghost sm" id="lg_add">+ 직원 추가</button></div>`:""}</section>
+    ${lv<=3?`<div style="margin-top:10px"><button class="btn ghost sm" id="lg_add">+ 직원 추가</button></div>`:""}</section>
     <div class="grid2">
       <section class="panel"><h3>${lv<=3?"연차 사용 기록":"연차 신청"}</h3><form id="lf" class="form-2">
         ${myDepts.length>1?`<div class="field"><label for="l_dp">부서</label><select id="l_dp">${myDepts.map(d=>`<option ${d===st.fdept?"selected":""}>${esc(d)}</option>`).join("")}</select></div>`:""}
@@ -2360,7 +2360,7 @@ async function renderLeave(){
   document.querySelectorAll("[data-lapply]").forEach(b=>b.onclick=async()=>{ const e=await upGrant(b.dataset.lapply,b.dataset.dept,{days:+b.dataset.v}); if(e) return toast(errMsg(e)); toast(`${b.dataset.lapply} 발생 ${b.dataset.v}일로 맞췄습니다`); renderLeave(); });
   document.querySelectorAll("[data-lg]").forEach(inp=>inp.onchange=async()=>{ const v=parseFloat(inp.value); if(isNaN(v)) return; const n=inp.dataset.lg; const g=grants.find(x=>x.staff_name===n); const s=staff.find(x=>x.name===n);
     const res=g?await sb.from("leave_grants").update({days:v}).eq("id",g.id):await sb.from("leave_grants").insert({branch_id:S.branch,staff_id:s?.id||null,staff_name:n,dept:inp.dataset.dept||s?.dept||null,year:st.year,days:v}); if(res.error) return toast(errMsg(res.error)); toast("발생 일수 저장"); renderLeave(); });
-  if($("lg_add")) $("lg_add").onclick=()=>{ const dlg=$("dlg"); const cand=staff.filter(s=>!names.includes(s.name)&&!PLACEHOLDER.test(s.name)&&s.dept!=="의료진").sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
+  if($("lg_add")) $("lg_add").onclick=()=>{ const dlg=$("dlg"); const cand=staff.filter(s=>(lv<=2||s.dept===S.me.dept)&&!names.includes(s.name)&&!PLACEHOLDER.test(s.name)&&s.dept!=="의료진").sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
     const cd=[...new Set(cand.map(s=>s.dept))]; let dsel=cd.includes(st.dept)?st.dept:cd[0];
     const opts=()=>cand.filter(s=>s.dept===dsel).map(s=>`<option value="${esc(s.name)}">${esc(s.name)}${s.title?` ${esc(s.title)}`:""}</option>`).join("");
     dlg.innerHTML=`<form method="dialog" style="min-width:300px"><h3 style="margin:0 0 4px">직원 추가</h3><p class="meta" style="margin:0 0 12px">${st.year}년 연차 대상에 넣습니다</p>
@@ -2467,7 +2467,7 @@ async function renderStaffDir(){
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${canEd?`<button class="btn ${E?"":"ghost "}sm" id="sdedit">${E?"✔ 편집 끝내기":"✎ 편집"}</button>`:""}<form id="sq2f" style="display:flex;gap:6px"><input id="sq2" type="search" placeholder="이름·번호" value="${esc(st.q)}" autocomplete="off" style="height:32px;padding:0 10px;width:150px"><button class="btn sm" aria-label="찾기">🔍 찾기</button></form></div></div>
     ${infoTabs("staff")}
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-sdd="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    ${st.dept==="전체"&&!q&&org.length?`<section class="panel"><h3>경영진·원장 ${E&&S.me.level<=2?`<span><button class="linkbtn" id="sdorg">조직도 편집에서 고치기 →</button></span>`:""}</h3><div class="tbl-box"><table><tbody>${org.map(o=>`<tr><td style="width:120px">${esc(o.title||"")}</td><td><b>${esc(o.name)}</b></td><td>${telLink(o.phone)}</td></tr>`).join("")}</tbody></table></div></section>`:""}
+    ${st.dept==="전체"&&!q&&org.length?`<section class="panel"><h3>경영진·원장 ${E&&S.me.level<=3?`<span><button class="linkbtn" id="sdorg">조직도 편집에서 고치기 →</button></span>`:""}</h3><div class="tbl-box"><table><tbody>${org.map(o=>`<tr><td style="width:120px">${esc(o.title||"")}</td><td><b>${esc(o.name)}</b></td><td>${telLink(o.phone)}</td></tr>`).join("")}</tbody></table></div></section>`:""}
     ${allDepts.filter(d=>show.some(s=>s.dept===d)||(E&&edDepts.includes(d)&&(st.dept==="전체"||st.dept===d)&&!q)).map(d=>`<section class="panel"><h3 style="color:${deptColor(d)}">${esc(d)} <span>${show.filter(s=>s.dept===d).length}명${E&&canEditDept(d)?` <button class="btn ghost sm" data-sdadd="${esc(d)}">+ 직원 추가</button>`:""}</span></h3><div class="tbl-box"><table class="dir${E?" editing":""}"><tbody>
       ${show.filter(s=>s.dept===d).sort((a,b)=>(b.lead-a.lead)||((a.title?0:1)-(b.title?0:1))||a.sort-b.sort).map(s=>`<tr><td style="width:110px">${s.lead?`<span class="pill ok">${esc(s.title||"책임자")}</span>`:esc(s.title||"")}</td><td><b>${esc(s.name)}</b></td><td>${telLink(s.phone)||`<span class="meta">번호 없음</span>`}</td><td style="width:${E?70:40}px">${canEditDept(s.dept)?(E?`<button class="btn ghost sm" data-sde="${s.id}">수정</button>`:`<button class="nmbtn" data-sde="${s.id}" aria-label="${esc(s.name)} 수정" style="opacity:.6">⋯</button>`):""}</td></tr>`).join("")||`<tr><td colspan="4" class="meta">아직 직원이 없습니다.</td></tr>`}
     </tbody></table></div></section>`).join("")||`<div class="empty">찾는 직원이 없습니다.</div>`}
@@ -2485,7 +2485,7 @@ async function renderStaffDir(){
 }
 async function renderOrg(){
   const main=$("main"); const keepY=window.scrollY; main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const {staff,org,depts}=await loadOrgData(); const edTop=S.me.level<=2; const canAny=edTop||depts.some(canEditDept);
+  const {staff,org,depts}=await loadOrgData(); const edTop=S.me.level<=3; const canAny=edTop||depts.some(canEditDept);
   const E=!!S.orgEdit&&canAny;
   const box=(t,n,p,cls="",attr="",tools="")=>`<div class="obox ${cls}" ${attr}>${tools}${t?`<small>${esc(t)}</small>`:""}<b>${esc(n)}</b>${p?`<span class="otel">${E?esc(p):telLink(p)}</span>`:(E?`<span class="meta" style="font-size:11px">번호 없음</span>`:"")}</div>`;
   const TOPN=[0,1,2,3,4]; const used=[...new Set(org.map(o=>o.tier).filter(t=>t<5))].sort((a,b)=>a-b);
