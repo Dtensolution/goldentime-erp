@@ -3344,10 +3344,10 @@ async function undoMove(kind,reload){
 }
 
 // ── 씨암(C-arm) 카운트 ──
-function canCarmEdit(){ return S.me.level<=2||S.me.dept==="영상의학"; }
+function canCarmEdit(){ return S.me.level<=3||S.me.dept==="영상의학"; }
 async function renderCarm(){
   killCharts(); const main=$("main"); const keepY=S.cmKeepY??null; S.cmKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st=S.cmV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym); const ed=canCarmEdit(); const boss=S.me.level<=2;
+  const st=S.cmV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym); const ed=canCarmEdit(); const boss=S.me.level<=3;
   const [cr,nr,set,fr]=await Promise.all([ sb.from("carm_cols").select("*").eq("branch_id",S.branch).eq("active",true).order("sort").order("id"),
     sb.from("carm_counts").select("cdate,kind,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end),
     typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}),
@@ -3375,7 +3375,7 @@ async function renderCarm(){
     <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
       <div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>
       <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
-    ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다 · <b>확정</b>한 날은 ${boss?"1·2등급만":"1·2등급(팀장급)만"} 고칠 수 있습니다</p>`:""}
+    ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다 · <b>확정</b>한 날은 1~3등급(팀장까지)만 고칠 수 있습니다</p>`:""}
     <div class="cmgrid">
       <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab" data-cmt="tech"><thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th></tr></thead><tbody>
         ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}</tr>`).join("")}
@@ -3392,7 +3392,7 @@ async function renderCarm(){
   $("cmcsv").onclick=()=>downloadCSV(`씨암카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):""]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
   // 확정·해제
   main.querySelectorAll("[data-cf]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cf; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="확정할까요?"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="확정"; b.classList.remove("sure"); } },4000); return; }
-    const {error}=await sb.from("carm_confirm").insert({branch_id:S.branch,cdate:d,confirmed_name:S.me.name}); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정 · 이제 1·2등급만 고칠 수 있습니다`); again(); });
+    const {error}=await sb.from("carm_confirm").insert({branch_id:S.branch,cdate:d,confirmed_name:S.me.name}); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정 · 이제 팀장(3등급) 이상만 고칠 수 있습니다`); again(); });
   main.querySelectorAll("[data-cfx]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cfx; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="풀까요?"; return; }
     const {error}=await sb.from("carm_confirm").delete().eq("branch_id",S.branch).eq("cdate",d); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정을 풀었습니다`); again(); });
   if(!ed) return;
