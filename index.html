@@ -2070,7 +2070,7 @@ async function renderInventory(){
   const ko=(a,b)=>String(a||"").localeCompare(String(b||""),"ko",{numeric:true});
   const catOrder=[...new Set(items.map(i=>i.category||"기타"))];
   const shown=items.filter(i=>(q||st.cat==="전체"||(i.category||"기타").split(" · ")[0]===st.cat)&&(!q||[i.name,i.code,i.spec,i.vendor,i.category].join(" ").toLowerCase().includes(q))&&(!st.low||(i.std_qty!=null&&last(i)&&+last(i).qty<+i.std_qty)))
-    .sort((a,b)=>catOrder.indexOf(a.category||"기타")-catOrder.indexOf(b.category||"기타")||(isBrace(a)&&isBrace(b)?ko(a.name,b.name)||ko(a.spec,b.spec):(a.sort-b.sort)||(a.id-b.id)));
+    .sort((a,b)=>catOrder.indexOf(a.category||"기타")-catOrder.indexOf(b.category||"기타")||ko(a.name,b.name)||ko(a.spec,b.spec)||(a.id-b.id));
   const ed=canEditInv(st.dept);
   const cell=(i,d)=>{ const a=(L[i.id]||[]).filter(l=>l.log_date===d); const s=a.find(l=>l.kind==="재고"), o=a.find(l=>l.kind==="발주"), r=a.find(l=>l.kind==="입고");
     return `<td class="num">${s?fmtQ(s.qty):""}${o?`<small class="ord" title="발주">+${fmtQ(o.qty)}</small>`:""}${r?`<small class="rcv" title="입고">입${fmtQ(r.qty)}</small>`:""}</td>`; };
