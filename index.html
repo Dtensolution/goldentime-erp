@@ -520,6 +520,14 @@ tr.retired td{color:var(--muted)}
 .oxo{color:#2e9e5b;font-weight:700}.oxx{color:#c0392b;font-weight:700}table.cstab td{white-space:nowrap}table.cstab td.csnote{white-space:normal;min-width:180px;color:var(--muted);font-size:12.5px}table.cstab tbody tr:hover td{background:var(--accent-soft)}
 .ympick{height:30px;padding:0 6px;font-family:var(--f-num);border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
 table.cmtab th.sub{font-size:11px;font-weight:500;color:var(--muted);padding:2px 4px}table.cmtab.small td.cm input{min-width:38px}
+.hqcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;margin-bottom:14px}@media (max-width:600px){.hqcards{grid-template-columns:1fr}}
+.hqcard{border-top:4px solid #2e9e5b;margin:0}.hqcard.warn{border-top-color:#d18a12}.hqcard.bad{border-top-color:#d93025}
+.hqh{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}.hqname{font-size:17px;font-weight:700;color:var(--navy)}.hqlight{font-size:13px;font-weight:600}.hqlight.ok{color:#2e9e5b}.hqlight.warn{color:#b97400}.hqlight.bad{color:#d93025}
+.hqgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px}@media (max-width:600px){.hqgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.hqgrid>div{display:flex;flex-direction:column;gap:2px;padding:8px 10px;background:var(--sunk);border-radius:8px}.hqgrid .k{font-size:12px;color:var(--muted)}.hqgrid b{font-size:16px}.hqgrid small{font-size:11.5px;color:var(--muted)}.hqgrid .up{color:#d93025}.hqgrid .down{color:#1a5fd0}
+.hqalerts{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:13px}.hqalerts li{padding:5px 8px;border-radius:6px;background:var(--sunk)}.hqalerts li.bad{background:#fde2e0;color:#a52714}.hqalerts li.warn{background:#fdf1dc;color:#8a5a00}
+.hqnote{margin-top:8px;font-size:13px;padding:6px 8px;border-left:3px solid var(--navy);background:var(--sunk);border-radius:4px}.hqnote b{margin-right:6px}
+.hqmore summary{cursor:pointer;padding:4px 0}
 </style>
 </head>
 <body>
@@ -3018,13 +3026,43 @@ async function renderHQ(){
     const trend=[...Array(6)].map((_,i)=>{ const ym=shiftMonth(st.ym,i-5); return rows.filter(r=>r.close_date.startsWith(ym)&&+r.total>0).reduce((s,r)=>s+(+r.total||0),0); });
     return {b,A,P,F,ptN:(pt.data||[]).filter(liveA).length,rate,trend,hasFin:(fe.data||[]).length>0}; }));
   const show=data.filter(x=>x.A.days||x.b.active);
+  const today=kstToday(), keepB=S.branch; const ST={};
+  for(const x of show){ const b=x.b; try{ S.branch=b.id; const set=await loadBranchSettings(b.id); const goal=await computeGoal(set).catch(()=>null); const alerts=await computeAlerts(set,{goal}).catch(()=>[]);
+      const [dr,ap,rv]=await Promise.all([ sb.from("daily_close").select("close_date,total,note,doctors,resv").eq("branch_id",b.id).gte("close_date",addDays(today,-40)).lte("close_date",today).order("close_date"),
+        sb.from("appointments").select("kind,status").eq("branch_id",b.id).eq("appt_date",today),
+        sb.from("reservations").select("visit").eq("branch_id",b.id).eq("resv_date",today) ]);
+      const rows=(dr.data||[]).slice().sort((p,q)=>p.close_date<q.close_date?-1:1); const closed=rows.filter(r=>+r.total>0); const last=closed.at(-1)||null; const tr=last?sameDowTrend(closed,last.close_date):null;
+      const yday=addDays(today,-1); const ydayRow=rows.find(r=>r.close_date===yday); const note=(ydayRow&&ydayRow.note)||(rows.filter(r=>r.close_date<today&&r.note).at(-1)?.note)||"";
+      const A2=(ap.data||[]).filter(a=>a.status==="예약"||a.status==="완료"); const RV=rv.data||[];
+      ST[b.id]={goal,alerts,last,tr,todayClosed:!!rows.find(r=>r.close_date===today&&+r.total>0),note,pt:A2.filter(a=>a.kind==="pt").length,emg:A2.filter(a=>a.kind==="emg").length,resv:RV.length,resvIn:RV.filter(r=>r.visit==="내원").length}; }catch(e){ ST[b.id]={err:errMsg(e)}; } }
+  S.branch=keepB;
+  const pctTxt=x=>x==null?"":`<span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"} ${Math.abs(x*100).toFixed(1)}%</span>`;
+  const card=x=>{ const b=x.b, s=ST[b.id]||{}; if(s.err) return `<section class="panel hqcard"><h3>${esc(b.name)}</h3><p class="meta">${esc(s.err)}</p></section>`;
+    const g=s.goal&&s.goal.items?s.goal.items.find(i=>i.m.k==="total"):null; const bad=(s.alerts||[]).filter(a=>a.lvl==="bad"), warn=(s.alerts||[]).filter(a=>a.lvl==="warn");
+    const lightCls=bad.length?"bad":warn.length?"warn":"ok"; const lightTxt=bad.length?`확인 필요 ${bad.length+warn.length}건`:warn.length?`주의 ${warn.length}건`:"이상 없음";
+    const ld=s.last?s.last.close_date:null;
+    return `<section class="panel hqcard ${lightCls}">
+      <div class="hqh"><button class="linkbtn hqname" data-hqb="${esc(b.id)}">${esc(b.name)}</button><span class="hqlight ${lightCls}">● ${lightTxt}</span></div>
+      <div class="hqgrid">
+        <div><span class="k">최근 마감${ld?` (${+ld.slice(5,7)}/${+ld.slice(8)} ${WD[new Date(ld+"T00:00:00Z").getUTCDay()]})`:""}</span><b class="num">${s.last?wonMan(+s.last.total):"–"}</b><small>${s.tr&&s.tr.vsAvg!=null?"같은 요일 평균 대비 "+pctTxt(s.tr.vsAvg):""}</small></div>
+        <div><span class="k">이번 달 누적</span><b class="num">${wonMan(x.A.total)}</b><small>${x.A.days}일 마감 · 전월 전체 ${x.P.total?wonMan(x.P.total):"–"}</small></div>
+        <div><span class="k">목표 달성</span><b class="num">${g&&g.target?Math.round(g.pct)+"%":"–"}</b><small>${g&&g.target?`월말 예상 ${g.proj!=null?wonMan(Math.round(g.proj)):"–"} / 목표 ${wonMan(g.target)}`:"목표 미설정"}</small></div>
+        <div><span class="k">이번 달 신환 · 진료 인원</span><b class="num">${won(x.A.newP)} · ${won(x.A.visits)}</b><small>예약 내원률 ${x.rate==null?"–":(x.rate*100).toFixed(1)+"%"}</small></div>
+        <div><span class="k">오늘 예약</span><b class="num">${won(s.resv||0)}</b><small>EMR 예약 · 내원 체크 ${s.resvIn||0}</small></div>
+        <div><span class="k">오늘 스케줄</span><b class="num">도수·충격파 ${s.pt||0} · 근전도 ${s.emg||0}</b><small>${s.todayClosed?"오늘 마감일지 작성됨":"오늘 마감 전"}</small></div>
+      </div>
+      ${(s.alerts||[]).length?`<ul class="hqalerts">${[...bad,...warn,...(s.alerts||[]).filter(a=>a.lvl==="info")].slice(0,4).map(a=>`<li class="${a.lvl}">${esc(a.msg)}</li>`).join("")}${s.alerts.length>4?`<li class="meta">외 ${s.alerts.length-4}건</li>`:""}</ul>`:""}
+      ${s.note?`<div class="hqnote"><b>전날 인수인계</b> ${esc(String(s.note).slice(0,140))}${String(s.note).length>140?"…":""}</div>`:""}
+    </section>`; };
   const row=(label,f,fmt=won)=>`<tr><td>${label}</td>${show.map(x=>`<td class="num">${f(x)}</td>`).join("")}</tr>`;
   const chg=(c,p)=>p?`<span class="${c>=p?"up":"down"}" style="font-size:11px"> ${c>=p?"▲":"▼"}${Math.abs((c-p)/p*100).toFixed(0)}%</span>`:"";
   $("main").innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>D:TEN 본부 · 지점 비교</h2><div class="meta">${R.y}년 ${R.m}월 · 1등급 전용 · 지점 이름을 누르면 그 지점으로 들어갑니다</div></div>
+    <div class="page-h"><div><h2>D:TEN 본부 · 지점 현황</h2><div class="meta">${R.y}년 ${R.m}월 · 1등급 전용 · 지점 이름을 누르면 그 지점으로 들어갑니다 · 오늘 ${+today.slice(5,7)}/${+today.slice(8)}</div></div>
       <div class="monthnav"><button class="btn ghost sm" id="hqp" aria-label="이전 달">◀</button><b class="num">${st.ym.replace("-",". ")}</b><button class="btn ghost sm" id="hqn" aria-label="다음 달">▶</button></div></div>
     ${kpiRow([{k:"전 지점 총진료비",v:wonMan(show.reduce((s,x)=>s+x.A.total,0)),u:"",d:`${show.length}개 지점`,lead:true},{k:"전 지점 신환",v:won(show.reduce((s,x)=>s+x.A.newP,0)),u:"명"},{k:"전 지점 진료 인원",v:won(show.reduce((s,x)=>s+x.A.visits,0)),u:"명"},{k:"도수·충격파 (스케줄)",v:won(show.reduce((s,x)=>s+x.ptN,0)),u:"건"},{k:"손익 합계 (현금)",v:wonMan(show.reduce((s,x)=>s+x.F.cashPL,0)),u:"",d:show.some(x=>!x.hasFin)?"수입·지출 미입력 지점 있음":""}])}
-    <section class="panel"><h3>지점별 <span>전월 대비 증감</span></h3><div class="tbl-box"><table><thead><tr><th>항목</th>${show.map(x=>`<th><button class="linkbtn" data-hqb="${esc(x.b.id)}">${esc(x.b.name)}</button></th>`).join("")}</tr></thead><tbody>
+    <div class="hqcards">${show.map(card).join("")}</div>
+    <details class="panel hqmore" ${S.hqMore?"open":""}><summary><b>지점별 자세히 비교</b> <span class="meta">전월 대비 증감 · 최근 6개월 그래프</span></summary>
+    <section class="panel" style="margin-top:12px"><h3>지점별 <span>전월 대비 증감</span></h3><div class="tbl-box"><table><thead><tr><th>항목</th>${show.map(x=>`<th><button class="linkbtn" data-hqb="${esc(x.b.id)}">${esc(x.b.name)}</button></th>`).join("")}</tr></thead><tbody>
       ${row("마감 일수",x=>x.A.days+"일")}
       ${row("총진료비",x=>won(x.A.total)+chg(x.A.total,x.P.total))}
       ${row("일평균 진료비",x=>x.A.days?won(Math.round(x.A.total/x.A.days)):"–")}
@@ -3041,11 +3079,12 @@ async function renderHQ(){
       ${row("나간 돈",x=>won(x.F.expAll))}
       ${row("<b>손익 (현금)</b>",x=>`<b>${won(x.F.cashPL)}</b>`)}
     </tbody></table></div></section>
-    <div class="grid2"><section class="panel"><h3>최근 6개월 총진료비</h3><div class="cbox"><canvas id="hq1"></canvas></div></section><section class="panel"><h3>이번 달 신환 · 진료 인원</h3><div class="cbox"><canvas id="hq2"></canvas></div></section></div>
-    <section class="panel"><h3>지점 바로가기</h3><div class="picker">${S.branches.map(b=>`<button class="bcard" data-hqb="${esc(b.id)}"><b>${esc(b.name)}</b><span>${b.active?"운영 중":"준비 중"}</span></button>`).join("")}</div></section></div>`;
+    <div class="grid2"><section class="panel"><h3>최근 6개월 총진료비</h3><div class="cbox"><canvas id="hq1"></canvas></div></section><section class="panel"><h3>이번 달 신환 · 진료 인원</h3><div class="cbox"><canvas id="hq2"></canvas></div></section></div></details>
+    </div>`;
   const cols=["#1858a8","#e69138","#6aa84f","#8e7cc3","#cc4125"];
   mkChart("hq1",{type:"line",data:{labels:[...Array(6)].map((_,i)=>+shiftMonth(st.ym,i-5).slice(5)+"월"),datasets:show.map((x,i)=>({label:x.b.name,data:x.trend,borderColor:cols[i%5],backgroundColor:cols[i%5],tension:.3,pointRadius:3}))},options:{scales:{y:{ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label} ${won(c.raw)}원`}}}}});
   mkChart("hq2",{data:{labels:show.map(x=>x.b.name),datasets:[{label:"신환",data:show.map(x=>x.A.newP),backgroundColor:cssv("--accent")},{label:"진료 인원",data:show.map(x=>x.A.visits),backgroundColor:cssv("--navy")}]}});
+  document.querySelector(".hqmore")?.addEventListener("toggle",e=>{ S.hqMore=e.target.open; if(e.target.open) setTimeout(()=>charts.forEach(c=>{ try{ c.resize(); }catch(_){} }),50); });
   $("hqp").onclick=()=>{ st.ym=pym; renderHQ(); }; $("hqn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderHQ(); };
   document.querySelectorAll("[data-hqb]").forEach(b=>b.onclick=()=>{ S.branch=b.dataset.hqb; lsSet("gt-branch",S.branch); S.view="dash"; render(); });
 }
