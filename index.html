@@ -575,7 +575,7 @@ const IDLE_MIN = 30;
 const LOGO = SUPABASE_URL + "/storage/v1/object/public/brand/goldentime-logo.webp";
 const PT_ITEMS = ["도수A","도수B","도수C","도수E2A","도수E2B","충격파A","충격파B","충격파13","충격파18"];
 // 지점별 마감일지 도수·충격파 칸 (철산은 스케줄 치료명 "충격파 E1" → "E1" 로 맞춤)
-const PT_BY_BRANCH = {"gt-cs":["도수A","E1","E2","ES5","ES8"]};
+const PT_BY_BRANCH = {"gt-cs":["도수A","E1","E2","ES5","ES8"]}; // 도수상담은 마감일지에 따로 붙음
 const ptItemsOf = b => PT_BY_BRANCH[b] || PT_ITEMS;
 const ptKeyOf = (b,item) => PT_BY_BRANCH[b] ? String(item||"").replace(/^충격파\s*/,"") : item;
 
@@ -834,7 +834,7 @@ const ptN=(r,k)=>Number(r.pt?.[k]||0);
 function aggRows(rows){
   const a={days:rows.length,total:0,nonpay:0,out:0,inpat:0,surg:0,cash:0,free:0,newP:0,reP:0,real:0,visit:0,consult:0,pt:{},docs:{}};
   rows.forEach(r=>{ a.total+=+r.total; a.nonpay+=+r.nonpay; a.out+=+r.outpatient; a.inpat+=+r.inpatient; a.surg+=+r.surgery_cnt; a.cash+=+r.pay_cash; a.free+=+(r.pay_free||0);
-    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담");
+    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); });
     ptItemsOf(S.branch).forEach(k=>a.pt[k]=(a.pt[k]||0)+ptN(r,k));
     (r.doctors||[]).forEach(d=>{ const k=d.name||"기타"; (a.docs[k] ||= {nw:0,re:0,amt:0}); a.docs[k].nw+= +d.new||0; a.docs[k].re+= +d.re||0; a.docs[k].amt+= +d.amt||0; a.docAmt=(a.docAmt||0)+(+d.amt||0); a.newP+= +d.new||0; a.reP+= +d.re||0; }); });
   a.visits=a.newP+a.reP; a.perVisit=a.visits?a.total/a.visits:0; a.outPerVisit=a.visits?a.out/a.visits:0;
@@ -953,6 +953,7 @@ async function renderDash(){
       <section class="panel"><h3>예약 이행 <span>실 예약 vs 실제 방문 · 선은 이행률</span></h3><div class="cbox"><canvas id="c6" role="img" aria-label="예약 이행 그래프"></canvas></div></section>
       <section class="panel"><h3>수술 · 비급여 <span>수술 건수(막대), 비급여 원(선)</span></h3><div class="cbox"><canvas id="c7" role="img" aria-label="수술 비급여 그래프"></canvas></div></section>
     </div>
+    ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")}</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
     <div id="ceBox"><p class="meta">씨암·근전도 불러오는 중…</p></div>
     <section class="panel"><h3>전광판 표 <span>최근 순 · 금액 원</span></h3><div class="tbl-box">${tbl}</div></section>
   </div>`;
@@ -970,6 +971,7 @@ async function renderDash(){
   mkChart("c4",{data:{labels:L,datasets:docNames.map((n,i)=>({label:n,data:B.map(b=>{const d=b.a.docs[n];return d?d.nw+d.re:0}),backgroundColor:DOC_COLORS[i%DOC_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c5",{data:{labels:L,datasets:ptItemsOf(S.branch).filter(k=>T.pt[k]).map((k,i)=>({label:k,data:B.map(b=>b.a.pt[k]||0),backgroundColor:PT_COLORS[Math.max(0,ptItemsOf(S.branch).indexOf(k))%PT_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c6",{data:{labels:L,datasets:[{label:"실 예약",data:B.map(b=>b.a.real),backgroundColor:cssv("--bar-weekend"),order:2},{label:"실제 방문",data:B.map(b=>b.a.visit),backgroundColor:navy,order:2},{type:"line",label:"이행률",data:B.map(b=>+(b.a.keep*100).toFixed(1)),borderColor:good,backgroundColor:good,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{...pctAxis,beginAtZero:false}}}});
+  if(CARM_ENTRY.includes(S.branch)) mkChart("c8",{data:{labels:L,datasets:CARM_KEYS.map((k,i)=>({label:k,data:B.map(b=>b.a.cx?.[k]||0),backgroundColor:[navy,sky][i%2],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
   mkChart("c7",{data:{labels:L,datasets:[{label:"수술 건수",data:B.map(b=>b.a.surg),backgroundColor:navy,order:2},{type:"line",label:"비급여(원)",data:B.map(b=>Math.round(b.a.nonpay)),borderColor:sky,backgroundColor:sky,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}},plugins:{tooltip:{callbacks:{label:c=>c.dataset.yAxisID==="y2"?`비급여 ${won(c.raw)}원`:`수술 ${c.raw}건`}}}}});
 }
 async function renderDashOne(seg){
@@ -1006,7 +1008,7 @@ async function renderDashOne(seg){
     <div class="grid2">
       <section class="panel"><h3>도수 · 충격파 <span>종류별 건수 · 도수 상담 ${won(A.consult)}건</span></h3>${ptK.length?`<div class="cbox"><canvas id="o3" role="img" aria-label="도수 충격파"></canvas></div>`:`<p class="meta">입력 없음</p>`}</section>
       <section class="panel"><h3>수술 · 예약 <span>이 날</span></h3><div class="tbl-box"><table><tbody>
-        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr><tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
+        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr>${CARM_ENTRY.includes(S.branch)?CARM_KEYS.map(k=>`<tr><td>${k}</td><td class="num">${won(A.cx?.[k]||0)}건</td></tr>`).join(""):""}<tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
     </div>
     <section class="panel"><h3>비교 <span>이 날 · 전일 · 지난주 같은 요일 · 금액 원</span></h3><div class="tbl-box"><table><thead><tr><th>구분</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
       ${cmpRows.map(([l,a],i)=>`<tr class="${i===0?"cur":""}"><td>${l}</td>${rowCells(a)}</tr>`).join("")}</tbody></table></div></section>
@@ -1066,7 +1068,7 @@ async function renderCal(){
 }
 
 // ── 마감일지 입력 ──
-function ptKeysEntry(){ return PT_BY_BRANCH[S.branch] ? [...PT_BY_BRANCH[S.branch]] : [...PT_ITEMS,"도수상담"]; }
+function ptKeysEntry(){ return [...ptItemsOf(S.branch),"도수상담"]; }
 async function renderEntry(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const today=kstToday(); const lv=S.me.level; const minDate = lv===4 ? addDays(today,-1) : "2026-01-01";
