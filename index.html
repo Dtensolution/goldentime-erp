@@ -616,6 +616,7 @@ const MENU_DEFAULT={
 const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원"];
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return seeAll() || S.me.dept==="총괄"; }
+const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["씨암","소관절","스파인"]; // 마감일지에 씨암 칸을 쓰는 지점 (철산)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
 const PATHS = ["지인소개","네이버 블로그","네이버 지도","카카오맵","유튜브","병원 간판","이마트 광고","GTX 광고","지하철역 광고","기타"];
@@ -1103,6 +1104,7 @@ async function renderEntry(){
         <div hidden>${WHY.map((w,i)=>`<input id="rw_${i}" data-n value="${rv.why?.[w]?won(rv.why[w]):""}">`).join("")}</div>
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${[...PT_ITEMS,"도수상담"].map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
+      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>씨암 · 소관절 · 스파인</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}</div></fieldset>`:""}
       <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
     </div>
@@ -1112,7 +1114,7 @@ async function renderEntry(){
   const fmt=el=>{ const s=el.value.replace(/[^\d]/g,""); el.value=s?Number(s).toLocaleString("ko-KR"):""; };
   // ── 자동 저장: 바뀐 칸만 저장 ──
   const COL={f_total:"total",f_nonpay:"nonpay",f_out:"outpatient",f_inpat:"inpatient",f_surg:"surgery_cnt",f_card:"pay_card",f_cash:"pay_cash",f_free:"pay_free",f_acct:"pay_account",f_unpaid:"unpaid",f_unpaidIn:"unpaid_in",x_cash:"exp_cash",x_card:"exp_card",x_free:"exp_free",i_cash:"inc_cash",i_card:"inc_card",i_acct:"inc_account",f_note:"note"};
-  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": null);
+  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": /^cx\d/.test(id)?"extra": null);
   const dirty=new Set(); let atimer=null, saving=null, savedOnce=!!row;
   const ptKeys=[...PT_ITEMS,"도수상담"]; let ptManual=new Set((r.pt&&r.pt._m)||[]); let schedCnt=null;
   const buildAll=()=>{ const items={}; RESV_ITEMS.forEach((it,i)=>{ items[it]={resv:v(`rv_${i}_resv`),change:v(`rv_${i}_change`),cancel:v(`rv_${i}_cancel`)}; });
@@ -1122,7 +1124,9 @@ async function renderEntry(){
     const o={ total:v("f_total"), nonpay:v("f_nonpay"), outpatient:v("f_out"), inpatient:v("f_inpat"), surgery_cnt:v("f_surg"),
       pay_card:v("f_card"), pay_cash:v("f_cash"), pay_account:v("f_acct"), unpaid:v("f_unpaid"), unpaid_in:v("f_unpaidIn"),
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
-      pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null }; return o; };
+      pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
+    if(CARM_ENTRY.includes(S.branch)) o.extra={...(r.extra||{}), carm:Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1]))};
+    return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
   async function autosave(all){ clearTimeout(atimer); if(saving) await saving; if(!all&&!dirty.size) return true;
     const A=buildAll(); const payload={branch_id:S.branch, close_date:date}; (all?Object.keys(A).filter(k=>k!=="pt"||dirty.has("pt")||!schedCnt):[...dirty]).forEach(k=>payload[k]=A[k]); const keys=[...dirty]; dirty.clear();
@@ -1147,6 +1151,8 @@ async function renderEntry(){
   function applySched(force){ if(!schedCnt) return; let ch=false;
     ptKeys.forEach((k,i)=>{ if(ptManual.has(k)) return; const el=$("pt"+i); if(!el) return; const nv=schedCnt[k]||0; if(v("pt"+i)!==nv){ el.value=nv?won(nv):""; ch=true; } });
     ptHint(); if(ch||force){ dirty.add("pt"); autosave(); } }
+  if(CARM_ENTRY.includes(S.branch)) sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",date).then(({data})=>{ const n=$("cxnote"); if(!n||!data||!data.length) return;
+    const sm=k=>data.filter(x=>x.kind===k).reduce((a,x)=>a+(+x.cnt||0),0); n.textContent=`그날 건수 · 참고: 씨암 카운트 표(원장 기준) 씨암 ${sm("doc")} · 소관절 ${sm("doc_s")}`; });
   sb.from("appointments").select("item,status").eq("branch_id",S.branch).eq("kind","pt").eq("appt_date",date).then(({data,error})=>{
     if(error||!data||!data.length){ ptHint(); return; } schedCnt={}; data.filter(a=>!LOST_ST.has(a.status)).forEach(a=>schedCnt[a.item]=(schedCnt[a.item]||0)+1); applySched(false); });
   function calc(){
