@@ -310,6 +310,8 @@ dialog{width:min(520px,94vw)}
 .fchip small{color:var(--muted);font-size:11px}
 .fchip[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
 .fchip[aria-pressed="true"] small{color:#dfe9f7}
+.shproxy{position:fixed;left:-50px;top:0;width:1px;height:1px;opacity:0;border:0;padding:0;margin:0;outline:0;z-index:60;background:transparent}
+.shproxy.on{opacity:1;background:#fff;border:2px solid var(--brand,#1f5fbf);border-radius:4px;font:inherit;font-size:13px;text-align:center;padding:0 2px}
 .sh-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .sh-tools .chips{margin:10px 0}
 .brushes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;position:sticky;top:0;z-index:5}
@@ -1567,8 +1569,9 @@ async function renderStaff(){
   const staff=(sr.data||[]).filter(s=>s.active), codesL=cr.data||[], codes=Object.fromEntries(codesL.map(c=>[c.code,c]));
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
   const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])];
-  const leads=staff.filter(s=>s.lead);
-  const shown=staff.filter(s=>(st.dept==="전체"||(st.dept==="팀장"?s.lead:s.dept===st.dept))&&(!st.q||s.name.includes(st.q)));
+  const leadOrd=(a,b)=>(a.lead_sort??1e6)-(b.lead_sort??1e6)||deptsPresent.indexOf(a.dept)-deptsPresent.indexOf(b.dept)||a.sort-b.sort||a.id-b.id;
+  const leads=staff.filter(s=>s.lead).sort(leadOrd);
+  const shown=staff.filter(s=>(st.dept==="전체"||(st.dept==="팀장"?s.lead:s.dept===st.dept))&&(!st.q||s.name.includes(st.q))); if(st.dept==="팀장") shown.sort(leadOrd);
   const gapOf={}; if(leads.length) days.forEach(d=>{ const g=leadGap(leads,map,d,codes); if(g.length) gapOf[d]=g; });
   const gapTxt=d=>gapOf[d]?`팀장 공백: ${gapOf[d].map(([a,b])=>`${minTxt(a)}~${minTxt(b)}`).join(", ")}`:"";
   const anyEdit=deptsPresent.some(canEditDept);
@@ -1679,19 +1682,32 @@ async function renderStaff(){
   const quickEdit=(td,initial)=>{ if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다");
     const sid=+td.dataset.s, d=td.dataset.d, key=sid+"|"+d; const inp=document.createElement("input"); inp.className="shq"; inp.value=initial??(map[key]?.value||""); inp.setAttribute("list","shcodes"); inp.setAttribute("aria-label","근무 입력");
     td.innerHTML=""; td.appendChild(inp); inp.focus(); if(initial==null) inp.select();
-    let done=false; const fin=async save=>{ if(done) return; done=true; const v=inp.value.trim(); if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); };
-    inp.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); fin(true).then(()=>moveSel(0,1)); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>moveSel(e.shiftKey?-1:1,0)); }
-      else if(e.key==="ArrowRight"||e.key==="ArrowLeft"||e.key==="ArrowUp"||e.key==="ArrowDown"){ e.preventDefault(); const dx=e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0, dy=e.key==="ArrowDown"?1:e.key==="ArrowUp"?-1:0; fin(true).then(()=>moveSel(dx,dy)); } };
+    let done=false; const fin=async(save,viaKey)=>{ if(done) return; done=true; const v=inp.value.trim(); if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); if(viaKey) focusProxy(); };
+    inp.onkeydown=e=>{ e.stopPropagation(); const nav=navOf(e); if(nav){ e.preventDefault(); afterIme(e,inp,()=>fin(true,true).then(()=>moveSel(...nav))); } else if(e.key==="Escape"){ fin(false,true); } };
     inp.onblur=()=>fin(true); };
   const allTd=()=>[...document.querySelectorAll("td.sh")];
+  // 한/영 전환: 칸만 골라 둔 상태에서도 보이지 않는 입력칸에 초점을 두어, 한/영 키와 한글 입력이 바로 되게 한다
+  const navOf=e=>({Enter:[0,1],Tab:[e.shiftKey?-1:1,0],ArrowRight:[1,0],ArrowLeft:[-1,0],ArrowUp:[0,-1],ArrowDown:[0,1]})[e.key]||null;
+  const afterIme=(e,el,go)=>{ if(!(e.isComposing||e.keyCode===229)) return go(); let ok=false; const run=()=>{ if(ok) return; ok=true; setTimeout(go,0); }; el.addEventListener("compositionend",run,{once:true}); setTimeout(run,250); };
+  const proxy=document.getElementById("shproxy")||(()=>{ const p=document.createElement("input"); p.id="shproxy"; p.className="shproxy"; p.autocomplete="off"; p.setAttribute("aria-label","근무 입력"); p.tabIndex=-1; p.__h={}; p.addEventListener("compositionstart",e=>p.__h.cs&&p.__h.cs(e)); document.body.appendChild(p); return p; })();
+  const fine=matchMedia("(pointer:fine)").matches;
+  const focusProxy=()=>{ if(!fine||S.view!=="staff"||!st.sel) return; if(document.activeElement!==proxy) proxy.focus({preventScroll:true}); };
+  const pOff=()=>{ proxy.classList.remove("on"); proxy.value=""; proxy.removeAttribute("style"); delete proxy.dataset.k; };
+  const pCommit=async(nav,refocus)=>{ const k=proxy.dataset.k; if(!k) return pOff(); const v=proxy.value.trim(); pOff(); const [sid,d]=k.split("|");
+    if(v!==(map[k]?.value||"")) await setVal(+sid,d,v||null,map[k]?.note||null); select(k); if(nav) moveSel(...nav); if(refocus) focusProxy(); };
+  proxy.__h.cs=()=>{ if(S.view!=="staff"||!st.sel||proxy.classList.contains("on")) return; const td=tdOf(st.sel); if(!td||td.dataset.ro) return;
+    const r=td.getBoundingClientRect(); proxy.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`; proxy.dataset.k=st.sel; proxy.classList.add("on"); };
+  proxy.onkeydown=e=>{ if(!proxy.classList.contains("on")) return; e.stopPropagation(); const nav=navOf(e);
+    if(nav){ e.preventDefault(); afterIme(e,proxy,()=>pCommit(nav,true)); } else if(e.key==="Escape"){ e.preventDefault(); pOff(); } };
+  proxy.onblur=()=>{ if(proxy.classList.contains("on")) pCommit(null,false); };
   const moveSel=(dx,dy)=>{ if(!st.sel) return; const td=tdOf(st.sel); if(!td) return; const tr=td.parentElement; const ci=[...tr.children].indexOf(td);
-    if(dx){ let n=td; do{ n=dx>0?n.nextElementSibling:n.previousElementSibling; }while(n&&!n.matches("td.sh")); if(n) select(n.dataset.s+"|"+n.dataset.d); return; }
-    let r=tr; do{ r=dy>0?r.nextElementSibling:r.previousElementSibling; }while(r&&!r.querySelector("td.sh")); if(r){ const n=r.children[ci]; if(n&&n.matches("td.sh")) select(n.dataset.s+"|"+n.dataset.d); } };
+    if(dx){ let n=td; do{ n=dx>0?n.nextElementSibling:n.previousElementSibling; }while(n&&!n.matches("td.sh")); if(n) select(n.dataset.s+"|"+n.dataset.d); focusProxy(); return; }
+    let r=tr; do{ r=dy>0?r.nextElementSibling:r.previousElementSibling; }while(r&&!r.querySelector("td.sh")); if(r){ const n=r.children[ci]; if(n&&n.matches("td.sh")) select(n.dataset.s+"|"+n.dataset.d); } focusProxy(); };
   let clip=null;
   document.querySelectorAll("td.sh").forEach(td=>{
     td.addEventListener("mousedown",e=>{ if(!st.brush) return; e.preventDefault(); window.__shDrag=true; window.__shStroke="s"+Date.now(); paint(td); });
     td.addEventListener("mouseenter",()=>{ if(window.__shDrag&&st.brush) paint(td); });
-    td.addEventListener("click",()=>{ const k0=td.dataset.s+"|"+td.dataset.d; markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); });
+    td.addEventListener("click",()=>{ const k0=td.dataset.s+"|"+td.dataset.d; markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); focusProxy(); });
     td.addEventListener("dblclick",()=>{ if(st.brush||td.dataset.ro) return; shiftDialog(td,map,codesL,staff,()=>renderStaff(),setVal); });
     td.addEventListener("dragstart",e=>{ if(td.dataset.ro||st.brush) return e.preventDefault(); e.dataTransfer.setData("text/gt-shift",td.dataset.s+"|"+td.dataset.d); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); });
     td.addEventListener("dragend",()=>td.classList.remove("dragging"));
@@ -1702,7 +1718,7 @@ async function renderStaff(){
       const [ss,sd]=src.split("|"); const grp="m"+Date.now(); const ok=await setVal(+td.dataset.s,td.dataset.d,h.value,h.note,{group:grp}); if(ok&&!copy) await setVal(+ss,sd,null,null,{group:grp,nolast:true}); select(dst); toast(copy?"복사했습니다":"옮겼습니다"); });
   });
   if(window.__shKey) document.removeEventListener("keydown",window.__shKey);
-  window.__shKey=e=>{ if(S.view!=="staff"||!document.querySelector("table.shtab")) return; if(e.target.closest&&e.target.closest("input,textarea,select,dialog")) return;
+  window.__shKey=e=>{ if(S.view!=="staff"||!document.querySelector("table.shtab")) return; if(e.target.closest&&e.target.closest("input,textarea,select,dialog")&&e.target!==proxy) return; if(e.isComposing||e.key==="Process") return;
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==="z"){ e.preventDefault(); undo(); return; }
     if(!st.sel) return;
     const td=tdOf(st.sel); if(!td) return; const [sid,d]=st.sel.split("|");
@@ -1715,8 +1731,14 @@ async function renderStaff(){
     else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); quickEdit(td,e.key); } };
   document.addEventListener("keydown",window.__shKey);
   // 직원 행 끌어서 순서·부서 이동
+  const reorderLead=async(srcId,beforeId)=>{ const s=leads.find(x=>x.id===srcId); if(!s) return;
+    const list=leads.filter(x=>x.id!==srcId); let i=list.findIndex(x=>x.id===beforeId); if(i<0) i=list.length; list.splice(i,0,s);
+    const res=await Promise.all(list.map((x,ix)=>x.lead_sort!==ix+1?sb.from("staff").update({lead_sort:ix+1}).eq("id",x.id):null).filter(Boolean)); const er=res.find(r=>r.error); if(er) return toast(errMsg(er.error));
+    toast("팀장 순서를 바꿨습니다 (부서는 그대로)"); renderStaff(); };
   const reorder=async(srcId,dept,beforeId)=>{ const s=staff.find(x=>x.id===srcId); if(!s) return;
+    if(st.dept==="팀장") return reorderLead(srcId,beforeId);
     if(!canEditDept(s.dept)||!canEditDept(dept)) return toast("이 부서를 고칠 권한이 없습니다");
+    if(s.dept!==dept&&!confirm(`${s.name} 님을 「${s.dept}」에서 「${dept}」 부서로 옮길까요?\n(순서만 바꾸려면 같은 부서 안에서 끌어 놓으세요)`)) return;
     const list=staff.filter(x=>x.dept===dept&&x.id!==srcId).sort((a,b)=>a.sort-b.sort||a.id-b.id); let i=beforeId?list.findIndex(x=>x.id===beforeId):list.length; if(i<0) i=list.length; list.splice(i,0,s);
     const ops=list.map((x,ix)=>(x.sort!==ix+1||x.id===srcId)?sb.from("staff").update(x.id===srcId?{sort:ix+1,dept}:{sort:ix+1}).eq("id",x.id):null).filter(Boolean);
     const res=await Promise.all(ops); const er=res.find(r=>r.error); if(er) return toast(/duplicate|unique/i.test(er.error.message)?"그 부서에 같은 이름이 이미 있습니다":errMsg(er.error));
