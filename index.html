@@ -679,8 +679,8 @@ async function renderSignup(){
     <div class="form-2" style="gap:0 10px"><div class="field"><label for="sg_n">이름</label><input id="sg_n" required maxlength="30"></div>
     <div class="field"><label for="sg_t">직함 <small class="meta">(선택)</small></label><input id="sg_t" maxlength="20" placeholder="예: 주임"></div></div>
     <div class="field"><label for="sg_id">아이디 <small class="meta">영문·숫자 3~30자</small></label><input id="sg_id" required pattern="[A-Za-z0-9._\\-]{3,30}" autocomplete="username"></div>
-    <div class="field"><label for="sg_pw">비밀번호 <small class="meta">8자 이상</small></label><input id="sg_pw" type="password" minlength="8" required autocomplete="new-password"></div>
-    <div class="field"><label for="sg_pw2">비밀번호 확인</label><input id="sg_pw2" type="password" minlength="8" required autocomplete="new-password"></div>
+    <div class="field"><label for="sg_pw">비밀번호</label><input id="sg_pw" type="password" required autocomplete="new-password"></div>
+    <div class="field"><label for="sg_pw2">비밀번호 확인</label><input id="sg_pw2" type="password" required autocomplete="new-password"></div>
     <div class="err" id="sg_e"></div>
     <button class="btn block" id="sg_ok">요청 보내기</button>
     <button class="btn ghost block" type="button" id="sg_back" style="margin-top:8px">로그인 화면으로</button>
@@ -1106,11 +1106,11 @@ async function renderUsers(){
         <td><select data-rqd style="height:28px">${DEPTS.map(d=>`<option ${d===r.dept?"selected":""}>${d}</option>`).join("")}${DEPTS.includes(r.dept)?"":`<option selected>${esc(r.dept)}</option>`}</select></td><td>${esc(r.title||"-")}</td>
         <td><select data-rql style="height:28px">${[2,3,4].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("")}</select></td>
         <td style="white-space:nowrap"><button class="btn sm" data-rqok>승인</button> <button class="btn ghost sm" data-rqx>거절</button></td></tr>`).join("")}</tbody></table></div></section>`:""}
-    <section class="panel"><h3>새 계정 만들기 <span>2~4등급은 소속 지점으로 바로 들어가고 지점 선택이 안 보입니다 · 비밀번호 8자 이상, 처음 로그인 후 마이페이지에서 본인이 바꾸도록 안내하세요</span></h3>
+    <section class="panel"><h3>새 계정 만들기 <span>2~4등급은 소속 지점으로 바로 들어가고 지점 선택이 안 보입니다 · 처음 로그인 후 마이페이지에서 본인이 바꾸도록 안내하세요</span></h3>
       <form class="inline-form" id="uf" autocomplete="off">
         <div class="field"><label for="u_id">아이디 (영문·숫자)</label><input id="u_id" required pattern="[A-Za-z0-9._\\-]{3,30}"></div>
         <div class="field"><label for="u_name">이름</label><input id="u_name" required></div>
-        <div class="field"><label for="u_pw">초기 비밀번호</label><input id="u_pw" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="field"><label for="u_pw">초기 비밀번호</label><input id="u_pw" type="password" autocomplete="new-password" required></div>
         <div class="field"><label for="u_lv">등급</label><select id="u_lv">${lvOpts(4)}</select></div>
         <div class="field"><label for="u_dept">부서</label><select id="u_dept">${deptOpts("원무")}</select></div>
         <div class="field"><label for="u_title">직함</label><input id="u_title" placeholder="예: 실장"></div>
@@ -1174,7 +1174,7 @@ async function renderUsers(){
   document.querySelectorAll("[data-pw]").forEach(b=>b.onclick=()=>{
     const u=list.find(x=>x.user_id===b.dataset.pw); const dlg=$("dlg");
     dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${esc(u.name)} 비밀번호 재설정</h3>
-      <div class="field"><label for="p_new">새 비밀번호 (8자 이상)</label><input id="p_new" type="password" autocomplete="new-password" minlength="8"></div>
+      <div class="field"><label for="p_new">새 비밀번호</label><input id="p_new" type="password" autocomplete="new-password"></div>
       <p class="err" id="p_err"></p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button class="btn" id="p_ok">재설정</button></div></form>`;
     dlg.showModal();
     $("p_ok").onclick=async ev=>{ ev.preventDefault(); const {error}=await sb.rpc("admin_reset_password",{p_user:u.user_id,p_password:$("p_new").value});
@@ -1662,7 +1662,8 @@ async function renderStaff(){
     const sid=+td.dataset.s, d=td.dataset.d, key=sid+"|"+d; const inp=document.createElement("input"); inp.className="shq"; inp.value=initial??(map[key]?.value||""); inp.setAttribute("list","shcodes"); inp.setAttribute("aria-label","근무 입력");
     td.innerHTML=""; td.appendChild(inp); inp.focus(); if(initial==null) inp.select();
     let done=false; const fin=async save=>{ if(done) return; done=true; const v=inp.value.trim(); if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); };
-    inp.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); fin(true).then(()=>moveSel(0,1)); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>moveSel(1,0)); } };
+    inp.onkeydown=e=>{ e.stopPropagation(); if(e.key==="Enter"){ e.preventDefault(); fin(true).then(()=>moveSel(0,1)); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>moveSel(e.shiftKey?-1:1,0)); }
+      else if(e.key==="ArrowRight"||e.key==="ArrowLeft"||e.key==="ArrowUp"||e.key==="ArrowDown"){ e.preventDefault(); const dx=e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0, dy=e.key==="ArrowDown"?1:e.key==="ArrowUp"?-1:0; fin(true).then(()=>moveSel(dx,dy)); } };
     inp.onblur=()=>fin(true); };
   const allTd=()=>[...document.querySelectorAll("td.sh")];
   const moveSel=(dx,dy)=>{ if(!st.sel) return; const td=tdOf(st.sel); if(!td) return; const tr=td.parentElement; const ci=[...tr.children].indexOf(td);
@@ -2826,8 +2827,9 @@ async function renderMe(){
     </div>
     <section class="panel"><h3>내 계정 <span>아이디 ${esc(me.login_id)}${me.pw_changed_at?` · 비밀번호 마지막 변경 ${esc(new Date(me.pw_changed_at).toLocaleDateString("ko-KR"))}`:" · 아직 초기 비밀번호입니다"}</span></h3>
       <form class="inline-form" id="pwf" autocomplete="off"><input type="text" autocomplete="username" value="${esc(me.login_id)}" hidden aria-hidden="true">
-        <div class="field"><label for="pw1">새 비밀번호 (8자 이상)</label><input id="pw1" type="password" autocomplete="new-password" minlength="8" required></div>
-        <div class="field"><label for="pw2">새 비밀번호 확인</label><input id="pw2" type="password" autocomplete="new-password" minlength="8" required></div>
+        <div class="field"><label for="pw0">현재 비밀번호</label><input id="pw0" type="password" autocomplete="current-password" required></div>
+        <div class="field"><label for="pw1">새 비밀번호</label><input id="pw1" type="password" autocomplete="new-password" required></div>
+        <div class="field"><label for="pw2">새 비밀번호 확인</label><input id="pw2" type="password" autocomplete="new-password" required></div>
         <button class="btn" type="submit" id="pwb">비밀번호 바꾸기</button></form><p class="err" id="pwe"></p>
       <p class="meta" style="margin:6px 0 0">비밀번호를 잊으면 지점 원장·본부에 재설정을 요청하세요. 바꾼 비밀번호는 본인만 알고, 관리자도 볼 수 없습니다.</p></section>
   </div>`;
@@ -2835,12 +2837,11 @@ async function renderMe(){
   document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{ S.view=b.dataset.go; render(); });
   document.querySelectorAll("[data-nok]").forEach(b=>b.onclick=async()=>{ const {error}=await markRead(+b.dataset.nok); if(error) return toast(errMsg(error)); toast("확인 완료"); renderMe(); });
   document.querySelectorAll("[data-nopen]").forEach(b=>b.onclick=()=>{ S.docV={dept:b.dataset.dept,id:+b.dataset.nopen,q:"",edit:false}; S.view="docs"; render(); });
-  $("pwf").onsubmit=async e=>{ e.preventDefault(); const a=$("pw1").value, b2=$("pw2").value; $("pwe").textContent="";
-    if(a.length<8) return $("pwe").textContent="8자 이상으로 정해주세요."; if(a!==b2) return $("pwe").textContent="두 칸이 서로 다릅니다.";
-    if(/^(.)\1+$/.test(a)||/^(?:12345678|password|qwer1234|11111111)$/i.test(a)) return $("pwe").textContent="너무 쉬운 비밀번호입니다.";
-    $("pwb").disabled=true; const {error}=await sb.auth.updateUser({password:a}); $("pwb").disabled=false;
-    if(error) return $("pwe").textContent=/same/i.test(error.message)?"지금 비밀번호와 같습니다.":errMsg(error);
-    await sb.rpc("mark_pw_changed"); S.me.pw_changed_at=new Date().toISOString(); $("pw1").value=$("pw2").value=""; toast("비밀번호를 바꿨습니다"); renderMe(); };
+  $("pwf").onsubmit=async e=>{ e.preventDefault(); const o=$("pw0").value, a=$("pw1").value, b2=$("pw2").value; $("pwe").textContent="";
+    if(!o) return $("pwe").textContent="현재 비밀번호를 적어주세요."; if(!a) return $("pwe").textContent="새 비밀번호를 적어주세요."; if(a!==b2) return $("pwe").textContent="새 비밀번호 두 칸이 서로 다릅니다.";
+    $("pwb").disabled=true; const {error}=await sb.rpc("change_my_password",{p_old:o,p_new:a}); $("pwb").disabled=false;
+    if(error) return $("pwe").textContent=errMsg(error);
+    S.me.pw_changed_at=new Date().toISOString(); $("pw0").value=$("pw1").value=$("pw2").value=""; toast("비밀번호를 바꿨습니다"); renderMe(); };
 }
 
 // ── 광고 효과 ──
