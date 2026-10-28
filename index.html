@@ -1544,7 +1544,7 @@ async function renderStaff(){
   const [sr,cr,hr]=await Promise.all([
     sb.from("staff").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("shift_codes").select("*").eq("branch_id",S.branch).order("sort"),
-    sb.from("shifts").select("*").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end)]);
+    allRows(()=>sb.from("shifts").select("*").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end).order("work_date").order("staff_id"))]);
   const err=sr.error||cr.error||hr.error; if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const staff=(sr.data||[]).filter(s=>s.active), codesL=cr.data||[], codes=Object.fromEntries(codesL.map(c=>[c.code,c]));
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
@@ -1592,7 +1592,7 @@ async function renderStaff(){
       </div></div>
     <div class="sh-tools">
       <div class="chips">${["전체",...(leads.length?["팀장"]:[]),...deptsPresent].map(d=>`<button class="fchip${d==="팀장"?" leadchip":""}" data-dp="${esc(d)}" aria-pressed="${st.dept===d}">${d==="팀장"?"★ 팀장":esc(d)}</button>`).join("")}</div>
-      <input id="hq" placeholder="이름 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:140px">
+      <span style="display:inline-flex;align-items:center;gap:0"><input id="hq" placeholder="이름 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:160px"></span>
     </div>
     ${anyEdit&&st.mode!=="day"?`<div class="brushes" role="toolbar" aria-label="근무 코드">
       <span class="meta">근무 코드</span>
