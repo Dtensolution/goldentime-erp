@@ -862,6 +862,36 @@ function bucketize(rows,mode,md){
     if(!B.has(key)) B.set(key,{key,label,rows:[]}); B.get(key).rows.push(r); });
   return [...B.values()].sort((a,b)=>a.key<b.key?-1:1).map(b=>({...b,a:aggRows(b.rows)}));
 }
+// 대시보드: 씨암·근전도 건수 그래프 (씨암 카운트 표 · 근전도 스케줄에서 집계)
+async function fillCarmEmg(boxId,start,end,bm,md,note){
+  const box=$(boxId); if(!box) return;
+  const keyOf=d=>bm==="day"?d:bm==="week"?weekOf(d).key:bm==="month"?d.slice(0,7):d.slice(0,4);
+  const labOf=d=>{ if(bm==="day"){ const x=new Date(d+"T00:00:00Z"); return md?`${x.getUTCMonth()+1}/${x.getUTCDate()}`:`${x.getUTCDate()}(${WD[x.getUTCDay()]})`; } return bm==="week"?weekOf(d).label:bm==="month"?`${+d.slice(5,7)}월`:d.slice(0,4)+"년"; };
+  const keys=[], lab={}; for(let d=start; d<=end; d=addDays(d,1)){ const k=keyOf(d); if(!lab[k]){ lab[k]=labOf(d); keys.push(k); } }
+  const [cr,er]=await Promise.all([ sb.from("carm_counts").select("cdate,kind,name,cnt").eq("branch_id",S.branch).gte("cdate",start).lte("cdate",end),
+    schedPerm("emg")!=="none"?sb.from("appointments").select("appt_date,doctor,status,is_new").eq("branch_id",S.branch).eq("kind","emg").gte("appt_date",start).lte("appt_date",end):Promise.resolve({data:[]}) ]);
+  if(!box.isConnected) return;
+  const C=(cr.data||[]), E=(er.data||[]).filter(a=>!LOST_ST.has(a.status));
+  const docs=[...new Set(C.filter(r=>r.kind==="doc"||r.kind==="doc_s").map(r=>r.name))];
+  const sumBy=(rows,f,dk)=>{ const o={}; rows.forEach(r=>{ const k=keyOf(r[dk]); o[k]=(o[k]||0)+f(r); }); return o; };
+  const techT=sumBy(C.filter(r=>r.kind==="tech"||r.kind==="tech_s"),r=>+r.cnt,"cdate"), docT=sumBy(C.filter(r=>r.kind==="doc"||r.kind==="doc_s"),r=>+r.cnt,"cdate");
+  const perDoc=Object.fromEntries(docs.map(n=>[n,sumBy(C.filter(r=>(r.kind==="doc"||r.kind==="doc_s")&&r.name===n),r=>+r.cnt,"cdate")]));
+  const emgDocs=[...new Set(E.map(a=>a.doctor||"미지정"))];
+  const perEmg=Object.fromEntries(emgDocs.map(n=>[n,sumBy(E.filter(a=>(a.doctor||"미지정")===n),()=>1,"appt_date")]));
+  const emgNew=sumBy(E.filter(a=>a.is_new),()=>1,"appt_date");
+  const tot=o=>Object.values(o).reduce((s,v)=>s+v,0);
+  const cT=tot(docT), tT=tot(techT), eT=E.length;
+  box.innerHTML=`<div class="grid2">
+    <section class="panel"><h3>씨암(C-arm) 건수 <span>${note||""}원장별 ${won(cT)}건 · 방사선사 기록 ${won(tT)}건 (선)</span></h3>${C.length?`<div class="cbox"><canvas id="${boxId}c" role="img" aria-label="씨암 건수 그래프"></canvas></div>
+      <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>원장</th><th>건수</th></tr></thead><tbody>${docs.map(n=>`<tr><td>${esc(n)}</td><td class="num">${won(tot(perDoc[n]))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">이 기간 씨암 카운트가 없습니다.</p>`}</section>
+    <section class="panel"><h3>근전도 건수 <span>${note||""}예약·완료 ${won(eT)}건 · 신환 ${won(tot(emgNew))}건 (선) · 취소·노쇼·변경 제외</span></h3>${eT?`<div class="cbox"><canvas id="${boxId}e" role="img" aria-label="근전도 건수 그래프"></canvas></div>
+      <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>담당 원장</th><th>건수</th></tr></thead><tbody>${emgDocs.map(n=>`<tr><td>${esc(n)}</td><td class="num">${won(tot(perEmg[n]))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">이 기간 근전도 기록이 없습니다.</p>`}</section></div>`;
+  const L=keys.map(k=>lab[k]), navy=cssv("--navy"), warn=cssv("--warn");
+  if(C.length) mkChart(boxId+"c",{data:{labels:L,datasets:[...docs.map((n,i)=>({label:n,data:keys.map(k=>perDoc[n][k]||0),backgroundColor:DOC_COLORS[i%DOC_COLORS.length],stack:"s",order:2})),
+    {type:"line",label:"방사선사 기록",data:keys.map(k=>techT[k]||0),borderColor:warn,backgroundColor:warn,tension:0,pointRadius:2,order:1}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
+  if(eT) mkChart(boxId+"e",{data:{labels:L,datasets:[...emgDocs.map((n,i)=>({label:n,data:keys.map(k=>perEmg[n][k]||0),backgroundColor:DOC_COLORS[i%DOC_COLORS.length],stack:"s",order:2})),
+    {type:"line",label:"신환",data:keys.map(k=>emgNew[k]||0),borderColor:warn,backgroundColor:warn,tension:0,pointRadius:2,order:1}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
+}
 async function renderDash(){
   killCharts();
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
@@ -918,9 +948,10 @@ async function renderDash(){
       <section class="panel"><h3>예약 이행 <span>실 예약 vs 실제 방문 · 선은 이행률</span></h3><div class="cbox"><canvas id="c6" role="img" aria-label="예약 이행 그래프"></canvas></div></section>
       <section class="panel"><h3>수술 · 비급여 <span>수술 건수(막대), 비급여 원(선)</span></h3><div class="cbox"><canvas id="c7" role="img" aria-label="수술 비급여 그래프"></canvas></div></section>
     </div>
+    <div id="ceBox"><p class="meta">씨암·근전도 불러오는 중…</p></div>
     <section class="panel"><h3>전광판 표 <span>최근 순 · 금액 원</span></h3><div class="tbl-box">${tbl}</div></section>
   </div>`;
-  bindDash();
+  bindDash(); fillCarmEmg("ceBox",start,end,bm,mode==="range").catch(e=>{ const b=$("ceBox"); if(b) b.innerHTML=`<p class="meta">씨암·근전도: ${esc(errMsg(e))}</p>`; });
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn"), good=cssv("--good");
   const pctAxis={position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>v+"%"}};
   if(mode==="week"&&window.__wk) drawTrend("trw",window.__wk);
@@ -945,7 +976,7 @@ async function renderDashOne(seg){
   const nav=`<div class="monthnav"><button class="btn ghost sm" id="op" aria-label="전날">◀</button><b class="num" style="min-width:130px">${d.slice(0,4)}. ${+d.slice(5,7)}. ${+d.slice(8)} (${WD[dd.getUTCDay()]})</b><button class="btn ghost sm" id="on" aria-label="다음날" ${d>=today?"disabled":""}>▶</button></div><input type="date" id="od" value="${d}" max="${today}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`;
   const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
   const bind=()=>{ bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
-  if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div></div>`; bind(); return; }
+  if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
   const A=aggRows([r]), P=prevR?aggRows([prevR]):null, W=wkR?aggRows([wkR]):null;
   const cmp=(f,fmt=won)=>{ const c=f(A); const parts=[]; [[P,prevR&&(prevR.close_date===addDays(d,-1)?"전일":`직전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)})`)],[W,"지난주 같은 요일"]].forEach(([X,lab])=>{ if(!X) return; const p=f(X); if(!p) return; const x=(c-p)/p; parts.push(`${lab} <span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"}${Math.abs(x*100).toFixed(1)}%</span>`); }); return parts.join(" · "); };
   const kpis=[
@@ -974,8 +1005,9 @@ async function renderDashOne(seg){
     </div>
     <section class="panel"><h3>비교 <span>이 날 · 전일 · 지난주 같은 요일 · 금액 원</span></h3><div class="tbl-box"><table><thead><tr><th>구분</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
       ${cmpRows.map(([l,a],i)=>`<tr class="${i===0?"cur":""}"><td>${l}</td>${rowCells(a)}</tr>`).join("")}</tbody></table></div></section>
+    <div id="ceBox1"><p class="meta">씨암·근전도 불러오는 중…</p></div>
   </div>`;
-  bind();
+  bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{});
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn");
   drawTrend("tr1",TR);
   mkChart("o1",{data:{labels:["외래","입원","비급여"],datasets:[{label:"이 날",data:[A.out,A.inpat,A.nonpay],backgroundColor:[navy,sky,warn]}]},options:{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${won(c.raw)}원`}}},scales:{y:{ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}}}});
