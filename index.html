@@ -357,6 +357,8 @@ dialog{width:min(520px,94vw)}
 .shtab td.sh.e span{border:none}
 .shtab td.sh i{position:absolute;right:2px;top:1px;width:6px;height:6px;border-radius:50%;background:var(--warn);font-size:0}
 .shtab td.sh.td{box-shadow:inset 0 0 0 1px var(--accent)}
+.shtab td.sh.dirty{box-shadow:inset 0 0 0 2px #e69138}.shtab td.sh.dirty::after{content:"";position:absolute;left:2px;top:2px;width:6px;height:6px;border-radius:50%;background:#e69138}
+#shsave.pulse{background:#e69138;border-color:#e69138;animation:shp 1.6s ease-in-out infinite}@keyframes shp{50%{box-shadow:0 0 0 4px color-mix(in srgb,#e69138 35%,transparent)}}
 .shtab td.sh:hover{outline:2px solid var(--navy);outline-offset:-2px}
 .shtab td.sh[data-ro]{cursor:default}
 .shtab.week td.sh{min-width:96px;height:40px}
@@ -581,10 +583,12 @@ const PT_BY_BRANCH = {"gt-cs":["도수A","E1","E2","ES5","ES8"]}; // 도수상�
 const ptItemsOf = b => PT_BY_BRANCH[b] || PT_ITEMS;
 const ptKeyOf = (b,item) => PT_BY_BRANCH[b] ? String(item||"").replace(/^충격파\s*/,"") : item;
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+// 로그인은 이 창(탭)에서만 유지: 페이지·브라우저를 닫으면 로그아웃 (시간이 지나도 자동 로그아웃 없음)
+try{ Object.keys(localStorage).filter(k=>/^sb-.*auth-token/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, storage: (()=>{ try{ sessionStorage.setItem("__t","1"); sessionStorage.removeItem("__t"); return window.sessionStorage; }catch(e){ return undefined; } })() } });
 // 조회 건수 제한 없이: 서버가 한 번에 1000건까지만 주므로, 목록 조회는 자동으로 끝까지 이어 받는다
 (function(){ try{
-  const PK={branch_settings:["branch_id"],carm_confirm:["branch_id","cdate"],carm_counts:["branch_id","cdate","kind","name"],doc_reads:["doc_id","user_id"],profiles:["user_id"],sched_day_notes:["branch_id","kind","note_date"],shifts:["staff_id","work_date"]};
+  const PK={branch_settings:["branch_id"],carm_confirm:["branch_id","cdate"],carm_counts:["branch_id","cdate","kind","name"],doc_reads:["doc_id","user_id"],profiles:["user_id"],sched_day_notes:["branch_id","kind","note_date"],shifts:["staff_id","work_date"],mtx_counts:["branch_id","cdate","name"]};
   let P=Object.getPrototypeOf(sb.from("staff").select("id")); while(P&&!Object.prototype.hasOwnProperty.call(P,"then")) P=Object.getPrototypeOf(P);
   if(!P||P.__gtAll) return; P.__gtAll=1; const orig=P.then, PAGE=1000;
   P.then=function(f,r){ const u=this.url, sp=u&&u.searchParams, h=this.headers||{};
@@ -660,14 +664,16 @@ const resvTot = (r,k) => RESV_ITEMS.reduce((a,i)=>a+(Number(r.resv?.items?.[i]?.
 
 // ── 자동 로그아웃 ──
 let idleT;
-function bumpIdle(){ clearTimeout(idleT); if(S.user) idleT=setTimeout(()=>doLogout("idle"), IDLE_MIN*60e3); }
+function bumpIdle(){ /* 시간 경과 자동 로그아웃 없음 — 창을 닫으면 로그아웃 */ }
 // 로그아웃: 서버 응답을 기다리지 않고 이 기기에서 확실히 로그아웃
 async function doLogout(why){
   document.querySelectorAll("#logout,#lo").forEach(b=>{ b.disabled=true; b.textContent="로그아웃 중…"; });
   try{ if(window.__entryFlush) await Promise.race([window.__entryFlush(), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
+  try{ if(typeof shDirtyN==="function"&&shDirtyN()>0&&confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다. 저장하고 로그아웃할까요?`)) await shFlush(); }catch(e){}
   window.__entryFlush=null; window.onbeforeunload=null; clearTimeout(idleT);
   try{ await Promise.race([sb.auth.signOut({scope:"local"}), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
   try{ Object.keys(localStorage).filter(k=>/^sb-.*auth-token/.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+  try{ Object.keys(sessionStorage).filter(k=>/^sb-.*auth-token/.test(k)).forEach(k=>sessionStorage.removeItem(k)); }catch(e){}
   try{ if(why==="idle") sessionStorage.setItem("gt-idle","1"); }catch(e){}
   location.replace(location.pathname);
 }
@@ -810,7 +816,9 @@ function render(){
   if(lv<=2) sb.from("signup_requests").select("id",{count:"exact",head:true}).eq("status","pending").then(({count})=>{ const b=document.querySelector('nav.side button[data-v="users"]'); if(b&&count) b.insertAdjacentHTML("beforeend",` <span class="pill wait" title="가입 요청">${count}</span>`); },()=>{});
   $("homeBtn").onclick=()=>{ S.view=canDash()?"dash":defaultView(); render(); };
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
-  document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; } S.view=b.dataset.v; render(); });
+  document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=async()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; }
+    if(S.view==="staff"&&b.dataset.v!=="staff"&&shDirtyN()>0){ if(confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다.\n[확인] 저장하고 이동 · [취소] 저장하지 않고 이동 (근무표로 돌아오면 그대로 남아 있음)`)){ const r=await shFlush(); toast(r.fail?`${r.fail}칸 저장 실패: ${r.msg}`:`${r.n}칸 저장했습니다`); } }
+    S.view=b.dataset.v; render(); });
   const v=S.view;
   if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
@@ -1073,7 +1081,7 @@ async function renderCal(){
 function ptKeysEntry(){ return [...ptItemsOf(S.branch),"도수상담"]; }
 async function renderEntry(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const today=kstToday(); const lv=S.me.level; const minDate = lv===4 ? addDays(today,-1) : "2026-01-01";
+  const today=kstToday(); const lv=S.me.level; const minDate = "2026-01-01"; const editFrom = lv===4 ? addDays(today,-1) : minDate;
   let date = S.entryDate && S.entryDate>=minDate && S.entryDate<=today ? S.entryDate : today; S.entryDate=null;
   const docs=(await loadDoctors()).filter(d=>d.active);
   const {data:row, error} = await sb.from("daily_close").select("*").eq("branch_id",S.branch).eq("close_date",date).maybeSingle();
@@ -1099,11 +1107,13 @@ async function renderEntry(){
         <div class="row calc"><span>외래 + 입원 = 총진료비</span><output id="o_sum">–</output></div></div></fieldset>
       <fieldset><legend>수납</legend><p class="fs-note">단위 원 · 단말기·통장 기준 실제 금액</p><div class="rows">
         ${num("f_card","카드",r.pay_card)}${num("f_cash","현금",r.pay_cash)}${num("f_free","└ Free (현금 중 무료분)",r.pay_free)}${num("f_acct","계좌이체",r.pay_account)}${num("f_unpaid","미수 발생",r.unpaid)}${num("f_unpaidIn","미수 입금",r.unpaid_in)}
-        <div class="row calc"><span>수납 합계</span><output id="o_pay">–</output></div></div></fieldset>
+        <div class="row calc"><span>수납 합계</span><output id="o_pay">–</output></div>
+        <div class="row calc"><span>차액 (총진료비 − 수납 합계)</span><output id="o_payd">–</output></div></div></fieldset>
       <div hidden><input id="x_cash" data-n value="${r.exp_cash?won(r.exp_cash):""}"><input id="x_card" data-n value="${r.exp_card?won(r.exp_card):""}"><input id="x_free" data-n value="${r.exp_free?won(r.exp_free):""}"><input id="i_cash" data-n value="${r.inc_cash?won(r.inc_cash):""}"><input id="i_card" data-n value="${r.inc_card?won(r.inc_card):""}"><input id="i_acct" data-n value="${r.inc_account?won(r.inc_account):""}"></div>
       <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
-        <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div></div>
+        <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div>
+        <div class="row calc"><span>차액 (원장별 진료비 합계 − 총진료비)</span><output id="o_dad">–</output></div></div>
         ${lv<=3?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>
       <fieldset><legend>예약</legend><p class="fs-note">예약 명단은 예약용 구글시트에 두고, 여기에는 건수만 적습니다.</p>
         <div class="grid3h"><span>구분</span><span>예약</span><span>변경</span><span>취소</span></div><div class="rows" style="margin-top:6px">
@@ -1157,7 +1167,7 @@ async function renderEntry(){
     n.innerHTML=`도수·충격파 스케줄에서 자동으로 채웁니다 (취소·노쇼 제외)${ptManual.size?` · 손으로 고친 칸 ${ptManual.size}개 <button type="button" class="linkbtn" id="ptre">스케줄 기준으로 되돌리기</button>`:""}`;
     ptKeys.forEach((k,i)=>{ const el=$("pt"+i); if(!el) return; const lab=el.previousElementSibling; if(lab) lab.dataset.auto = ptManual.has(k)?"수정":"자동"; });
     if($("ptre")) $("ptre").onclick=()=>{ ptManual.clear(); applySched(true); }; }
-  function applySched(force){ if(!schedCnt) return; let ch=false;
+  function applySched(force){ if(!schedCnt||date<editFrom) return; let ch=false;
     ptKeys.forEach((k,i)=>{ if(ptManual.has(k)) return; const el=$("pt"+i); if(!el) return; const nv=schedCnt[k]||0; if(v("pt"+i)!==nv){ el.value=nv?won(nv):""; ch=true; } });
     ptHint(); if(ch||force){ dirty.add("pt"); autosave(); } }
   if(CARM_ENTRY.includes(S.branch)) sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",date).then(({data})=>{ const n=$("cxnote"); if(!n||!data||!data.length) return;
@@ -1169,8 +1179,9 @@ async function renderEntry(){
     $("o_np").textContent=t?pct(np,t):"–";
     const sc=$("o_sum"); if(t&&(o||ip)){ const ok=o+ip===t; sc.textContent=ok?"일치":"차이 "+won(o+ip-t)+"원"; sc.style.color=ok?"var(--good)":"var(--warn)"; } else { sc.textContent="–"; sc.style.color=""; }
     $("o_pay").textContent=won(v("f_card")+v("f_cash")+v("f_acct"))+"원";
+    { const pd=t-(v("f_card")+v("f_cash")+v("f_acct")); const e=$("o_payd"); e.textContent=t?`${won(pd)}원`:"–"; }
     $("o_dn").textContent=won(docRows.reduce((a,_,i)=>a+v("dn"+i),0)); $("o_dr").textContent=won(docRows.reduce((a,_,i)=>a+v("dr"+i),0));
-    { const da=docRows.reduce((a,_,i)=>a+v("da"+i),0), o=$("o_da"); o.textContent=da?won(da):"–"; o.title=da&&t?(da===t?"총진료비와 일치":`총진료비와 ${won(da-t)}원 차이`):""; o.style.color=da&&t&&da!==t?"var(--warn)":""; }
+    { const da=docRows.reduce((a,_,i)=>a+v("da"+i),0), o=$("o_da"); o.textContent=da?won(da):"–"; o.title=da&&t?(da===t?"총진료비와 일치":`총진료비와 ${won(da-t)}원 차이`):""; o.style.color=da&&t&&da!==t?"var(--warn)":""; const dd=$("o_dad"); if(dd){ dd.textContent=da&&t?(da===t?"0원 · 일치":`${da-t>0?"+":""}${won(da-t)}원`):"–"; dd.style.color=da&&t?(da===t?"var(--good)":"var(--warn)"):""; } }
     $("o_rate").textContent=pct(v("rv_visit"),v("rv_real"));
     const c=$("chk"); const canc=RESV_ITEMS.reduce((a,_,i)=>a+v(`rv_${i}_cancel`),0), why=WHY.reduce((a,_,i)=>a+v("rw_"+i),0);
     if(!t){ c.textContent="총진료비는 원무 마감 후 입력하세요. 입력한 칸은 바로 저장됩니다."; c.className="check"; }
@@ -1179,6 +1190,8 @@ async function renderEntry(){
     else { c.textContent="입력한 칸은 자동으로 저장됩니다."; c.className="check"; }
   }
   calc();
+  if(date<editFrom){ main.querySelectorAll("#ef input:not(#edate),#ef textarea,#ef select").forEach(el=>{ el.readOnly=true; el.disabled=el.tagName==="SELECT"; });
+    ["save","nd_add"].forEach(id=>{ if($(id)) $(id).disabled=true; }); setAsv(`<span class="pill">보기 전용</span> 지난 마감일지는 볼 수만 있습니다 (어제·오늘만 수정)`); window.__entryFlush=null; }
   $("ef").addEventListener("submit", async e=>{
     e.preventDefault(); $("save").disabled=true; const ok=await autosave(true); $("save").disabled=false;
     if(ok){ const [,m,d]=date.split("-"); toast(`${+m}/${+d} 마감일지 저장됨${v("f_total")?"":" (총진료비는 아직 비어 있음)"}`); }
@@ -1628,8 +1641,10 @@ function leadGap(leads,map,d,codes){ const iv=leads.map(s=>map[s.id+"|"+d]).filt
   let cur=540; const gaps=[]; for(const [a,b] of iv){ if(a>cur){ gaps.push([cur,Math.min(a,1320)]); } cur=Math.max(cur,b); if(cur>=1320) break; } if(cur<1320) gaps.push([cur,1320]); return gaps.filter(g=>g[1]>g[0]); }
 const STAFF_DEPTS=["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리","경영지원"];
 function canEditDept(dept){ const me=S.me; return me.level<=3 || me.perms?.sched_staff==="edit" || (me.level===3 && me.dept===dept); }
-function shiftHours(v,codes){ const c=codes[v]; if(c&&c.start_min!=null&&c.end_min!=null) return (c.end_min-c.start_min)/60;
-  const t=String(v).match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/); if(!t) return 0; const a=+t[1]*60+(+t[2]||0), b=+t[3]*60+(+t[4]||0); return b>a?(b-a)/60:0; }
+// 근무 시간: 13~14시는 점심이라 뺌 (13시에 시작하는 근무는 빼지 않음)
+const lunchCut=(a,b)=>a===780?0:Math.max(0,Math.min(b,840)-Math.max(a,780));
+function shiftHours(v,codes){ const c=codes[v]; if(c&&c.start_min!=null&&c.end_min!=null) return (c.end_min-c.start_min-lunchCut(c.start_min,c.end_min))/60;
+  const t=String(v).match(/(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?/); if(!t) return 0; const a=+t[1]*60+(+t[2]||0), b=+t[3]*60+(+t[4]||0); return b>a?(b-a-lunchCut(a,b))/60:0; }
 function shiftColor(v,codes){ const c=codes[v]; if(c) return SH_COLORS[c.color]||SH_COLORS.blue; if(/off|휴/i.test(v)) return SH_COLORS.gray; if(/연차|반차|학회|교육/.test(v)) return SH_COLORS.orange;
   const t=String(v).match(/(\d{1,2})(?::\d{2})?\s*-\s*(\d{1,2})/); if(t){ const a=+t[1], b=+t[2]; if(a>=17) return SH_COLORS.purple; if(a>=12) return SH_COLORS.teal; if(b>=21) return SH_COLORS.navy; return SH_COLORS.blue; } return SH_COLORS.blue; }
 const DEPT_COLORS={"의료진":"#1858a8","간호":"#d0457a","병동":"#7656b8","수술":"#1c8c8c","원무":"#d17a12","물리치료":"#2f8f4e","영상의학":"#5b6fd6","임상병리":"#a35b2a","경영지원":"#6b7785"};
@@ -1651,6 +1666,8 @@ async function renderStaff(){
   const err=sr.error||cr.error||hr.error; if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const staff=(sr.data||[]).filter(s=>s.active), codesL=cr.data||[], codes=Object.fromEntries(codesL.map(c=>[c.code,c]));
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
+  const Q=shQueue(); Object.entries(Q).forEach(([k,q])=>{ if(q.v==null) delete map[k]; else map[k]={staff_id:q.sid,work_date:q.d,value:q.v,note:q.note}; });
+  const dq=k=>Q[k]?" dirty":"";
   const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])];
   const leadOrd=(a,b)=>(a.lead_sort??1e6)-(b.lead_sort??1e6)||deptsPresent.indexOf(a.dept)-deptsPresent.indexOf(b.dept)||a.sort-b.sort||a.id-b.id;
   const leads=staff.filter(s=>s.lead).sort(leadOrd);
@@ -1667,9 +1684,9 @@ async function renderStaff(){
   const wk0=days[0]; const wkA=d=>{ if(d===wk0) return ""; const w=new Date(d+"T00:00:00Z").getUTCDay(); return w===1?' data-wk="1"':""; };
   const wkAlt=d=>{ const t=new Date(d+"T00:00:00Z"), m=new Date(wk0+"T00:00:00Z"); const mon=x=>{ const k=(x.getUTCDay()+6)%7; return new Date(x.getTime()-k*864e5).getTime(); }; return Math.round((mon(t)-mon(m))/(7*864e5))%2===1; };
   const cell=(s,d)=>{ const k=s.id+"|"+d, h=map[k]; const ed=canEditDept(s.dept);
-    if(!h) return `<td class="sh e${d===today?" td":""}${sel(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?"":'data-ro="1"'}></td>`;
+    if(!h) return `<td class="sh e${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?"":'data-ro="1"'}></td>`;
     const off=isOffVal(h.value,codes);
-    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
+    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
   let body="";
   if(st.mode!=="day"){
     const groups=st.dept==="팀장"?["팀장"]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?s.lead:s.dept===g;
@@ -1739,18 +1756,16 @@ async function renderStaff(){
   if($("bx")) $("bx").onclick=()=>setBrush(null);
   if($("bundo")) $("bundo").onclick=()=>undo();
   if($("shsave")) $("shsave").onclick=async()=>{ const b=$("shsave"); b.disabled=true;
-    const ae=document.activeElement; if(ae&&(ae.classList?.contains("shq")||ae.id==="shproxy")) ae.blur();
-    const SV=window.__shSave ||= {pend:0,fail:{},at:null};
-    for(let i=0;i<50&&SV.pend>0;i++) await new Promise(r=>setTimeout(r,100));
-    for(const f of Object.values({...SV.fail})) await setVal(f.sid,f.d,f.v,f.note,{nohist:true,nolast:true});
-    for(let i=0;i<50&&SV.pend>0;i++) await new Promise(r=>setTimeout(r,100));
-    b.disabled=false; const nf=Object.keys(SV.fail).length; shStat(); toast(nf?`${nf}칸은 저장하지 못했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요`:"저장했습니다 · 새로고침해도 그대로 남아 있습니다"); };
+    const ae=document.activeElement; if(ae&&(ae.classList?.contains("shq")||ae.id==="shproxy")) ae.blur(); await new Promise(r=>setTimeout(r,50));
+    const r=await shFlush(); b.disabled=false; shStat(); document.querySelectorAll("td.sh.dirty").forEach(td=>td.classList.toggle("dirty",!!shQueue()[td.dataset.s+"|"+td.dataset.d]));
+    toast(r.fail?`${r.fail}칸은 저장하지 못했습니다: ${r.msg} — 다시 눌러 주세요`:r.n?`${r.n}칸 저장했습니다 · 새로고침해도 그대로 남아 있습니다`:"저장할 칸이 없습니다 (모두 저장됨)"); };
   setTimeout(()=>{ try{ shStat(); }catch(e){} },0);
   floatScroll(document.querySelector(".sh-wrap"));
   if(!window.__shUp){ window.__shUp=1; document.addEventListener("mouseup",()=>{ window.__shDrag=false; window.__shStroke=null; }); }
   document.querySelectorAll("[data-shc]").forEach(b=>b.onclick=()=>{ st.color=b.dataset.shc; lsSet("gt-shcolor",st.color); renderStaff(); });
   const tdOf=k=>{ const [s,d]=k.split("|"); return document.querySelector(`td.sh[data-s="${s}"][data-d="${d}"]`); };
-  const drawCell=(td,v,note)=>{ const sid=+td.dataset.s, s=staff.find(x=>x.id===sid), d=td.dataset.d;
+  const drawCell=(td,v,note)=>{ drawCell0(td,v,note); td.classList.toggle("dirty",!!shQueue()[td.dataset.s+"|"+td.dataset.d]); };
+  const drawCell0=(td,v,note)=>{ const sid=+td.dataset.s, s=staff.find(x=>x.id===sid), d=td.dataset.d;
     if(v==null){ td.className="sh e"+(d===today?" td":"")+(st.sel===sid+"|"+d?" sel":"")+(st.last===sid+"|"+d?" last":""); td.removeAttribute("style"); td.removeAttribute("draggable"); td.innerHTML=""; return; }
     td.className="sh"+(isOffVal(v,codes)?" off":"")+(d===today?" td":"")+(st.sel===sid+"|"+d?" sel":"")+(st.last===sid+"|"+d?" last":""); td.style.setProperty("--sc",colOf(v,s?.dept)); if(!st.brush) td.setAttribute("draggable","true");
     td.innerHTML=`<span>${esc(v)}</span>${note?`<i>${esc(note)}</i>`:""}`; };
@@ -1760,14 +1775,12 @@ async function renderStaff(){
   const setVal=async(sid,d,v,note,opt={})=>{ v=shAlias(v); const key=sid+"|"+d, td=tdOf(key);
     if(!opt.nohist){ const prev=map[key]?{value:map[key].value,note:map[key].note}:null; if(!(prev==null&&v==null)&&!(prev&&prev.value===v&&(prev.note||null)===(note??null))){ st.undo.push({g:opt.group||window.__shStroke||("g"+Date.now()+Math.random()),sid,d,prev}); if(st.undo.length>300) st.undo.shift(); refreshUndo(); } }
     if(!opt.nolast) markLast(key);
-    const SV=window.__shSave ||= {pend:0, fail:{}, at:null};
-    const run=async(op)=>{ SV.pend++; shStat(); let error; try{ ({error}=await op()); }catch(e){ error={message:String(e&&e.message||e)}; } SV.pend--;
-      if(error){ SV.fail[key]={sid,d,v,note:note??null}; toast("저장 안 됨: "+errMsg(error)); shStat(); return false; } delete SV.fail[key]; SV.at=new Date(); shStat(); return true; };
-    if(v==null){ if(!map[key]) return true; delete map[key]; if(td) drawCell(td,null); return run(()=>sb.from("shifts").delete().eq("staff_id",sid).eq("work_date",d)); }
-    map[key]={staff_id:sid,work_date:d,value:v,note:note??null}; if(td) drawCell(td,v,note);
-    return run(()=>sb.from("shifts").upsert({staff_id:sid,work_date:d,branch_id:S.branch,value:v,note:note??null})); };
-  const shStat=()=>{ const el=$("shstat"); if(!el) return; const SV=window.__shSave||{pend:0,fail:{}}; const nf=Object.keys(SV.fail).length;
-    el.innerHTML=nf?`<span class="warn">저장 안 된 칸 ${nf}개 — 저장을 눌러 다시 시도</span>`:SV.pend?"저장 중…":SV.at?`모두 저장됨 · ${String(SV.at.getHours()).padStart(2,"0")}:${String(SV.at.getMinutes()).padStart(2,"0")}`:"칸에 적으면 바로 저장됩니다"; };
+    // 바로 저장하지 않고 모아 두었다가 [💾 저장]을 누르면 한 번에 저장
+    const Q=shQueue();
+    if(v==null){ if(!map[key]&&!Q[key]) return true; delete map[key]; Q[key]={sid,d,v:null,note:null}; if(td) drawCell(td,null); shStat(); return true; }
+    map[key]={staff_id:sid,work_date:d,value:v,note:note??null}; Q[key]={sid,d,v,note:note??null}; if(td) drawCell(td,v,note); shStat(); return true; };
+  const shStat=()=>{ const el=$("shstat"); const n=Object.keys(shQueue()).length; const b=$("shsave"); if(b) b.classList.toggle("pulse",n>0); if(!el) return; const at=window.__shSaveAt;
+    el.innerHTML=n?`<span class="warn">저장 안 한 칸 ${n}개 — 💾 저장을 눌러야 저장됩니다</span>`:at?`모두 저장됨 · ${String(at.getHours()).padStart(2,"0")}:${String(at.getMinutes()).padStart(2,"0")}`:"칸을 고친 뒤 💾 저장을 누르세요"; };
   const undo=async()=>{ if(!st.undo.length) return toast("되돌릴 내용이 없습니다"); const g=st.undo[st.undo.length-1].g; const batch=[]; while(st.undo.length&&st.undo[st.undo.length-1].g===g) batch.push(st.undo.pop()); refreshUndo();
     for(const u of batch) await setVal(u.sid,u.d,u.prev?u.prev.value:null,u.prev?u.prev.note:null,{nohist:true});
     const u=batch[batch.length-1]; markLast(u.sid+"|"+u.d); toast(`되돌렸습니다 (${batch.length}칸)`); };
@@ -3422,6 +3435,17 @@ function drawTrend(id,T){
 
 // ── 표 머리줄 고정 (페이지 스크롤 하나로 쓰면서 머리줄은 위에 붙어 있게) ──
 const __sticky=[];
+// 근무표: 고친 칸을 모아 두는 곳 (지점별) · [💾 저장]으로 한 번에 서버에 저장
+function shQueue(){ const A=window.__shQ ||= {}; return A[S.branch] ||= {}; }
+function shDirtyN(){ const A=window.__shQ||{}; return Object.values(A).reduce((n,q)=>n+Object.keys(q).length,0); }
+async function shFlush(){ const A=window.__shQ||{}; let n=0, fail=0, msg="";
+  for(const [br,Q] of Object.entries(A)){ const L=Object.entries(Q); if(!L.length) continue;
+    const ups=L.filter(([,q])=>q.v!=null), dels=L.filter(([,q])=>q.v==null);
+    if(ups.length){ const {error}=await sb.from("shifts").upsert(ups.map(([,q])=>({staff_id:q.sid,work_date:q.d,branch_id:br,value:q.v,note:q.note??null}))); if(error){ fail+=ups.length; msg=errMsg(error); } else { ups.forEach(([k])=>delete Q[k]); n+=ups.length; } }
+    const res=await Promise.all(dels.map(([k,q])=>sb.from("shifts").delete().eq("staff_id",q.sid).eq("work_date",q.d).then(r=>[k,r.error])));
+    res.forEach(([k,e])=>{ if(e){ fail++; msg=errMsg(e); } else { delete Q[k]; n++; } }); }
+  if(!fail) window.__shSaveAt=new Date(); return {n,fail,msg}; }
+window.addEventListener("beforeunload",e=>{ if(shDirtyN()>0){ e.preventDefault(); e.returnValue=""; } });
 // 넓은 표: 화면 아래에 가로 스크롤바를 붙여 둔다 (표 맨 밑까지 내리지 않아도 좌우 이동)
 function floatScroll(wrap){ document.querySelectorAll(".shfloat").forEach(x=>x.remove()); if(!wrap) return;
   const bar=document.createElement("div"); bar.className="shfloat"; bar.setAttribute("aria-hidden","true"); bar.innerHTML="<div></div>"; document.body.appendChild(bar);
