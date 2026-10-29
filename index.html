@@ -2334,7 +2334,7 @@ async function renderRegisters(opts={}){
           const num=v=>{ const n=+String(v??"").replace(/[,\s원]/g,""); return isFinite(n)?n:0; };
           shownAll.forEach(r=>{ const k=String(r.data?.[g.key]??"").trim(); if(!k) return; const o=by[k] ||= {n:0,s:sc.map(()=>0)}; o.n++; sc.forEach((c,i)=>o.s[i]+=num(r.data?.[c.key])); });
           const L=Object.entries(by).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0],"ko")); const T={n:L.reduce((a,x)=>a+x[1].n,0),s:sc.map((c,i)=>L.reduce((a,x)=>a+x[1].s[i],0))};
-          return `<div class="regsum"><div class="meta" style="margin-bottom:4px">${st.month?`${+st.month.slice(5)}월`:"전체"} ${esc(g.label)}별 자동 집계</div><table class="fin"><thead><tr><th>${esc(g.label)}</th><th class="num">건수</th>${sc.map(c=>`<th class="num">${esc(c.label)}</th>`).join("")}</tr></thead><tbody>
+          return `<div class="regsum"><div class="meta" style="margin-bottom:4px">${st.month?`${+st.month.slice(5)}월`:"전체"} ${esc(g.label)}별 합계 <small>(자동)</small></div><table class="fin"><thead><tr><th>${esc(g.label)}</th><th class="num">${sc.length?"건수":"합계(건)"}</th>${sc.map(c=>`<th class="num">${esc(c.label)} 합계</th>`).join("")}</tr></thead><tbody>
             ${L.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="num">${o.n}</td>${o.s.map(v=>`<td class="num">${v.toLocaleString("ko-KR")}</td>`).join("")}</tr>`).join("")||`<tr><td colspan="9" class="meta">자료 없음</td></tr>`}
             </tbody><tfoot><tr><th>합계</th><th class="num">${T.n}</th>${T.s.map(v=>`<th class="num">${v.toLocaleString("ko-KR")}</th>`).join("")}</tr></tfoot></table></div>`; };
   main.innerHTML=`<div class="wrap">
