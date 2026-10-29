@@ -1366,7 +1366,7 @@ async function renderSched(kind){
       return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
         <b>${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item].filter(Boolean).map(esc).join(" / "):`${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.needle_doctor?"니들링 "+esc(a.needle_doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span></button>`; }).join("");
     return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h${st.mode==="week"?" sc-go":""}" ${st.mode==="week"?`data-goday="${c.date}" role="button" tabindex="0" title="${c.date} 하루 보기"`:""}>${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
-      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>예약 불가${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
+      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
   // 집계
   const live=appts.filter(a=>!LOST_ST.has(a.status));
@@ -3490,7 +3490,7 @@ const blkLabel=b=>`${b.bdate?b.bdate.slice(5).replace("-","/"):"매주 "+(b.dows
 function blocksPanel(kind,blocks,lanes,canEdit,cfg){
   if(!canEdit&&!(blocks||[]).length) return "";
   const tOpts=sel=>{ const o=[]; for(let m=cfg.from-60;m<=cfg.to+60;m+=10) o.push(`<option value="${m}" ${m===sel?"selected":""}>${hhmm(m)}</option>`); return o.join(""); };
-  return `<details class="panel" id="blkp" ${S.blkOpen?"open":""}><summary><b>예약 불가 시간</b> <span class="meta">${(blocks||[]).length}개 · 회색 빗금으로 표시되고 그 시간엔 예약이 안 들어갑니다</span></summary>
+  return `<details class="panel" id="blkp" ${S.blkOpen?"open":""}><summary><b>🚫 예약 막음</b> <span class="meta">${(blocks||[]).length}개 · 회색 빗금 칸엔 예약이 안 들어갑니다${canEdit?" · 빈 칸 오른쪽 클릭으로 바로 막기, 빗금 오른쪽 클릭으로 풀기":""}</span></summary>
     <div class="tbl-box" style="margin-top:10px"><table class="fin"><thead><tr><th>언제</th><th>시간</th><th>방</th><th>메모</th><th></th></tr></thead><tbody>
     ${(blocks||[]).map(b=>`<tr><td>${b.bdate?`${b.bdate} (${DOW_K[new Date(b.bdate+"T00:00:00Z").getUTCDay()]})`:"매주 "+(b.dows||[]).slice().sort((a,c)=>((a+6)%7)-((c+6)%7)).map(d=>DOW_K[d]).join("·")}</td><td class="num">${hhmm(b.start_min)}~${hhmm(b.end_min)}</td><td>${b.lane_id?esc(lanes.find(l=>l.id===b.lane_id)?.name||"(숨긴 방)"):"모든 방"}</td><td>${esc(b.note||"")}</td><td>${canEdit?`<button class="btn ghost sm" data-bdel="${b.id}">삭제</button>`:""}</td></tr>`).join("")||`<tr><td colspan="5" class="meta">아직 없습니다</td></tr>`}
     </tbody></table></div>
@@ -3507,7 +3507,7 @@ function blocksPanel(kind,blocks,lanes,canEdit,cfg){
 function bindBlocks(kind,reload){
   const p=$("blkp"); if(!p) return; p.addEventListener("toggle",()=>{ S.blkOpen=p.open; });
   let ty="w"; document.querySelectorAll("[data-bty]").forEach(b=>b.onclick=()=>{ ty=b.dataset.bty; document.querySelectorAll("[data-bty]").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("bdows").hidden=ty!=="w"; $("bdate").hidden=ty!=="d"; });
-  const ins=async row=>{ const {error}=await sb.from("sched_blocks").insert({branch_id:S.branch,kind,...row}); if(error) return toast(errMsg(error)); toast("예약 불가 시간 추가"); reload(); };
+  const ins=async row=>{ const {error}=await sb.from("sched_blocks").insert({branch_id:S.branch,kind,...row}); if(error) return toast(errMsg(error)); toast("예약 막음 추가"); reload(); };
   if($("badd")) $("badd").onclick=()=>{ const s=+$("bs").value, e=+$("be").value; if(e<=s) return toast("끝 시간을 시작보다 늦게 정하세요");
     const row={start_min:s,end_min:e,lane_id:+$("bl").value||null,note:$("bn").value.trim()||null};
     if(ty==="w"){ const d=[...document.querySelectorAll("#bdows input:checked")].map(x=>+x.value); if(!d.length) return toast("요일을 고르세요"); row.dows=d; } else { if(!$("bdate").value) return toast("날짜를 고르세요"); row.bdate=$("bdate").value; }
@@ -3555,13 +3555,31 @@ function bindApptClip(kind,cols,appts,cfg,lanes,blocks,reload){
   document.querySelectorAll(".sc-body[data-col]").forEach(body=>{
     body.addEventListener("mousemove",e=>{ hoverSlot=e.target===body?slotAt(body,e.clientY):null; });
     body.addEventListener("mouseleave",()=>{ hoverSlot=null; });
-    body.addEventListener("contextmenu",e=>{ if(e.target!==body) return; const c=S.apptClip[kind]; if(!c) return; e.preventDefault(); const t=slotAt(body,e.clientY);
+    body.addEventListener("contextmenu",e=>{ if(e.target!==body) return; const c=S.apptClip[kind]; e.preventDefault(); const t=slotAt(body,e.clientY);
       document.querySelector(".stmenu")?.remove(); const m=document.createElement("div"); m.className="stmenu";
-      m.innerHTML=`<div class="stm-h">${+t.c.date.slice(5,7)}/${+t.c.date.slice(8)} ${esc(t.c.lane.name)} ${hhmm(t.m)}</div><button data-qp>📋 여기에 붙여넣기<br><small>${esc([c.chart_no,c.patient_name,c.item].filter(Boolean).join(" "))}</small></button>`;
-      document.body.appendChild(m); m.style.left=Math.min(e.clientX,innerWidth-200)+"px"; m.style.top=Math.min(e.clientY,innerHeight-120)+"px";
+      const step=laneStep(kind,t.c.lane);
+      m.innerHTML=`<div class="stm-h">${+t.c.date.slice(5,7)}/${+t.c.date.slice(8)} ${esc(t.c.lane.name)} ${hhmm(t.m)}</div>${c?`<button data-qp>📋 여기에 붙여넣기<br><small>${esc([c.chart_no,c.patient_name,c.item].filter(Boolean).join(" "))}</small></button>`:""}
+        <div class="stm-h" style="padding-top:6px">🚫 예약 막기</div><input data-qbn placeholder="메모 (선택)" style="height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px">
+        <button data-qb="${step}">${step}분만 (${hhmm(t.m)}~${hhmm(t.m+step)})</button><button data-qb="60">1시간 (${hhmm(t.m)}~${hhmm(Math.min(cfg.to,t.m+60))})</button><button data-qb="end">이 시간부터 끝까지</button><button data-qb="day">이 방 하루 종일</button><button data-qb="all">모든 방 하루 종일</button>`;
+      document.body.appendChild(m); m.style.left=Math.min(e.clientX,innerWidth-220)+"px"; m.style.top=Math.max(4,Math.min(e.clientY,innerHeight-m.offsetHeight-8))+"px";
       const close=()=>{ m.remove(); document.removeEventListener("mousedown",out,true); }; const out=ev=>{ if(!m.contains(ev.target)) close(); }; setTimeout(()=>document.addEventListener("mousedown",out,true),0);
-      m.querySelector("[data-qp]").onclick=()=>{ close(); pasteConfirm(kind,c,{appt_date:t.c.date,lane_id:t.c.lane.id,start_min:t.m},lanes,blocks,reload); }; });
+      if(c) m.querySelector("[data-qp]").onclick=()=>{ close(); pasteConfirm(kind,c,{appt_date:t.c.date,lane_id:t.c.lane.id,start_min:t.m},lanes,blocks,reload); };
+      m.querySelectorAll("[data-qb]").forEach(b=>b.onclick=async()=>{ const v=b.dataset.qb; const note=m.querySelector("[data-qbn]").value.trim()||null; close();
+        let s0=t.m, e0, lane=t.c.lane.id;
+        if(v==="end") e0=cfg.to; else if(v==="day"||v==="all"){ s0=cfg.from; e0=cfg.to; if(v==="all") lane=null; } else e0=Math.min(cfg.to,t.m+(+v));
+        const busy=appts.filter(a=>a.appt_date===t.c.date&&(lane==null||a.lane_id===lane)&&!LOST_ST.has(a.status)&&a.start_min<e0&&s0<a.start_min+(+a.minutes||0));
+        if(busy.length&&!confirm(`이 시간에 이미 예약 ${busy.length}건이 있습니다. (예약은 그대로 두고) 막을까요?`)) return;
+        const {error}=await sb.from("sched_blocks").insert({branch_id:S.branch,kind,bdate:t.c.date,start_min:s0,end_min:e0,lane_id:lane,note});
+        if(error) return toast(errMsg(error)); toast(`예약 막음 ${hhmm(s0)}~${hhmm(e0)}`); reload(); }); });
   });
+  // 막아둔 칸 오른쪽 클릭 → 막음 풀기
+  document.querySelectorAll(".blk[data-blk]").forEach(el=>el.oncontextmenu=e=>{ e.preventDefault(); e.stopPropagation(); const b=(blocks||[]).find(x=>x.id===+el.dataset.blk); if(!b) return;
+    document.querySelector(".stmenu")?.remove(); const m=document.createElement("div"); m.className="stmenu";
+    m.innerHTML=`<div class="stm-h">🚫 ${esc(blkLabel(b))}${b.lane_id?"":" · 모든 방"}</div><button data-qu>✅ 막음 풀기${b.bdate?"":"<br><small>매주 반복 규칙이라 모든 주에서 풀립니다</small>"}</button>`;
+    document.body.appendChild(m); m.style.left=Math.min(e.clientX,innerWidth-230)+"px"; m.style.top=Math.min(e.clientY,innerHeight-110)+"px";
+    const close=()=>{ m.remove(); document.removeEventListener("mousedown",out,true); }; const out=ev=>{ if(!m.contains(ev.target)) close(); }; setTimeout(()=>document.addEventListener("mousedown",out,true),0);
+    m.querySelector("[data-qu]").onclick=async()=>{ close(); if(!b.bdate&&!confirm("매주 반복되는 막음입니다. 모든 주에서 풀까요?")) return;
+      const {error}=await sb.from("sched_blocks").delete().eq("id",b.id); if(error) return toast(errMsg(error)); toast("막음 풀림"); reload(); }; });
   if(window.__apKey) document.removeEventListener("keydown",window.__apKey);
   window.__apKey=e=>{ if(!document.querySelector(".sc-grid")){ document.removeEventListener("keydown",window.__apKey); return; } if(e.target.closest&&e.target.closest("input,textarea,select,dialog")) return;
     const k=e.key.toLowerCase();
