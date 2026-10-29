@@ -605,6 +605,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSe
     return run().then(f,r); };
 }catch(e){ console.warn("paging patch",e); } })();
 
+const BILL_DEPT = "청구"; // 근무표 ★팀장 탭 아래 [청구] 줄 (이니셜만 적음)
 const LOST_ST = new Set(["취소","노쇼","변경"]); // 매출·건수에서 빼는 상태
 const DEPTS = ["총괄","원무","간호","병동","수술","물리치료","영상의학","임상병리","경영지원"];
 const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원",5:"의사"};
@@ -1669,10 +1670,10 @@ async function renderStaff(){
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
   const Q=shQueue(); Object.entries(Q).forEach(([k,q])=>{ if(q.v==null) delete map[k]; else map[k]={staff_id:q.sid,work_date:q.d,value:q.v,note:q.note}; });
   const dq=k=>Q[k]?" dirty":"";
-  const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])];
+  const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])].filter(d=>d!==BILL_DEPT);
   const leadOrd=(a,b)=>(a.lead_sort??1e6)-(b.lead_sort??1e6)||deptsPresent.indexOf(a.dept)-deptsPresent.indexOf(b.dept)||a.sort-b.sort||a.id-b.id;
-  const leads=staff.filter(s=>s.lead).sort(leadOrd);
-  const shown=staff.filter(s=>(st.dept==="전체"||(st.dept==="팀장"?s.lead:s.dept===st.dept))&&(!st.q||s.name.includes(st.q))); if(st.dept==="팀장") shown.sort(leadOrd);
+  const leads=staff.filter(s=>s.lead&&s.dept!==BILL_DEPT).sort(leadOrd);
+  const shown=staff.filter(s=>(st.dept==="팀장"?(s.lead||s.dept===BILL_DEPT):(s.dept!==BILL_DEPT&&(st.dept==="전체"||s.dept===st.dept)))&&(!st.q||s.name.includes(st.q)||s.dept===BILL_DEPT)); if(st.dept==="팀장") shown.sort((a,b)=>(a.dept===BILL_DEPT)-(b.dept===BILL_DEPT)||leadOrd(a,b));
   const gapOf={}; if(leads.length) days.forEach(d=>{ const g=leadGap(leads,map,d,codes); if(g.length) gapOf[d]=g; });
   const gapTxt=d=>gapOf[d]?`팀장 공백: ${gapOf[d].map(([a,b])=>`${minTxt(a)}~${minTxt(b)}`).join(", ")}`:"";
   const anyEdit=deptsPresent.some(canEditDept);
@@ -1690,15 +1691,15 @@ async function renderStaff(){
     return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
   let body="";
   if(st.mode!=="day"){
-    const groups=st.dept==="팀장"?["팀장"]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?s.lead:s.dept===g;
+    const groups=st.dept==="팀장"?["팀장",...(shown.some(s=>s.dept===BILL_DEPT)?[BILL_DEPT]:[])]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?(s.lead&&s.dept!==BILL_DEPT):s.dept===g;
     body=`${leads.length&&Object.keys(gapOf).length?`<p class="gapnote">● 붉은 날짜 = 팀장 근무로 9시~22시가 다 채워지지 않은 날 (${Object.keys(gapOf).length}일) · 날짜에 마우스를 올리면 빈 시간이 보입니다</p>`:leads.length?`<p class="gapnote ok">✔ 이 기간은 매일 팀장 근무로 9시~22시가 다 채워졌습니다</p>`:""}<div class="sh-wrap"><table class="shtab ${st.mode}"><thead><tr><th class="nm">이름</th>${days.map(d=>{const l=dLabel(d);return `<th class="${l.we?"we":""}${d===today?" td":""}${l.sun?" sun":""}${gapOf[d]?" gap":""}${st.mode==="month"&&wkAlt(d)?" walt":""}"${wkA(d)} ${gapOf[d]?`title="${gapTxt(d)}"`:""}>${st.mode==="month"?l.d:`${l.m}/${l.d}`}<small>${l.w}</small></th>`;}).join("")}<th class="tot">근무<small>일·시간</small></th></tr></thead><tbody>
-      ${groups.map(g=>`<tr class="grp" style="--dc:${deptColor(g)}"><td class="nm" ${g==="팀장"?"":`data-gd="${esc(g)}"`} colspan="${days.length+2}">${esc(g)} <span class="meta">${shown.filter(s=>inG(s,g)).length}명</span></td></tr>`+
+      ${groups.map(g=>`<tr class="grp" style="--dc:${deptColor(g)}"><td class="nm" ${g==="팀장"||g===BILL_DEPT?"":`data-gd="${esc(g)}"`} colspan="${days.length+2}">${esc(g)} <span class="meta">${shown.filter(s=>inG(s,g)).length}명</span></td></tr>`+
         shown.filter(s=>inG(s,g)).map(s=>{ let wd=0,hrs=0; days.forEach(d=>{ const h=map[s.id+"|"+d]; if(h&&!isOffVal(h.value,codes)){ wd++; hrs+=shiftHours(h.value,codes);} });
           return `<tr><td class="nm" data-nm="${s.id}" ${canEditDept(s.dept)?'draggable="true"':""} style="--dc:${deptColor(s.dept)}"><div class="nmw"><span class="nmtxt">${esc(s.name)}${s.memo?` <span class="meta">${esc(s.memo)}</span>`:""}</span>${canEditDept(s.dept)?`<button class="nmbtn" data-sedit="${s.id}" aria-label="${esc(s.name)} 정보 수정" title="이름·부서 수정, 숨기기">⋯</button>`:""}</div></td>${days.map(d=>cell(s,d)).join("")}<td class="tot num">${wd}일${hrs?` · ${Math.round(hrs*10)/10}h`:""}</td></tr>`; }).join("")).join("")}
-      <tr class="sum"><td class="nm">근무 인원</td>${days.map(d=>`<td class="num"${wkA(d)}>${shown.filter(s=>{const h=map[s.id+"|"+d];return h&&!isOffVal(h.value,codes);}).length}</td>`).join("")}<td></td></tr>
+      <tr class="sum"><td class="nm">근무 인원</td>${days.map(d=>`<td class="num"${wkA(d)}>${shown.filter(s=>{const h=map[s.id+"|"+d];return s.dept!==BILL_DEPT&&h&&!isOffVal(h.value,codes);}).length}</td>`).join("")}<td></td></tr>
     </tbody></table></div>`;
   } else {
-    const groups=st.dept==="팀장"?["팀장"]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?s.lead:s.dept===g;
+    const groups=st.dept==="팀장"?["팀장",...(shown.some(s=>s.dept===BILL_DEPT)?[BILL_DEPT]:[])]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?(s.lead&&s.dept!==BILL_DEPT):s.dept===g;
     body=`${gapOf[st.date]?`<p class="gapnote">● ${gapTxt(st.date)}</p>`:""}<div class="day-grid">${groups.map(g=>{ const list=shown.filter(s=>inG(s,g)).map(s=>({s,h:map[s.id+"|"+st.date]}));
       const on=list.filter(x=>x.h&&!isOffVal(x.h.value,codes)).sort((a,b)=>String(a.h.value).localeCompare(String(b.h.value),"ko",{numeric:true}));
       const off=list.filter(x=>!x.h||isOffVal(x.h.value,codes));
@@ -1773,7 +1774,7 @@ async function renderStaff(){
   st.undo ||= [];
   const markLast=k=>{ document.querySelectorAll("td.sh.last").forEach(x=>x.classList.remove("last")); st.last=k; const td=k&&tdOf(k); if(td) td.classList.add("last"); };
   const refreshUndo=()=>{ if($("bundo")) $("bundo").disabled=!st.undo.length; };
-  const setVal=async(sid,d,v,note,opt={})=>{ v=shAlias(v); const key=sid+"|"+d, td=tdOf(key);
+  const setVal=async(sid,d,v,note,opt={})=>{ if(staff.find(x=>x.id===sid)?.dept!==BILL_DEPT) v=shAlias(v); const key=sid+"|"+d, td=tdOf(key);
     if(!opt.nohist){ const prev=map[key]?{value:map[key].value,note:map[key].note}:null; if(!(prev==null&&v==null)&&!(prev&&prev.value===v&&(prev.note||null)===(note??null))){ st.undo.push({g:opt.group||window.__shStroke||("g"+Date.now()+Math.random()),sid,d,prev}); if(st.undo.length>300) st.undo.shift(); refreshUndo(); } }
     if(!opt.nolast) markLast(key);
     // 바로 저장하지 않고 모아 두었다가 [💾 저장]을 누르면 한 번에 저장
@@ -2003,7 +2004,7 @@ async function renderOvertime(){
   const R=monthRange(st.month); const lv=S.me.level;
   const [or,sr]=await Promise.all([
     sb.from("overtime").select("*").eq("branch_id",S.branch).gte("work_date",R.start).lte("work_date",R.end).order("work_date").order("start_min"),
-    sb.from("staff").select("id,name,dept,sort,active,title").eq("branch_id",S.branch).eq("active",true).order("sort")]);
+    sb.from("staff").select("id,name,dept,sort,active,title").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort")]);
   if(or.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(or.error))}</div></div>`; return; }
   const rows=or.data||[], staff=sr.data||[];
   const depts=[...new Set(rows.map(r=>r.dept||"기타"))];
@@ -2196,7 +2197,7 @@ async function renderUpload(){
   if($("u_d")) $("u_d").onchange=()=>{ st.date=$("u_d").value||st.date; };
   if($("u_dp")) $("u_dp").onchange=()=>{ st.dept=$("u_dp").value; };
   $("u_t").onclick=async()=>{ try{ const X=await loadXLSX(); let aoa;
-      if(st.type==="shift"){ const R=monthRange(st.month); const {data}=await sb.from("staff").select("name,dept").eq("branch_id",S.branch).eq("active",true).order("sort"); aoa=[["이름",...Array.from({length:R.days},(_,i)=>i+1)],...(data||[]).map(s=>[s.name])]; }
+      if(st.type==="shift"){ const R=monthRange(st.month); const {data}=await sb.from("staff").select("name,dept").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort"); aoa=[["이름",...Array.from({length:R.days},(_,i)=>i+1)],...(data||[]).map(s=>[s.name])]; }
       else if(st.type==="inv"){ const {data}=await sb.from("inv_items").select("name,spec").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",true).order("category").order("sort"); aoa=[T.cols,...(data||[]).map(i=>[i.name,i.spec||"","",""])]; }
       else aoa=[T.cols];
       const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet(aoa),"양식"); X.writeFile(wb,`${T.label.split(" ")[0]}_양식.xlsx`); }catch(e){ toast(e.message); } };
@@ -2209,7 +2210,7 @@ async function uploadPreview(st,aoa,nSheets){
   const H=aoa[hdrIdx].map(x=>String(x).trim()); const body=aoa.slice(hdrIdx+1).filter(r=>r.some(x=>String(x).trim()));
   const ci=re=>H.findIndex(h=>re.test(h)); let rows=[], bad=[], save=null; const year=st.month.slice(0,4);
   if(st.type==="shift"){
-    const {data:staff}=await sb.from("staff").select("id,name,dept").eq("branch_id",S.branch); const R=monthRange(st.month);
+    const {data:staff}=await sb.from("staff").select("id,name,dept").eq("branch_id",S.branch).neq("dept",BILL_DEPT); const R=monthRange(st.month);
     const dayCols=H.map((h,i)=>{ const n=parseInt(h); return n>=1&&n<=R.days&&String(n)===h.replace(/일$/,"")?[i,n]:null; }).filter(Boolean);
     const nameCol=Math.max(0,ci(/이름|성명|직원/));
     body.forEach(r=>{ const nm=String(r[nameCol]||"").trim(); if(!nm) return; const s=(staff||[]).find(x=>x.name===nm)||(staff||[]).find(x=>x.name.replace(/\s/g,"")===nm.replace(/\s/g,""));
@@ -2219,7 +2220,7 @@ async function uploadPreview(st,aoa,nSheets){
     save=async()=>{ for(let i=0;i<rows.length;i+=500){ const {error}=await sb.from("shifts").upsert(rows.slice(i,i+500).map(({name,...x})=>x)); if(error) throw error; } };
     preview(box,["이름","날짜","근무"],rows.slice(0,200).map(r=>[r.name,r.work_date,r.value]),rows.length,bad,save,nSheets);
   } else if(st.type==="ot"){
-    const {data:staff}=await sb.from("staff").select("id,name,dept").eq("branch_id",S.branch);
+    const {data:staff}=await sb.from("staff").select("id,name,dept").eq("branch_id",S.branch).neq("dept",BILL_DEPT);
     const cN=ci(/이름|성명|직원/), cD=ci(/날짜|일자/), cA=ci(/시작/), cB=ci(/끝|종료/), cK=ci(/구분|종류/), cM=ci(/메모|비고|사유/);
     if(cN<0||cD<0||cA<0||cB<0) bad.push("이름·날짜·시작·끝 열이 필요합니다.");
     else body.forEach((r,i)=>{ const nm=String(r[cN]).trim(), d=parseDateCell(r[cD],year), a=parseTimeCell(r[cA]); let b=parseTimeCell(r[cB]); if(!nm||!d||a==null||b==null){ bad.push(`${i+hdrIdx+2}행: 값 확인 필요`); return; } if(b<=a) b+=1440;
@@ -2468,7 +2469,7 @@ async function renderLeave(){
   const st = S.lvV ||= {year:+kstToday().slice(0,4), who:null, dept:"전체"}; const lv=S.me.level;
   const [gr,ur,sr]=await Promise.all([ sb.from("leave_grants").select("*").eq("branch_id",S.branch).eq("year",st.year),
     sb.from("leave_uses").select("*").eq("branch_id",S.branch).gte("use_date",`${st.year}-01-01`).lte("use_date",`${st.year}-12-31`).order("use_date"),
-    sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).eq("active",true).order("sort") ]);
+    sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort") ]);
   if(gr.error||ur.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(gr.error||ur.error))}</div></div>`; return; }
   const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
   const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name)])];
@@ -2550,7 +2551,7 @@ async function renderLeave(){
 
 // ── 기본정보·연락망 ──
 const INFO_TABS=[["info","기본정보"],["vendor","업체 연락망"],["staff","직원 연락처"],["org","조직도"],["etc","기타 자료"]];
-const PLACEHOLDER=/^(야간|블로커|알바|야간루틴|야간알바)$/;
+const PLACEHOLDER=/^(야간|블로커|알바|야간루틴|야간알바|\[청구\])$/;
 const telLink=p=>{ const s=String(p||"").trim(); if(!s) return ""; return s.split(/\s*[\n,/]\s*/).filter(Boolean).map(x=>`<span class="tel">${esc(x)}</span>`).join("<br>"); };
 function infoTabs(cur){ return `<div class="seg infotabs" role="tablist" aria-label="기본정보 메뉴" style="margin-bottom:12px">${INFO_TABS.map(([k,l])=>`<button role="tab" data-it="${k}" aria-pressed="${cur===k}">${l}</button>`).join("")}</div>`; }
 function bindInfoTabs(){ document.querySelectorAll("[data-it]").forEach(b=>b.onclick=()=>{ S.infoTab=b.dataset.it; renderInfo(); }); }
@@ -2601,7 +2602,7 @@ async function renderVendors(){
   document.querySelectorAll("[data-ve2]").forEach(b=>b.onclick=()=>dlgFor((rows||[]).find(x=>x.id===+b.dataset.ve2)));
 }
 async function loadOrgData(){
-  const [sr,or]=await Promise.all([ sb.from("staff").select("id,name,dept,sort,active,title,phone,lead,memo").eq("branch_id",S.branch).eq("active",true).order("sort"),
+  const [sr,or]=await Promise.all([ sb.from("staff").select("id,name,dept,sort,active,title,phone,lead,memo").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort"),
     sb.from("org_people").select("*").eq("branch_id",S.branch).order("tier").order("sort") ]);
   const staff=(sr.data||[]).filter(s=>s.dept!=="의료진"&&!PLACEHOLDER.test(s.name));
   const depts=[...STAFF_DEPTS.filter(d=>d!=="의료진"&&staff.some(s=>s.dept===d)), ...[...new Set(staff.map(s=>s.dept))].filter(d=>!STAFF_DEPTS.includes(d))];
@@ -3113,7 +3114,7 @@ async function renderPay(){
   const [pp,pr,pm,it,sf,a1,a2]=await Promise.all([ sb.from("pay_people").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("pay_rates").select("*").eq("branch_id",S.branch), sb.from("pay_month").select("*").eq("branch_id",S.branch).eq("ym",st.ym),
     sb.from("sched_items").select("kind,name,price,active,sort").eq("branch_id",S.branch).order("sort"),
-    sb.from("staff").select("id,name,dept,active").eq("branch_id",S.branch).eq("active",true).order("sort"),
+    sb.from("staff").select("id,name,dept,active").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort"),
     allRows(()=>sb.from("appointments").select("item,staff,status").eq("branch_id",S.branch).eq("kind","pt").gte("appt_date",R.start).lte("appt_date",R.end).order("id")),
     allRows(()=>sb.from("appointments").select("item,staff,status").eq("branch_id",S.branch).eq("kind","emg").gte("appt_date",R.start).lte("appt_date",R.end).order("id")) ]);
   const err=pp.error||pr.error||pm.error; if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
