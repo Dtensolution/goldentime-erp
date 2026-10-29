@@ -2188,7 +2188,7 @@ const UP_TYPES={
 async function loadXLSX(){ if(window.XLSX) return window.XLSX; await new Promise((ok,no)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload=ok; s.onerror=()=>no(new Error("엑셀 읽기 도구를 불러오지 못했습니다")); document.head.appendChild(s); }); return window.XLSX; }
 function parseDateCell(v,year){ if(v instanceof Date) return ymd(new Date(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate())));
   if(typeof v==="number"&&v>30000&&v<60000){ const d=new Date(Date.UTC(1899,11,30)+v*864e5); return ymd(d); }
-  const s=String(v||"").trim(); let m; if((m=s.match(/^(\d{2,4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})/))){ let y=+m[1]; if(y<100) y+=2000; return `${y}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; }
+  const s=String(v||"").trim(); let m; if((m=s.match(/^(\d{4})\s*[.\-/]\s*(\d{1,2})\s*\.?$/))) return `${m[1]}-${String(m[2]).padStart(2,"0")}-01`; if((m=s.match(/^(\d{2,4})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})/))){ let y=+m[1]; if(y<100) y+=2000; return `${y}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`; }
   if((m=s.match(/^(\d{1,2})\s*[\/.월]\s*(\d{1,2})/))) return `${year}-${String(m[1]).padStart(2,"0")}-${String(m[2]).padStart(2,"0")}`; return null; }
 function parseTimeCell(v){ if(typeof v==="number"&&v<1) return Math.round(v*1440); const m=String(v||"").match(/(\d{1,2})\s*[:시]\s*(\d{1,2})?/); return m?(+m[1])*60+(+m[2]||0):null; }
 async function renderUpload(){
@@ -2277,13 +2277,16 @@ function canRegWrite(dept){ const me=S.me; return me.level<=3 || me.dept===dept 
 async function renderRegisters(opts={}){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const fixed=opts.dept||null; const key=fixed?"regInfo":"regV";
-  const st = S[key] ||= {dept: fixed || (REG_DEPTS.includes(S.me.dept)?S.me.dept:"간호"), id:null, q:"", month:"", limit:300};
-  if(fixed) st.dept=fixed; st.q ??= ""; st.limit ??= 300; st.month ??= "";
+  const st = S[key] ||= {dept: fixed || (REG_DEPTS.includes(S.me.dept)?S.me.dept:"간호"), id:null, q:"", month:null, limit:300};
+  if(fixed) st.dept=fixed; st.q ??= ""; st.limit ??= 300; if(st.month===undefined) st.month=null;
   const lr=await sb.from("registers").select("id,dept,name,columns,date_col,sort,memo").eq("branch_id",S.branch).eq("active",true).order("sort").order("id");
   if(lr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(lr.error))}</div></div>`; return; }
   const regsAll=lr.data||[]; const regs=regsAll.filter(r=>r.dept===st.dept&&(!opts.filter||opts.filter(r)));
   const counts=Object.fromEntries(REG_DEPTS.map(d=>[d,regsAll.filter(r=>r.dept===d).length]));
   let cur=regs.find(r=>r.id===st.id)||regs[0]||null; st.id=cur?.id||null;
+  let months=[]; if(cur?.date_col){ const {data:md}=await sb.from("register_rows").select("row_date").eq("register_id",cur.id).not("row_date","is",null).limit(20000);
+    const mc={}; (md||[]).forEach(x=>{ const m=x.row_date.slice(0,7); mc[m]=(mc[m]||0)+1; }); months=Object.keys(mc).sort().reverse().map(m=>[m,mc[m]]);
+    if(st.month===null) st.month=months[0]?.[0]||""; }
   let rows=[]; if(cur){ let qy=sb.from("register_rows").select("id,row_date,data,sort,updated_at").eq("register_id",cur.id).order("row_date",{ascending:false,nullsFirst:false}).order("sort").limit(5000);
     if(st.month&&cur.date_col){ const R=monthRange(st.month); qy=qy.gte("row_date",R.start).lte("row_date",R.end); }
     const rr=await qy; rows=rr.data||[]; if(!cur.date_col) rows.sort((a,b)=>a.sort-b.sort||a.id-b.id); }
@@ -2294,7 +2297,6 @@ async function renderRegisters(opts={}){
     <div class="page-h"><div><h2>${fixed?"기본정보·연락망":"업무 기록부"}</h2><div class="meta">${fixed?(opts.title||"공통 자료"):"부서별로 구글시트처럼 쓰는 목록 · 칸을 누르면 바로 고칩니다"}${cur?` · ${esc(cur.name)} ${shownAll.length}행`:""}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="rq" placeholder="이 목록에서 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:170px">
-        ${cur?.date_col?`<input type="month" id="rm" value="${st.month}" title="월 선택 (비우면 전체)" style="height:32px;padding:0 6px">`:""}
         ${cur?`<button class="btn ghost sm" id="rcsv">CSV 받기</button>`:""}${ed?`<button class="btn sm" id="radd">+ 행 추가</button>`:""}</div></div>
     ${opts.top||""}${fixed?"":`<div class="chips">${REG_DEPTS.map(d=>`<button class="fchip" data-rd="${d}" aria-pressed="${st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>`}
     <div class="doc-shell${opts.hideList?" nolist":""}">
@@ -2303,6 +2305,7 @@ async function renderRegisters(opts={}){
       <section class="panel" style="min-width:0">${cur?`
         <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
+        ${cur.date_col&&months.length?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month}">전체</button></div>`:""}
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
         <div class="tbl-box reg-box"><table class="reg"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
           ${shown.map(r=>`<tr data-r="${r.id}">${cols.map(c=>`<td data-k="${esc(c.key)}" ${ed?'tabindex="0"':""}>${esc(r.data?.[c.key]??"")}</td>`).join("")}${ed?`<td class="rx"><button class="nmbtn" data-rdel="${r.id}" aria-label="행 삭제" title="행 삭제">×</button></td>`:""}</tr>`).join("")||`<tr><td colspan="99" class="meta">자료가 없습니다.</td></tr>`}
@@ -2311,10 +2314,10 @@ async function renderRegisters(opts={}){
       :`<div class="empty">왼쪽에서 목록을 고르세요.</div>`}</section>
     </div></div>`;
   if(opts.bind) opts.bind();
-  document.querySelectorAll("[data-rd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.rd; st.id=null; st.q=""; renderRegisters(opts); });
-  document.querySelectorAll("[data-rg]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.rg; st.q=""; st.limit=300; renderRegisters(opts); });
+  document.querySelectorAll("[data-rd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.rd; st.id=null; st.q=""; st.month=null; renderRegisters(opts); });
+  document.querySelectorAll("[data-rg]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.rg; st.q=""; st.limit=300; st.month=null; renderRegisters(opts); });
   bindSearch("rq",v=>{ st.q=v; return renderRegisters(opts); });
-  if($("rm")) $("rm").onchange=()=>{ st.month=$("rm").value; renderRegisters(opts); };
+  document.querySelectorAll("[data-rmo]").forEach(b=>b.onclick=()=>{ st.month=b.dataset.rmo; st.limit=300; renderRegisters(opts); });
   if($("rmore")) $("rmore").onclick=()=>{ st.limit+=500; renderRegisters(opts); };
   if($("rcsv")) $("rcsv").onclick=()=>downloadCSV(`${cur.name}.csv`,[cols.map(c=>c.label),...shownAll.map(r=>cols.map(c=>r.data?.[c.key]??""))]);
   if($("rnew")) $("rnew").onclick=async()=>{ const name=prompt("새 목록 이름"); if(!name) return; const lab=(prompt("열 이름을 쉼표로 적으세요 (예: 날짜, 이름, 내용, 비고)","날짜, 내용, 비고")||"").split(",").map(s=>s.trim()).filter(Boolean); if(!lab.length) return;
@@ -2322,7 +2325,8 @@ async function renderRegisters(opts={}){
     const {data,error}=await sb.from("registers").insert({branch_id:S.branch,dept:st.dept,name,columns,date_col:dk>=0?"c"+dk:null,sort:regs.length}).select("id").single(); if(error) return toast(errMsg(error)); st.id=data.id; renderRegisters(opts); };
   if(!cur) return;
   const dateOf=data=>{ if(!cur.date_col) return null; const v=String(data[cur.date_col]||"").trim(); return parseDateCell(v,(st.month||kstToday()).slice(0,4)); };
-  if($("radd")) $("radd").onclick=async()=>{ const data={}; if(cur.date_col) data[cur.date_col]=kstToday(); const {data:row,error}=await sb.from("register_rows").insert({register_id:cur.id,branch_id:S.branch,data,row_date:dateOf(data),sort:-1}).select("id").single(); if(error) return toast(errMsg(error)); st.q=""; await renderRegisters(opts); const td=document.querySelector(`tr[data-r="${row.id}"] td[data-k]`); if(td) td.click(); };
+  if($("radd")) $("radd").onclick=async()=>{ const data={}; if(cur.date_col){ const cm=kstToday().slice(0,7), m=st.month||cm; const lab=(cols.find(c=>c.key===cur.date_col)||{}).label||"";
+    data[cur.date_col]= /^월$/.test(lab.trim()) ? m.replace("-",".") : (m===cm ? kstToday() : `${+m.slice(5)}/1`); } const {data:row,error}=await sb.from("register_rows").insert({register_id:cur.id,branch_id:S.branch,data,row_date:dateOf(data),sort:-1}).select("id").single(); if(error) return toast(errMsg(error)); st.q=""; await renderRegisters(opts); const td=document.querySelector(`tr[data-r="${row.id}"] td[data-k]`); if(td) td.click(); };
   if(ed){ const byId=Object.fromEntries(rows.map(r=>[r.id,r]));
     document.querySelectorAll("table.reg td[data-k]").forEach(td=>{ const open=()=>{ if(td.querySelector("textarea")) return; const tr=td.parentElement, rid=+tr.dataset.r, k=td.dataset.k, row=byId[rid]; const old=row.data?.[k]??"";
         const ta=document.createElement("textarea"); ta.className="regin"; ta.value=old; ta.rows=Math.min(6,Math.max(1,String(old).split("\n").length)); td.textContent=""; td.appendChild(ta); ta.focus(); ta.select();
