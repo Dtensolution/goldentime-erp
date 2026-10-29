@@ -1383,7 +1383,8 @@ async function renderSched(kind){
   if(st.mode==="month"){
     const R=monthRange(st.date.slice(0,7)); const g0=mondayOf(R.start); const gEnd=addDays(mondayOf(R.end),6); const cells=[];
     for(let d=g0; d<=gEnd; d=addDays(d,1)){ const A=agg(byDate[d]||[]); const out=d.slice(0,7)!==st.date.slice(0,7); const dow=new Date(d+"T00:00:00Z").getUTCDay();
-      const tops=Object.entries((byDate[d]||[]).filter(a=>!LOST_ST.has(a.status)).reduce((m,a)=>(m[a.item]=(m[a.item]||0)+1,m),{})).sort((a,b)=>b[1]-a[1]).slice(0,2).map(([k,v])=>`${esc(k)} ${v}`).join(" · ");
+      const limb=it=>/상지/.test(it||"")?"상지":/하지/.test(it||"")?"하지":(it||"기타"); const keyOf=kind==="emg"?limb:(it=>it);
+      const tops=Object.entries((byDate[d]||[]).filter(a=>!LOST_ST.has(a.status)).reduce((m,a)=>{ const k=keyOf(a.item); m[k]=(m[k]||0)+1; return m; },{})).sort((a,b)=>kind==="emg"?((["상지","하지"].indexOf(a[0])+9)%9-(["상지","하지"].indexOf(b[0])+9)%9||b[1]-a[1]):b[1]-a[1]).slice(0,kind==="emg"?4:2).map(([k,v])=>`${esc(k)} ${v}`).join(" · ");
       cells.push(`<button data-day="${d}" class="${out?"out":""}${d===kstToday()?" today":""}" title="${d} 일별 보기"><span class="dn${dow===0?" sun":""}">${+d.slice(8)}</span>${A.n||A.x?`<span class="cnt">${A.n}건</span><span class="sub">${A.nw?`신환 ${A.nw} · `:""}${A.x?`취소 ${A.x}`:""}</span><span class="sub">${tops}</span>`:""}</button>`); }
     periodHtml=`<div class="mcal">${["월","화","수","목","금","토","일"].map(w=>`<div class="h${w==="일"?" sun":""}">${w}</div>`).join("")}${cells.join("")}</div><p class="meta" style="margin-top:6px">날짜를 누르면 그날 방별 시간표로 갑니다.</p>`;
   } else if(st.mode==="year"){
