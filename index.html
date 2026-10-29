@@ -84,7 +84,8 @@ nav.side .soon{font-size:10px;border:1px solid var(--line);border-radius:3px;pad
 nav.side .sep{font-size:11px;color:var(--muted);letter-spacing:.06em;padding:14px 12px 4px}
 main{min-width:0;padding-block:20px 64px}
 .wrap{max-width:min(1800px,100%);margin:0 auto;display:grid;gap:20px}
-.page-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.page-h{display:flex;align-items:flex-end;justify-content:flex-start;gap:12px 28px;flex-wrap:wrap}
+.srchbox{display:inline-flex;align-items:center;gap:4px;flex:none;max-width:100%}.srchbox input{min-width:0}
 .page-h h2{margin:0;font-size:20px;text-wrap:balance}
 .meta{color:var(--muted);font-size:13px}
 .monthnav{display:flex;align-items:center;gap:6px}
@@ -145,8 +146,8 @@ legend{font-weight:600;padding:0 6px}
 .grid3h,.grid2h{font-size:11px;color:var(--muted);text-align:right}
 .grid3h span:first-child,.grid2h span:first-child{text-align:left}
 .grid3 input,.grid2r input{height:34px;padding:0 8px;text-align:right;width:100%;font-family:var(--f-num)}
-.upload{border:1px dashed var(--line);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;color:var(--muted);font-size:13px}
-.formbar{position:sticky;bottom:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:env(safe-area-inset-bottom,0px)}
+.upload{border:1px dashed var(--line);border-radius:8px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:flex-start;column-gap:20px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.formbar{position:sticky;bottom:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:flex-start;column-gap:20px;flex-wrap:wrap;margin-bottom:env(safe-area-inset-bottom,0px)}
 .check{font-size:13px;color:var(--muted)} .check.bad{color:var(--bad)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 .toast.on{opacity:1}
@@ -186,7 +187,7 @@ table.fin tr.addrow td{background:color-mix(in srgb,var(--navy) 4%,var(--surface
 .hov:empty{display:none}
 .hov b{display:block;font-size:12px;color:var(--warn);margin-bottom:3px}
 .bcard.hq{border-color:var(--navy);background:var(--navy-soft)}
-.nbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:0 0 12px;background:var(--sunk);font-size:13px}
+.nbar{display:flex;gap:10px;align-items:center;justify-content:flex-start;column-gap:20px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:0 0 12px;background:var(--sunk);font-size:13px}
 .mygrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:900px){.mygrid{grid-template-columns:1fr}}
 .wk7{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
@@ -206,7 +207,7 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
   body.printing-report .report{border:0;box-shadow:none;padding:0} body.printing-report table.rpt{page-break-inside:avoid} body.printing-report .report h2{page-break-after:avoid}
   @page{size:A4;margin:14mm} }
 .alerts{display:grid;gap:6px;margin:0 0 14px}
-.alert{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:8px;padding:8px 12px;background:var(--surface);font-size:13.5px}
+.alert{display:flex;gap:10px;align-items:center;justify-content:flex-start;column-gap:20px;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:8px;padding:8px 12px;background:var(--surface);font-size:13.5px}
 .alert.bad{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 6%,var(--surface))}
 .alert.warn{border-left-color:var(--warn);background:color-mix(in srgb,var(--warn) 7%,var(--surface))}
 .alert.info{border-left-color:var(--accent)}
@@ -330,7 +331,7 @@ dialog{width:min(520px,94vw)}
 .mxtab td input{width:100%;min-width:150px;height:28px;border:0;border-radius:0;padding:0 6px;background:transparent;font-size:12.5px}.mxtab td input:focus{outline:2px solid #1a5fd0;outline-offset:-2px;background:#fff}
 .mxtab td input.saving{background:#fff8e1}.mxtab td input.err{background:#fde7e7}.mxtab tfoot td{background:var(--sunk);padding:4px 6px;text-align:center}
 .mxsum{font-size:12px}.mxsum th,.mxsum td{padding:3px 5px;text-align:center}.mxsum td:first-child,.mxsum th:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}.mxsum th.sun button{color:var(--bad)}.mxsum th.we button{color:var(--navy)}
-.sh-tools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sh-tools{display:flex;justify-content:flex-start;align-items:center;gap:10px 24px;flex-wrap:wrap}
 .sh-tools .chips{margin:10px 0}
 .brushes{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;padding:10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;position:sticky;top:0;z-index:5}
 .brush{border:1.5px solid var(--sc,var(--line));background:color-mix(in srgb,var(--sc,var(--line)) 12%,var(--surface));color:var(--ink);border-radius:6px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--f-num)}
@@ -653,7 +654,7 @@ function weekOf(iso){ const d=new Date(iso+"T00:00:00Z"); const dow=(d.getUTCDay
 function bindSearch(id,run){ const inp=$(id); if(!inp) return; inp.type="search"; inp.autocomplete="off";
   if(!inp.placeholder.includes("Enter")) inp.placeholder=(inp.placeholder||"찾기")+" (Enter)";
   const btn=document.createElement("button"); btn.type="button"; btn.className="btn sm"; btn.textContent="🔍"; btn.title="찾기"; btn.setAttribute("aria-label","찾기"); btn.style.marginLeft="4px"; btn.style.flex="none";
-  inp.insertAdjacentElement("afterend",btn);
+  const wrap=document.createElement("span"); wrap.className="srchbox"; inp.insertAdjacentElement("beforebegin",wrap); wrap.append(inp,btn);
   const go=()=>{ const y=window.scrollY; const r=run(inp.value.trim()); Promise.resolve(r).then(()=>window.scrollTo(0,y)); };
   btn.onclick=go; inp.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); setTimeout(go,e.isComposing?40:0); } }; inp.addEventListener("search",()=>{ if(!inp.value) go(); }); }
 function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),2600); }
@@ -1989,8 +1990,7 @@ function docEditor(doc, dept, reload, st, notice){
       <div><span class="meta" style="font-size:12px">미리보기</span><div class="md preview" id="dpv">${mdRender(doc?.body||"")}</div></div></div>
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:13px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dpin" ${doc?.pinned?"checked":""}> 목록 맨 위에 고정</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dnot" ${doc?.notice?"checked":""}> 필독 공지 (직원이 [확인했습니다]를 눌러야 하고, 읽음 현황이 남습니다)</label></div>
     <p class="err" id="derr"></p>
-    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div>${doc?.id?`<button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:""}</div>
-      <div style="display:flex;gap:8px"><button class="btn ghost" id="dcancel">취소</button><button class="btn" id="dsave">저장</button></div></div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button>${doc?.id?`<button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">삭제</button>`:""}</div>`;
   $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); };
   $("dcancel").onclick=reload;
   $("dsave").onclick=async()=>{ const title=$("dt").value.trim(); if(!title){ $("derr").textContent="제목을 적어주세요."; return; }
@@ -2267,7 +2267,7 @@ function preview(box,head,rows,n,bad,save,nSheets){
     ${bad.length?`<div class="check bad" style="margin-bottom:10px">${bad.slice(0,12).map(esc).join("<br>")}${bad.length>12?`<br>…외 ${bad.length-12}건`:""}</div>`:""}
     <div class="tbl-box" style="max-height:360px"><table><thead><tr>${head.map(h=>`<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${esc(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
     ${n>rows.length?`<p class="meta">처음 ${rows.length}건만 보여줍니다.</p>`:""}
-    <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" id="u_save" ${n?"":"disabled"}>${n}건 저장</button></div></section>`;
+    <div style="display:flex;margin-top:12px"><button class="btn" id="u_save" ${n?"":"disabled"}>${n}건 저장</button></div></section>`;
   $("u_save").onclick=async()=>{ const b=$("u_save"); b.disabled=true; b.textContent="저장 중…"; try{ await save(); toast(`${n}건 저장했습니다`); box.innerHTML=`<div class="empty">${n}건 저장했습니다.</div>`; }catch(e){ b.disabled=false; b.textContent=`${n}건 저장`; toast(errMsg(e)); } };
 }
 
@@ -2301,7 +2301,7 @@ async function renderRegisters(opts={}){
       <aside class="panel doc-list" ${opts.hideList?"hidden":""}>${regs.map(r=>`<button class="doc-item" data-rg="${r.id}" aria-current="${cur&&r.id===cur.id}"><b>${esc(r.name)}</b></button>`).join("")||`<p class="meta">목록이 없습니다.</p>`}
         ${(S.me.level<=3&&canRegWrite(st.dept))?`<button class="btn ghost block" id="rnew" style="margin-top:10px">+ 새 목록</button>`:""}</aside>
       <section class="panel" style="min-width:0">${cur?`
-        <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
+        <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
         <div class="tbl-box reg-box"><table class="reg"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
