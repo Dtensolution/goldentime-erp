@@ -619,7 +619,7 @@ const MENU_DEFAULT={
   "영상의학":["carm",...MENU_BASE],
   "물리치료":["spt","cons","manual",...MENU_BASE],
   "간호":["inv",...MENU_BASE],
-  "임상병리":["semg",...MENU_BASE],
+  "임상병리":["semg","inv",...MENU_BASE],
   "병동":["inv",...MENU_BASE],
   "수술":["inv",...MENU_BASE],
   "경영지원":[...MENU_BASE],
@@ -2102,9 +2102,10 @@ async function renderInventory(){
   const ir=await sb.from("inv_items").select("*").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",true).order("category").order("sort").order("id");
   if(ir.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ir.error))}</div></div>`; return; }
   const items=ir.data||[]; const ids=items.map(i=>i.id);
-  let logs=[]; for(let i=0;i<ids.length;i+=300){ const r=await sb.from("inv_logs").select("item_id,log_date,kind,qty").in("item_id",ids.slice(i,i+300)).gte("log_date",addDays(kstToday(),-240)).order("log_date"); if(r.data) logs=logs.concat(r.data); }
+  let logs=[]; for(let i=0;i<ids.length;i+=300){ const r=await sb.from("inv_logs").select("item_id,log_date,kind,qty").in("item_id",ids.slice(i,i+300)).gte("log_date",addDays(kstToday(),-400)).order("log_date"); if(r.data) logs=logs.concat(r.data); }
   const L={}; logs.forEach(l=>{ (L[l.item_id] ||= []).push(l); });
-  const dates=[...new Set(logs.filter(l=>l.kind==="재고").map(l=>l.log_date))].sort().slice(-6);
+  const hasStock=logs.some(l=>l.kind==="재고");
+  const dates=[...new Set(logs.filter(l=>hasStock?l.kind==="재고":true).map(l=>l.log_date))].sort().slice(hasStock?-6:-8);
   const cats=[...new Set(items.map(i=>(i.category||"기타").split(" · ")[0]))];
   const last=i=>{ const a=(L[i.id]||[]).filter(l=>l.kind==="재고"); return a.length?a[a.length-1]:null; };
   const q=st.q.toLowerCase();
@@ -2123,7 +2124,7 @@ async function renderInventory(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span style="display:inline-flex;align-items:center"><input id="iq" placeholder="품목·코드·업체 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:220px"></span>${st.q?`<button class="btn ghost sm" id="iqx">지우기</button>`:""}
         ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?"재고조사 닫기":"재고조사 입력"}</button><button class="btn ghost sm" id="iadd">+ 품목</button>`:""}
-        <button class="btn ghost sm" id="icsv">CSV 받기</button></div></div>
+        <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주수량·입고일·입고수량 기록">📒 발주 장부</button><button class="btn ghost sm" id="icsv">CSV 받기</button></div></div>
     <div class="chips">${INV_DEPTS.map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
     <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${st.cat===c}">${esc(c)}</button>`).join("")}
       <button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button></div>
@@ -2134,7 +2135,10 @@ async function renderInventory(){
         return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}${i.vendor?` <small class="meta">${esc(i.vendor)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${i.std_qty!=null?fmtQ(i.std_qty):""}</td>${dates.map(d=>cell(i,d)).join("")}
           ${st.count?`<td><input data-cq="${i.id}" inputmode="decimal" style="height:28px;width:64px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="재고");return x?fmtQ(x.qty):"";})()}"></td><td><input data-co="${i.id}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="발주");return x?fmtQ(x.qty):"";})()}"></td>`:""}
           <td>${ed?`<button class="nmbtn" style="opacity:.6" data-iedit="${i.id}" aria-label="${esc(i.name)} 수정">⋯</button>`:""}</td></tr>`; }).join("")||`<tr><td colspan="99" class="empty">품목이 없습니다.</td></tr>`}
-    </tbody></table></div></section></div>`;
+    </tbody></table></div></section>
+    ${st.ledger?(()=>{ const idset=new Set(shown.map(x=>x.id)); const nm=Object.fromEntries(items.map(x=>[x.id,x])); const E=logs.filter(l=>idset.has(l.item_id)&&(l.kind==="발주"||l.kind==="입고")).sort((a,b)=>a.log_date<b.log_date?1:a.log_date>b.log_date?-1:a.kind<b.kind?-1:1);
+      return `<section class="panel"><h3>📒 발주 · 입고 장부 <span>${E.length}건 · 최근 순 · 재고조사 입력에서 발주 칸에 적으면 여기 쌓입니다</span></h3><div class="tbl-box" style="max-height:480px"><table><thead><tr><th>날짜</th><th>품목</th><th>업체</th><th>구분</th><th>수량</th></tr></thead><tbody>${E.map(l=>`<tr><td class="num">${+l.log_date.slice(5,7)}/${+l.log_date.slice(8)}</td><td>${esc(nm[l.item_id]?.name||"")}</td><td class="meta">${esc(nm[l.item_id]?.vendor||"")}</td><td>${l.kind==="발주"?`<span class="pill wait">발주</span>`:`<span class="pill ok">입고</span>`}</td><td class="num">${fmtQ(l.qty)}</td></tr>`).join("")||`<tr><td colspan="5" class="meta">기록이 없습니다.</td></tr>`}</tbody></table></div></section>`; })():""}
+  </div>`;
   document.querySelectorAll("[data-idp]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.idp; st.cat="전체"; renderInventory(); });
   document.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.ic; renderInventory(); });
   $("ilow").onclick=()=>{ st.low=!st.low; renderInventory(); };
@@ -2148,6 +2152,7 @@ async function renderInventory(){
     const {error}=await sb.from("inv_logs").upsert(up,{onConflict:"item_id,log_date,kind"}); if(error) return toast(errMsg(error)); toast(`${up.length}건 저장`); renderInventory(); };
   if($("iadd")) $("iadd").onclick=()=>invDialog(null,st.dept,cats,()=>renderInventory());
   document.querySelectorAll("[data-iedit]").forEach(b=>b.onclick=()=>invDialog(items.find(x=>x.id===+b.dataset.iedit),st.dept,cats,()=>renderInventory()));
+  $("ileg").onclick=()=>{ st.ledger=!st.ledger; renderInventory(); };
   $("icsv").onclick=()=>downloadCSV(`물품재고_${st.dept}_${kstToday()}.csv`,[["분류","코드","품목","규격","단위","기준",...dates,"업체"],...shown.map(i=>[i.category||"",i.code||"",i.name,i.spec||"",i.unit||"",i.std_qty??"",...dates.map(d=>{ const x=(L[i.id]||[]).find(l=>l.log_date===d&&l.kind==="재고"); return x?x.qty:""; }),i.vendor||""])]);
 }
 const fmtQ=v=>{ const n=+v; return Number.isInteger(n)?n.toLocaleString("ko-KR"):String(n); };
