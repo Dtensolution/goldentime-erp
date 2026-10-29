@@ -386,6 +386,8 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .md ul,.md ol{margin:4px 0;padding-left:22px}
 .md ul.chk{list-style:none;padding-left:4px}
 .md table{margin:8px 0}
+.regsum{float:right;margin:0 0 10px 14px;min-width:220px;max-width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sunk)}.regsum table{width:100%}.regsum td,.regsum th{padding:4px 8px}
+@media (max-width:900px){.regsum{float:none;margin:0 0 10px}}
 .mded [data-ci],.mded .mdt{cursor:text}.mded tr[data-ln] [data-ci]:hover,.mded .mdt:hover{outline:1px dashed var(--accent);outline-offset:-1px}
 .mded td.mdx{width:28px;padding:0 2px;border-left:none}.mded tr .mdx .nmbtn{opacity:0}.mded tr:hover .mdx .nmbtn{opacity:.6}
 .mded .mdin{width:100%;font:inherit;resize:vertical}.mded .mdadd{margin:-2px 0 10px}
@@ -2328,6 +2330,13 @@ async function renderRegisters(opts={}){
   const cols=cur?.columns||[]; const q=st.q.toLowerCase();
   const shownAll=q?rows.filter(r=>Object.values(r.data||{}).join(" ").toLowerCase().includes(q)):rows; const shown=shownAll.slice(0,st.limit);
   const ed=cur&&canRegWrite(cur.dept); const edDef=ed&&S.me.level<=3;
+  const regSum=()=>{ const g=cols.find(c=>c.group); if(!g) return ""; const sc=cols.filter(c=>c.sum); const by={};
+          const num=v=>{ const n=+String(v??"").replace(/[,\s원]/g,""); return isFinite(n)?n:0; };
+          shownAll.forEach(r=>{ const k=String(r.data?.[g.key]??"").trim(); if(!k) return; const o=by[k] ||= {n:0,s:sc.map(()=>0)}; o.n++; sc.forEach((c,i)=>o.s[i]+=num(r.data?.[c.key])); });
+          const L=Object.entries(by).sort((a,b)=>b[1].n-a[1].n||a[0].localeCompare(b[0],"ko")); const T={n:L.reduce((a,x)=>a+x[1].n,0),s:sc.map((c,i)=>L.reduce((a,x)=>a+x[1].s[i],0))};
+          return `<div class="regsum"><div class="meta" style="margin-bottom:4px">${st.month?`${+st.month.slice(5)}월`:"전체"} ${esc(g.label)}별 자동 집계</div><table class="fin"><thead><tr><th>${esc(g.label)}</th><th class="num">건수</th>${sc.map(c=>`<th class="num">${esc(c.label)}</th>`).join("")}</tr></thead><tbody>
+            ${L.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="num">${o.n}</td>${o.s.map(v=>`<td class="num">${v.toLocaleString("ko-KR")}</td>`).join("")}</tr>`).join("")||`<tr><td colspan="9" class="meta">자료 없음</td></tr>`}
+            </tbody><tfoot><tr><th>합계</th><th class="num">${T.n}</th>${T.s.map(v=>`<th class="num">${v.toLocaleString("ko-KR")}</th>`).join("")}</tr></tfoot></table></div>`; };
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>${fixed?"기본정보·연락망":"업무 기록부"}</h2><div class="meta">${fixed?(opts.title||"공통 자료"):"부서별로 구글시트처럼 쓰는 목록 · 칸을 누르면 바로 고칩니다"}${cur?` · ${esc(cur.name)} ${shownAll.length}행`:""}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -2342,6 +2351,7 @@ async function renderRegisters(opts={}){
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
         ${cur.date_col&&months.length?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month}">전체</button></div>`:""}
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
+        ${regSum()}
         <div class="tbl-box reg-box"><table class="reg"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
           ${shown.map(r=>`<tr data-r="${r.id}">${cols.map(c=>`<td data-k="${esc(c.key)}" ${ed?'tabindex="0"':""}>${esc(r.data?.[c.key]??"")}</td>`).join("")}${ed?`<td class="rx"><button class="nmbtn" data-rdel="${r.id}" aria-label="행 삭제" title="행 삭제">×</button></td>`:""}</tr>`).join("")||`<tr><td colspan="99" class="meta">자료가 없습니다.</td></tr>`}
         </tbody></table></div>
@@ -2366,7 +2376,7 @@ async function renderRegisters(opts={}){
     document.querySelectorAll("table.reg td[data-k]").forEach(td=>{ const open=()=>{ if(td.querySelector("textarea")) return; const tr=td.parentElement, rid=+tr.dataset.r, k=td.dataset.k, row=byId[rid]; const old=row.data?.[k]??"";
         const ta=document.createElement("textarea"); ta.className="regin"; ta.value=old; ta.rows=Math.min(6,Math.max(1,String(old).split("\n").length)); td.textContent=""; td.appendChild(ta); ta.focus(); ta.select();
         let done=false; const fin=async save=>{ if(done) return; done=true; const v=ta.value; td.textContent=save?v:old; if(!save||v===old) return; const data={...(row.data||{}),[k]:v}; if(!v) delete data[k];
-          const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; };
+          const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; const rs=document.querySelector(".regsum"); if(rs&&(cols.find(c=>c.key===k)?.group||cols.find(c=>c.key===k)?.sum)) rs.outerHTML=regSum(); };
         ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); fin(true).then(()=>{ const nx=tr.nextElementSibling?.querySelector(`td[data-k="${k}"]`); if(nx) nx.click(); }); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>{ const n=e.shiftKey?td.previousElementSibling:td.nextElementSibling; if(n&&n.dataset.k) n.click(); }); } };
         ta.onblur=()=>fin(true); };
       td.addEventListener("click",open); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); open(); } }); });
@@ -2376,14 +2386,15 @@ async function renderRegisters(opts={}){
   if($("rcol")) $("rcol").onclick=()=>{ const dlg=$("dlg");
     dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${esc(cur.name)} · 열 편집</h3>
       <div class="field"><label for="cn">목록 이름</label><input id="cn" value="${esc(cur.name)}"></div>
-      <div id="clist">${cols.map((c,i)=>`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="${esc(c.label)}" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${esc(c.key)}" ${cur.date_col===c.key?"checked":""}>날짜열</label><button type="button" class="btn ghost sm" data-cup="${i}" aria-label="위로">↑</button></div>`).join("")}</div>
+      <div id="clist">${cols.map((c,i)=>`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="${esc(c.label)}" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${esc(c.key)}" ${cur.date_col===c.key?"checked":""}>날짜열</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이 열의 이름별로 건수를 자동으로 셉니다"><input type="radio" name="cgrp" value="${esc(c.key)}" ${c.group?"checked":""}>이름별 집계</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이름별로 이 열의 숫자를 더합니다"><input type="checkbox" data-csum value="${esc(c.key)}" ${c.sum?"checked":""}>합계</label><button type="button" class="btn ghost sm" data-cup="${i}" aria-label="위로">↑</button></div>`).join("")}</div>
       <button type="button" class="btn ghost sm" id="cadd">+ 열 추가</button>
-      <p class="meta">열 이름을 비우고 저장하면 그 열은 화면에서 빠집니다(자료는 남음). 날짜열을 고르면 월별로 볼 수 있습니다.</p>
+      <p class="meta">열 이름을 비우고 저장하면 그 열은 화면에서 빠집니다(자료는 남음). 날짜열을 고르면 월별로 볼 수 있습니다. 이름별 집계를 고르면 그 열(예: 직원명)의 이름별 건수가 오른쪽에 자동으로 나오고, 합계를 체크한 열은 숫자를 더해 보여줍니다.</p><button type="button" class="btn ghost sm" id="cnogrp" style="margin-bottom:8px">이름별 집계 끄기</button>
       <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel">닫기</button><button type="button" class="btn" id="csave">저장</button></div></form>`;
     dlg.showModal(); let nc=cols.length; let order=cols.map((c,i)=>i); const keys=cols.map(c=>c.key);
-    $("cadd").onclick=()=>{ let k; do{ k="c"+(nc++); }while(keys.includes(k)); keys.push(k); const i=keys.length-1; order.push(i); $("clist").insertAdjacentHTML("beforeend",`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="" placeholder="새 열 이름" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${k}">날짜열</label></div>`); };
+    $("cadd").onclick=()=>{ let k; do{ k="c"+(nc++); }while(keys.includes(k)); keys.push(k); const i=keys.length-1; order.push(i); $("clist").insertAdjacentHTML("beforeend",`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="" placeholder="새 열 이름" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${k}">날짜열</label><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cgrp" value="${k}">이름별 집계</label><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-csum value="${k}">합계</label></div>`); };
+    $("cnogrp").onclick=()=>dlg.querySelectorAll('input[name="cgrp"]').forEach(x=>x.checked=false);
     dlg.querySelectorAll("[data-cup]").forEach(b=>b.onclick=()=>{ const el=b.closest("[data-ci]"); const prev=el.previousElementSibling; if(prev) el.parentNode.insertBefore(el,prev); });
-    $("csave").onclick=async()=>{ const columns=[...dlg.querySelectorAll("#clist [data-ci]")].map(el=>{ const i=+el.dataset.ci; return {key:keys[i],label:el.querySelector("[data-cl]").value.trim()}; }).filter(c=>c.label);
+    $("csave").onclick=async()=>{ const columns=[...dlg.querySelectorAll("#clist [data-ci]")].map(el=>{ const i=+el.dataset.ci; const k=keys[i], o={key:k,label:el.querySelector("[data-cl]").value.trim()}; if(dlg.querySelector('input[name="cgrp"]:checked')?.value===k) o.group=true; if(el.querySelector("[data-csum]")?.checked) o.sum=true; return o; }).filter(c=>c.label);
       const dc=dlg.querySelector('input[name="cdate"]:checked')?.value||null;
       const {error}=await sb.from("registers").update({name:$("cn").value.trim()||cur.name,columns,date_col:dc}).eq("id",cur.id); if(error) return toast(errMsg(error)); dlg.close(); renderRegisters(opts); };
   };
