@@ -151,7 +151,7 @@ legend{font-weight:600;padding:0 6px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:20}
 .toast.on{opacity:1}
 
-.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.1fr);border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.cal{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(7,minmax(0,1fr));border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
 .cal > div{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:8px;min-height:74px;min-width:0;font-size:12px}
 .cal .h{min-height:auto;background:var(--sunk);color:var(--muted);text-align:center;font-weight:500}
 .cal .d b{display:block;font-size:12px;color:var(--muted);font-weight:500}
@@ -1051,25 +1051,26 @@ async function renderCal(){
   const by=Object.fromEntries(rows.filter(r=>+r.total>0).map(r=>[r.close_date,r])); const today=kstToday();
   const first=new Date(R.start+"T00:00:00Z"); const lead=(first.getUTCDay()+6)%7;
   const cells=[]; let wk={t:0,n:0,c:0};
-  const hdr=["월","화","수","목","금","토","일"].map(d=>`<div class="h">${d}</div>`).join("")+`<div class="h wh">주 합계</div>`;
+  const hdr=`<div class="h wh">주 합계</div>`+["월","화","수","목","금","토","일"].map(d=>`<div class="h">${d}</div>`).join("");
+  let rowC=[];
   const total=lead+R.days, cellsN=Math.ceil(total/7)*7;
   const dowAgg=[...Array(7)].map(()=>({t:0,n:0,c:0}));
   for(let i=0;i<cellsN;i++){
     const day=i-lead+1;
-    if(day<1||day>R.days){ cells.push(`<div class="d out"></div>`); }
+    if(day<1||day>R.days){ rowC.push(`<div class="d out"></div>`); }
     else{ const iso=`${S.month}-${String(day).padStart(2,"0")}`; const r=by[iso];
       if(r){ const v=val(r), n=docsSum(r,"new"); wk.t+=v; wk.n+=n; wk.c++; const a=dowAgg[i%7]; a.t+=v; a.n+=n; a.c++;
-        cells.push(`<button class="d" data-date="${iso}" title="${iso} 마감일지 열기"><b>${day}</b><span class="v">${wonMan(v)}</span><br><span class="meta">신환 ${n}</span></button>`); }
-      else if(iso>today) cells.push(`<div class="d fut"><b>${day}</b></div>`);
-      else cells.push(`<button class="d miss" data-date="${iso}" title="${iso} 마감일지 입력"><b>${day}</b><span class="pill wait">${draft.has(iso)?"작성 중":"미마감"}</span></button>`);
+        rowC.push(`<button class="d" data-date="${iso}" title="${iso} 마감일지 열기"><b>${day}</b><span class="v">${wonMan(v)}</span><br><span class="meta">신환 ${n}</span></button>`); }
+      else if(iso>today) rowC.push(`<div class="d fut"><b>${day}</b></div>`);
+      else rowC.push(`<button class="d miss" data-date="${iso}" title="${iso} 마감일지 입력"><b>${day}</b><span class="pill wait">${draft.has(iso)?"작성 중":"미마감"}</span></button>`);
     }
-    if(i%7===6){ cells.push(`<div class="w">${wk.c?`<span class="num"><b>${wonMan(wk.t)}</b></span><br><span class="meta">${wk.c}일 · 신환 ${wk.n}</span>`:""}</div>`); wk={t:0,n:0,c:0}; }
+    if(i%7===6){ cells.push(`<div class="w">${wk.c?`<span class="num"><b>${wonMan(wk.t)}</b></span><br><span class="meta">${wk.c}일 · 신환 ${wk.n}</span>`:""}</div>`,...rowC); rowC=[]; wk={t:0,n:0,c:0}; }
   }
   const missing=[...Array(R.days)].map((_,i)=>`${S.month}-${String(i+1).padStart(2,"0")}`).filter(iso=>iso<=today&&!by[iso]).length;
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>마감 달력</h2><div class="meta">${dept?"수납":"총진료비"} 만원 단위 · 칸을 누르면 그날 마감일지가 열립니다 · ${missing?`<b style="color:var(--warn)">미마감 ${missing}일</b>`:"빠진 날 없음"}</div></div>${monthNav()}</div>
     <div class="cal" role="grid">${hdr}${cells.join("")}</div>
-    <section class="panel"><h3>요일별 평균 <span>${S.month.replace("-",". ")} 마감분</span></h3><div class="tbl-box"><table><thead><tr><th>요일</th>${["월","화","수","목","금","토","일"].map(d=>`<th>${d}</th>`).join("")}</tr></thead><tbody>
+    <section class="panel"><h3>요일별 평균 <span>${S.month.replace("-",". ")} 마감분</span></h3><div class="tbl-box"><table style="table-layout:fixed;width:100%"><colgroup><col style="width:${(110/810*100).toFixed(2)}%">${"<col>".repeat(7)}</colgroup><thead><tr><th>요일</th>${["월","화","수","목","금","토","일"].map(d=>`<th>${d}</th>`).join("")}</tr></thead><tbody>
       <tr><td>${dept?"수납":"진료비"}</td>${dowAgg.map(a=>`<td class="num">${a.c?wonMan(a.t/a.c):"–"}</td>`).join("")}</tr>
       <tr><td>신환(명)</td>${dowAgg.map(a=>`<td class="num">${a.c?(a.n/a.c).toFixed(1):"–"}</td>`).join("")}</tr>
       <tr><td>마감 일수</td>${dowAgg.map(a=>`<td class="num">${a.c}</td>`).join("")}</tr></tbody></table></div></section></div>`;
