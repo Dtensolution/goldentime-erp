@@ -2539,7 +2539,7 @@ async function renderLeave(){
   const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
   const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name)])];
   const asOf=kstToday();
-  let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved).reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
+  let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
     .sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return (a.g?.sort??1e6)-(b.g?.sort??1e6)||o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
   const allPeople=people.slice(); people.splice(0,people.length,...allPeople.filter(p=>st.dept==="전체"||p.dept===st.dept));
@@ -2549,10 +2549,10 @@ async function renderLeave(){
   const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
   const myDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = myDepts.includes(st.fdept) ? st.fdept : (myDepts.includes(S.me.dept)?S.me.dept:myDepts[0]);
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용(병가 포함) · 직원이 신청하면 부서장이 확인</div></div>
+    <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용 · 병가는 무급이라 연차에서 빠집니다 · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr>${lv<=3?`<th style="width:56px">순서</th>`:""}<th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="사용 일수 안에 포함된 병가">병가 <small>(사용에 포함)</small></th><th>확인 전</th></tr></thead><tbody>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr>${lv<=3?`<th style="width:56px">순서</th>`:""}<th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="무급 · 연차 사용·잔여에 들어가지 않음">병가 <small>(무급·연차 제외)</small></th><th>확인 전</th></tr></thead><tbody>
       ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}">${lv<=3?`<td class="lmv"><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="-1" aria-label="${esc(p.name)} 위로" ${ix===0?"disabled":""}>▲</button><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="1" aria-label="${esc(p.name)} 아래로" ${ix===people.length-1?"disabled":""}>▼</button></td>`:""}<td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
         <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=3?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
         <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="10" class="meta">자료가 없습니다.</td></tr>`}
@@ -3033,7 +3033,7 @@ async function renderMe(){
   const codes=Object.fromEntries((cr.data||[]).map(c=>[c.code,c]));
   const readSet=new Set((rd.data||[]).map(r=>r.doc_id));
   const notices=(dr.data||[]).filter(d=>!readSet.has(d.id)&&(seeAll()||d.dept==="공통"||d.dept===me.dept||d.dept==="회의록"));
-  const grant0=(gr.data||[])[0]; const LL=grant0&&legalLeave(grant0.hire_date,y,kstToday()); const grant=grant0?{...grant0,days:LL?LL.days:grant0.days}:null; const uses=ur.data||[]; const used=uses.filter(u=>u.approved).reduce((s,u)=>s+(+u.days),0); const pend=uses.filter(u=>!u.approved).length;
+  const grant0=(gr.data||[])[0]; const LL=grant0&&legalLeave(grant0.hire_date,y,kstToday()); const grant=grant0?{...grant0,days:LL?LL.days:grant0.days}:null; const uses=ur.data||[]; const used=uses.filter(u=>u.approved&&u.kind!=="병가").reduce((s,u)=>s+(+u.days),0); const pend=uses.filter(u=>!u.approved).length;
   const ot=or.data||[]; const otMin=ot.reduce((s,o)=>s+(+o.minutes||0),0);
   const appts=(ar.data||[]).filter(a=>a.status!=="취소"&&a.status!=="변경"); const br=S.branches.find(b=>b.id===S.branch);
   const days=[...Array(7)].map((_,i)=>addDays(mon,i));
