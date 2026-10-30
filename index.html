@@ -4048,8 +4048,8 @@ async function renderManual(){
         <button class="btn ghost sm" id="mxcsv">엑셀(CSV) 받기</button></div></div>
     <section class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="kpi lead"><span class="k">수기치료 합계</span><span class="v num" id="mxk1">${total()}<small>건</small></span><span class="d" id="mxk1d">${cols.map(c=>`${esc(c.name)} ${colSum(c.name)}`).join(" · ")}</span></div>
       <div class="kpi"><span class="k">${YR?"월 평균 (기록한 달)":"하루 평균 (기록한 날)"}</span><span class="v num" id="mxk2">${(()=>{ const n=days.filter(d=>rowSum(d)>0).length; return n?(total()/n).toFixed(1):0; })()}<small>건</small></span></div></section>
-    ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다</p>`:""}
     ${sheetHtml}
+    ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다</p>`:""}
     <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab mxct" data-cmt="mtx"><thead><tr><th class="cmd">${YR?`${st.year}년`:st.mode==="month"?`${R.m}월`:"날짜"}</th>${cols.map(c=>`<th>${esc(c.name)}${ed&&st.mode==="month"?` <button class="cmx" data-mxdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot">total</th></tr></thead><tbody>
       ${days.map(d=>`<tr><td class="cmd ${YR?"":dcls(d)}">${YR?`${+d.slice(5)}월`:st.mode==="month"?`${+d.slice(8)}일`:`${+d.slice(5,7)}/${+d.slice(8)} (${WDK[new Date(d+"T00:00:00Z").getUTCDay()]})`}</td>${cols.map(c=>cell(d,c.name)).join("")}<td class="tot num">${rowSum(d)}</td></tr>`).join("")}
       <tr class="sumrow"><td class="cmd">합계</td>${cols.map(c=>`<td class="num">${colSum(c.name)}</td>`).join("")}<td class="tot num">${total()}</td></tr></tbody></table></div>
