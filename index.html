@@ -3996,36 +3996,54 @@ async function renderStd(){
 // ── 수기치료 카운트 (씨암 카운트와 같은 방식 · 날짜 × 물리치료사) ──
 async function renderManual(){
   killCharts(); const main=$("main"); const keepY=S.mxKeepY??null; S.mxKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st=S.mxV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym); const ed=schedPerm("pt")==="edit";
+  const st=S.mxV ||= {ym:kstToday().slice(0,7)}; st.mode ||= "month"; st.date ||= kstToday(); st.from ||= addDays(kstToday(),-6); st.to ||= kstToday(); st.year ||= +kstToday().slice(0,4);
+  if(st.mode==="month") st.date=st.date.slice(0,7)===st.ym?st.date:st.ym+"-01"; else if(st.mode!=="year"&&st.mode!=="range") st.ym=st.date.slice(0,7);
+  const WDK=["일","월","화","수","목","금","토"];
+  let span; if(st.mode==="day") span={start:st.date,end:st.date}; else if(st.mode==="week"){ const m=mondayOf(st.date); span={start:m,end:addDays(m,6)}; } else if(st.mode==="month"){ const M=monthRange(st.ym); span={start:M.start,end:M.end}; }
+    else if(st.mode==="year") span={start:`${st.year}-01-01`,end:`${st.year}-12-31`}; else { if(st.to<st.from) [st.from,st.to]=[st.to,st.from]; if((new Date(st.to)-new Date(st.from))/864e5>400) st.to=addDays(st.from,400); span={start:st.from,end:st.to}; }
+  const R={...monthRange(st.mode==="year"?`${st.year}-01`:(st.mode==="range"?st.from:span.start).slice(0,7)), start:span.start, end:span.end};
+  const YR=st.mode==="year"; const ed=schedPerm("pt")==="edit"&&!YR;
   const [cr,nr,set]=await Promise.all([ sb.from("mtx_cols").select("*").eq("branch_id",S.branch).order("sort").order("id"),
-    sb.from("mtx_counts").select("cdate,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end),
+    sb.from("mtx_counts").select("cdate,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end).limit(100000),
     typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}) ]);
   if(cr.error||nr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(cr.error||nr.error))}</div></div>`; return; }
-  const allCols=cr.data||[]; const shown=c=>c.active!==false&&!(c.hidden_yms||[]).includes(st.ym)&&(!c.first_ym||st.ym>=c.first_ym)&&(!c.last_ym||st.ym<=c.last_ym);
-  const cols=allCols.filter(shown);
+  const allCols=cr.data||[]; const yms=[]; { let y=R.start.slice(0,7); while(y<=R.end.slice(0,7)){ yms.push(y); y=shiftMonth(y,1); } }
+  const shownIn=(c,ym)=>c.active!==false&&!(c.hidden_yms||[]).includes(ym)&&(!c.first_ym||ym>=c.first_ym)&&(!c.last_ym||ym<=c.last_ym);
   const V={}; (nr.data||[]).forEach(r=>V[`${r.cdate}|${r.name}`]=+r.cnt);
-  const days=[...Array(R.days)].map((_,i)=>`${st.ym}-${String(i+1).padStart(2,"0")}`);
+  const hasData=n=>(nr.data||[]).some(r=>r.name===n);
+  const shown=c=>yms.some(ym=>shownIn(c,ym))||hasData(c.name);
+  const cols=allCols.filter(shown);
+  const days=[]; if(YR){ for(let m=1;m<=12;m++) days.push(`${st.year}-${String(m).padStart(2,"0")}`); } else { let d=R.start; while(d<=R.end){ days.push(d); d=addDays(d,1); } }
   const hol=new Set((set.holidays||[]).map(h=>h.d));
   const dcls=d=>{ const w=new Date(d+"T00:00:00Z").getUTCDay(); return hol.has(d)||w===0?"sun":w===6?"sat":""; };
-  const g=(d,n)=>V[`${d}|${n}`]||0;
-  const cell=(d,n)=>{ const v=V[`${d}|${n}`]; return `<td class="cm">${ed?`<input data-mx="${d}|${esc(n)}" value="${v?v:""}" inputmode="numeric" autocomplete="off" aria-label="${d} ${esc(n)}">`:`<span>${v||""}</span>`}</td>`; };
+  const MS={}; if(YR) (nr.data||[]).forEach(r=>{ const k=`${r.cdate.slice(0,7)}|${r.name}`; MS[k]=(MS[k]||0)+(+r.cnt); });
+  const g=(d,n)=>YR?(MS[`${d}|${n}`]||0):(V[`${d}|${n}`]||0);
+  const cell=(d,n)=>{ const v=g(d,n); return `<td class="cm">${ed?`<input data-mx="${d}|${esc(n)}" value="${v?v:""}" inputmode="numeric" autocomplete="off" aria-label="${d} ${esc(n)}">`:`<span>${v||""}</span>`}</td>`; };
   const rowSum=d=>cols.reduce((s,c)=>s+g(d,c.name),0), colSum=n=>days.reduce((s,d)=>s+g(d,n),0), total=()=>days.reduce((s,d)=>s+rowSum(d),0);
-  const hiddenHere=allCols.filter(c=>!shown(c));
+  const hiddenHere=allCols.filter(c=>!shownIn(c,st.ym));
+  const ttl=YR?`${st.year}년`:st.mode==="month"?`${R.y}년 ${R.m}월`:st.mode==="day"?`${st.date.replace(/-/g,". ")} (${WDK[new Date(st.date+"T00:00:00Z").getUTCDay()]})`:`${R.start.replace(/-/g,".")} ~ ${R.end.replace(/-/g,".")} (${days.length}일)`;
   main.innerHTML=`<div class="wrap carm">
-    <div class="page-h"><div><h2>수기치료 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 물리치료사별 하루 건수 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강</div></div>
-      <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="mxcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="mxp" aria-label="이전 달">◀</button><input type="month" id="mxym" value="${st.ym}" aria-label="월 선택" class="ympick"><button class="btn ghost sm" id="mxn" aria-label="다음 달">▶</button></div></div></div>
+    <div class="page-h"><div><h2>수기치료 카운트</h2><div class="meta">${ttl} · 물리치료사별 ${YR?"월별 합계 (연 보기는 합계만 · 고치려면 일·주·월로)":"하루 건수 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강"}</div></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-mxm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}</div>
+        <div class="monthnav">${st.mode==="range"?`<input type="date" id="mxf" value="${st.from}" style="height:32px"> ~ <input type="date" id="mxt2" value="${st.to}" style="height:32px">`:`<button class="btn ghost sm" id="mxp" aria-label="이전">◀</button>${st.mode==="month"?`<input type="month" id="mxym" value="${st.ym}" aria-label="월 선택" class="ympick">`:YR?`<b class="num" style="min-width:70px;text-align:center">${st.year}년</b>`:`<input type="date" id="mxd" value="${st.date}" style="height:32px">`}<button class="btn ghost sm" id="mxn" aria-label="다음">▶</button><button class="btn ghost sm" id="mxtoday">오늘</button>`}</div>
+        <button class="btn ghost sm" id="mxcsv">엑셀(CSV) 받기</button></div></div>
     <section class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="kpi lead"><span class="k">수기치료 합계</span><span class="v num" id="mxk1">${total()}<small>건</small></span><span class="d" id="mxk1d">${cols.map(c=>`${esc(c.name)} ${colSum(c.name)}`).join(" · ")}</span></div>
-      <div class="kpi"><span class="k">하루 평균 (기록한 날)</span><span class="v num" id="mxk2">${(()=>{ const n=days.filter(d=>rowSum(d)>0).length; return n?(total()/n).toFixed(1):0; })()}<small>건</small></span></div></section>
+      <div class="kpi"><span class="k">${YR?"월 평균 (기록한 달)":"하루 평균 (기록한 날)"}</span><span class="v num" id="mxk2">${(()=>{ const n=days.filter(d=>rowSum(d)>0).length; return n?(total()/n).toFixed(1):0; })()}<small>건</small></span></div></section>
     ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다</p>`:""}
-    <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab mxct" data-cmt="mtx"><thead><tr><th class="cmd">${R.m}월</th>${cols.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-mxdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot">total</th></tr></thead><tbody>
-      ${days.map(d=>`<tr><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${cols.map(c=>cell(d,c.name)).join("")}<td class="tot num">${rowSum(d)}</td></tr>`).join("")}
+    <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab mxct" data-cmt="mtx"><thead><tr><th class="cmd">${YR?`${st.year}년`:st.mode==="month"?`${R.m}월`:"날짜"}</th>${cols.map(c=>`<th>${esc(c.name)}${ed&&st.mode==="month"?` <button class="cmx" data-mxdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot">total</th></tr></thead><tbody>
+      ${days.map(d=>`<tr><td class="cmd ${YR?"":dcls(d)}">${YR?`${+d.slice(5)}월`:st.mode==="month"?`${+d.slice(8)}일`:`${+d.slice(5,7)}/${+d.slice(8)} (${WDK[new Date(d+"T00:00:00Z").getUTCDay()]})`}</td>${cols.map(c=>cell(d,c.name)).join("")}<td class="tot num">${rowSum(d)}</td></tr>`).join("")}
       <tr class="sumrow"><td class="cmd">합계</td>${cols.map(c=>`<td class="num">${colSum(c.name)}</td>`).join("")}<td class="tot num">${total()}</td></tr></tbody></table></div>
-      ${ed?`<div class="cmadd"><input id="mxt" placeholder="물리치료사 이름" list="mxnm" style="height:30px;padding:0 8px;width:150px"><datalist id="mxnm">${hiddenHere.map(c=>`<option value="${esc(c.name)}">`).join("")}</datalist><button class="btn ghost sm" id="mxta">+ 치료사 열</button></div>`:""}</section></div>`;
+      ${ed&&st.mode==="month"?`<div class="cmadd"><input id="mxt" placeholder="물리치료사 이름" list="mxnm" style="height:30px;padding:0 8px;width:150px"><datalist id="mxnm">${hiddenHere.map(c=>`<option value="${esc(c.name)}">`).join("")}</datalist><button class="btn ghost sm" id="mxta">+ 치료사 열</button></div>`:""}</section></div>`;
   if(keepY!=null) window.scrollTo(0,keepY);
   const again=()=>{ S.mxKeepY=window.scrollY; return renderManual(); };
-  $("mxp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderManual(); }; $("mxn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderManual(); };
-  $("mxym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("mxym").value)){ st.ym=$("mxym").value; renderManual(); } };
-  $("mxcsv").onclick=()=>downloadCSV(`수기치료카운트_${st.ym}.csv`,[["날짜",...cols.map(c=>c.name),"total"],...days.map(d=>[d,...cols.map(c=>g(d,c.name)),rowSum(d)]),["합계",...cols.map(c=>colSum(c.name)),total()]]);
+  main.querySelectorAll("[data-mxm]").forEach(b=>b.onclick=()=>{ const m=b.dataset.mxm; if(m===st.mode) return; if(m==="month") st.ym=(st.mode==="year"?`${st.year}-01`:st.date.slice(0,7)); if(st.mode==="month") st.date=st.ym===kstToday().slice(0,7)?kstToday():st.ym+"-01"; if(m==="year") st.year=+(st.mode==="month"?st.ym:st.date).slice(0,4); st.mode=m; renderManual(); });
+  const step=n=>{ if(st.mode==="month") st.ym=shiftMonth(st.ym,n); else if(YR) st.year+=n; else st.date=addDays(st.date,st.mode==="week"?7*n:n); renderManual(); };
+  if($("mxp")) $("mxp").onclick=()=>step(-1); if($("mxn")) $("mxn").onclick=()=>step(1);
+  if($("mxtoday")) $("mxtoday").onclick=()=>{ st.date=kstToday(); st.ym=st.date.slice(0,7); st.year=+st.date.slice(0,4); renderManual(); };
+  if($("mxym")) $("mxym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("mxym").value)){ st.ym=$("mxym").value; renderManual(); } };
+  if($("mxd")) $("mxd").onchange=()=>{ if($("mxd").value){ st.date=$("mxd").value; renderManual(); } };
+  if($("mxf")) $("mxf").onchange=()=>{ if($("mxf").value){ st.from=$("mxf").value; renderManual(); } }; if($("mxt2")) $("mxt2").onchange=()=>{ if($("mxt2").value){ st.to=$("mxt2").value; renderManual(); } };
+  $("mxcsv").onclick=()=>downloadCSV(`수기치료카운트_${YR?st.year:st.mode==="month"?st.ym:R.start+"_"+R.end}.csv`,[["날짜",...cols.map(c=>c.name),"total"],...days.map(d=>[d,...cols.map(c=>g(d,c.name)),rowSum(d)]),["합계",...cols.map(c=>colSum(c.name)),total()]]);
   if(!ed) return;
   const saveMany=async(list)=>{ if(!list.length) return true; const ups=list.filter(x=>x.v>0).map(x=>({branch_id:S.branch,cdate:x.d,name:x.n,cnt:x.v,updated_at:new Date().toISOString()})), dels=list.filter(x=>!(x.v>0));
     const jobs=[]; if(ups.length) jobs.push(sb.from("mtx_counts").upsert(ups,{onConflict:"branch_id,cdate,name"}));
@@ -4066,7 +4084,7 @@ async function renderManual(){
       if(await saveMany(list)){ toast(`${list.length}칸 붙여넣기`); again(); } });
     el.addEventListener("change",async()=>{ const k=keyOf(el); const v=+el.value||0; if((V[`${k.d}|${k.n}`]||0)===v) return; el.classList.add("saving");
       const ok=await saveMany([{...k,v}]); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); updTotals(el); }); });
-  $("mxta").onclick=async()=>{ const n=$("mxt").value.trim(); if(!n) return toast("이름을 적어주세요"); const ex=allCols.find(c=>c.name===n);
+  if($("mxta")) $("mxta").onclick=async()=>{ const n=$("mxt").value.trim(); if(!n) return toast("이름을 적어주세요"); const ex=allCols.find(c=>c.name===n);
     const res=ex ? await sb.from("mtx_cols").update({active:true,hidden_yms:(ex.hidden_yms||[]).filter(y=>y!==st.ym),first_ym:ex.first_ym&&ex.first_ym>st.ym?st.ym:ex.first_ym,last_ym:ex.last_ym&&ex.last_ym<st.ym?null:ex.last_ym}).eq("id",ex.id)
       : await sb.from("mtx_cols").insert({branch_id:S.branch,name:n,sort:Math.max(0,...allCols.map(c=>c.sort||0))+1,first_ym:st.ym,hidden_yms:[]});
     if(res.error) return toast(errMsg(res.error)); toast(ex?`${n} 다시 표시 (${R.m}월부터)`:`${n} 열 추가`); again(); };
