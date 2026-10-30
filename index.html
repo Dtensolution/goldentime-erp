@@ -252,6 +252,7 @@ table.cmtab td.cmd{background:var(--sunk);font-weight:600;width:56px}
 table.cmtab td.cmd.sat{color:#1a8fd0}table.cmtab td.cmd.sun{color:#d93025}
 table.cmtab td.tot,table.cmtab th.tot{background:color-mix(in srgb,var(--navy) 6%,var(--surface));font-weight:600;width:60px}
 table.cmtab td.cm input{all:unset;box-sizing:border-box;width:100%;height:26px;text-align:center;font-family:var(--f-num)}
+table.mxsheet td.sl{position:relative}table.mxsheet .slg{position:absolute;right:2px;top:50%;transform:translateY(-50%);cursor:grab;color:var(--muted);font-size:12px;display:none;padding:0 2px}table.mxsheet td.sl:hover input:not(:placeholder-shown)+.slg{display:block}table.mxsheet td.sl input{text-align:left;padding:0 6px;font-family:var(--f-body)}table.mxsheet tr.hh td{border-top:1.5px solid color-mix(in srgb,var(--ink) 25%,transparent)}table.mxsheet th[draggable]{cursor:grab}table.mxsheet thead th{position:sticky;top:0;z-index:1}
 table.cmtab td.cm input:focus{outline:2px solid var(--navy);outline-offset:-2px;background:var(--navy-soft)}
 table.cmtab td.cm input.saved{background:color-mix(in srgb,var(--good) 8%,transparent)}table.cmtab td.cm input.err{background:color-mix(in srgb,var(--bad) 12%,transparent)}
 table.cmtab tr.sumrow td{background:#2f8f4e;color:#fff;font-weight:700}table.cmtab tr.sumrow td.tot{background:#24713d}
@@ -280,6 +281,8 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 .ap span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ap.ap-d{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,var(--surface))}
 .ap.ap-x{border-color:var(--line);background:var(--sunk);opacity:.7}
+.ap.icol{border-color:var(--ic);background:color-mix(in srgb,var(--ic) 13%,var(--surface))}.ap.icol.ap-d{background:color-mix(in srgb,var(--ic) 6%,var(--surface));border-style:dashed;border-left-style:solid}
+.ap em.okm{color:#fff;background:var(--good);font-weight:700}.iclg{display:flex;flex-wrap:wrap;gap:6px 12px;margin:6px 0;font-size:12.5px;color:var(--muted)}.iclg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px;background:var(--ic)}
 .ap.ap-x b{text-decoration:line-through}
 .ap:hover{z-index:3;box-shadow:0 2px 8px rgb(0 0 0 / .15)}
 .sc-note{padding:12px 16px}
@@ -637,6 +640,7 @@ const menuDept=()=>S.me.level===5?"의사":S.me.dept;
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return (seeAll()&&S.me.level!==5) || S.me.dept==="총괄"; }
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 씨암 칸을 쓰는 지점 (철산)
+const MTX_SLOT = ["gt-cs"]; // 수기치료 시간표를 쓰는 지점 (철산)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
 const PATHS = ["지인소개","네이버 블로그","네이버 지도","카카오맵","유튜브","병원 간판","이마트 광고","GTX 광고","지하철역 광고","기타"];
@@ -1350,6 +1354,8 @@ async function renderSched(kind){
   if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const lanes=(lr.data||[]).filter(l=>l.active), items=ir.data||[], appts=ar.data||[], notes=nr.data||[];
   const itemBy=Object.fromEntries(items.map(i=>[i.name,i]));
+  const IC=["#1a5fd0","#2f8f4e","#d17a12","#8e44ad","#c0392b","#0f8c8c","#b8860b","#d6336c","#5d6d7e","#6b8e23","#3949ab","#a0522d"];
+  const icOf=name=>{ let i=items.findIndex(x=>x.name===name); if(i<0){ i=0; for(const ch of String(name||"")) i=(i*31+ch.charCodeAt(0))>>>0; } return IC[i%IC.length]; };
   const docNames=(dr.data||[]).filter(d=>d.active).map(d=>d.name);
   const {data:thr}=await sb.from("staff").select("name,dept,sort,active").eq("branch_id",S.branch).eq("active",true).in("dept",kind==="emg"?["임상병리"]:["물리치료"]).order("sort");
   const therapists=(thr||[]).filter(s=>!PLACEHOLDER.test(s.name)).map(s=>s.name);
@@ -1375,8 +1381,9 @@ async function renderSched(kind){
     const cards=list.map(a=>{ const top=(a.start_min-cfg.from)/10*SLOT_H+1, h=Math.max(SLOT_H-2,a.minutes/10*SLOT_H-2);
       const laneName = "";
       const ct=a.contact||{}; const inpB=a.inpatient?`<em class="inp" title="입원">입</em>`:""; const nthB=kind==="emg"&&a._k?`<em class="nth n${a._k}" title="${a.exam_no?"직접 지정":"자동 계산 ("+a._n+"번째 검사)"}">${a._k}차</em>`:""; const badges=kind==="emg"?`${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
-      return `<button class="ap ${ST_CLASS[a.status]||""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
-        <b>${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item].filter(Boolean).map(esc).join(" / "):`${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.needle_doctor?"니들링 "+esc(a.needle_doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span></button>`; }).join("");
+      const icx=kind==="pt"&&!LOST_ST.has(a.status);
+      return `<button class="ap ${ST_CLASS[a.status]||""}${icx?" icol":""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="${icx?`--ic:${icOf(a.item)};`:""}top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
+        <b>${icx&&a.status==="완료"?'<em class="okm" title="완료">✓</em>':""}${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item].filter(Boolean).map(esc).join(" / "):`${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.needle_doctor?"니들링 "+esc(a.needle_doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span></button>`; }).join("");
     return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h${st.mode==="week"?" sc-go":""}" ${st.mode==="week"?`data-goday="${c.date}" role="button" tabindex="0" title="${c.date} 하루 보기"`:""}>${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
       <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
@@ -1421,6 +1428,7 @@ async function renderSched(kind){
         ${canEdit?`<button class="btn sm" id="sa">+ 예약 추가</button>`:""}
       </div></div>
     ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
+    ${grid&&kind==="pt"&&items.length?`<div class="iclg">${items.filter(i=>i.active!==false).map(i=>`<span style="--ic:${icOf(i.name)}"><i></i>${esc(i.name)}</span>`).join("")}<span>· 완료는 ✓ 표시 · 취소·노쇼·변경은 회색</span></div>`:""}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
     `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px repeat(${cols.length},minmax(${st.mode==="week"?(lanes.length>1?92:120):150}px,1fr))">
       <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
@@ -4003,9 +4011,11 @@ async function renderManual(){
     else if(st.mode==="year") span={start:`${st.year}-01-01`,end:`${st.year}-12-31`}; else { if(st.to<st.from) [st.from,st.to]=[st.to,st.from]; if((new Date(st.to)-new Date(st.from))/864e5>400) st.to=addDays(st.from,400); span={start:st.from,end:st.to}; }
   const R={...monthRange(st.mode==="year"?`${st.year}-01`:(st.mode==="range"?st.from:span.start).slice(0,7)), start:span.start, end:span.end};
   const YR=st.mode==="year"; const ed=schedPerm("pt")==="edit"&&!YR;
-  const [cr,nr,set]=await Promise.all([ sb.from("mtx_cols").select("*").eq("branch_id",S.branch).order("sort").order("id"),
+  const SLOT=MTX_SLOT.includes(S.branch)&&!YR; st.sdate ||= kstToday(); if(st.mode==="day") st.sdate=st.date;
+  const [cr,nr,set,tr]=await Promise.all([ sb.from("mtx_cols").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("mtx_counts").select("cdate,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end).limit(100000),
-    typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}) ]);
+    typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}),
+    SLOT?sb.from("manual_tx").select("id,therapist,seq,entry").eq("branch_id",S.branch).eq("tx_date",st.sdate):Promise.resolve({data:[]}) ]);
   if(cr.error||nr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(cr.error||nr.error))}</div></div>`; return; }
   const allCols=cr.data||[]; const yms=[]; { let y=R.start.slice(0,7); while(y<=R.end.slice(0,7)){ yms.push(y); y=shiftMonth(y,1); } }
   const shownIn=(c,ym)=>c.active!==false&&!(c.hidden_yms||[]).includes(ym)&&(!c.first_ym||ym>=c.first_ym)&&(!c.last_ym||ym<=c.last_ym);
@@ -4021,6 +4031,15 @@ async function renderManual(){
   const cell=(d,n)=>{ const v=g(d,n); return `<td class="cm">${ed?`<input data-mx="${d}|${esc(n)}" value="${v?v:""}" inputmode="numeric" autocomplete="off" aria-label="${d} ${esc(n)}">`:`<span>${v||""}</span>`}</td>`; };
   const rowSum=d=>cols.reduce((s,c)=>s+g(d,c.name),0), colSum=n=>days.reduce((s,d)=>s+g(d,n),0), total=()=>days.reduce((s,d)=>s+rowSum(d),0);
   const hiddenHere=allCols.filter(c=>!shownIn(c,st.ym));
+  const T={}; (tr?.data||[]).forEach(x=>T[`${x.seq}|${x.therapist}`]=x);
+  const sw=new Date(st.sdate+"T00:00:00Z").getUTCDay(); const sat=sw===6;
+  const slots=[]; { const to=sat?14*60+40:18*60+40; for(let m=9*60;m<to;m+=10){ if(!sat&&m>=13*60&&m<14*60) continue; slots.push(m); } (tr?.data||[]).forEach(x=>{ if(!slots.includes(x.seq)) slots.push(x.seq); }); slots.sort((a,b)=>a-b); }
+  const sheetCnt=n=>slots.filter(m=>T[`${m}|${n}`]).length;
+  const sheetHtml=!SLOT?"":`<section class="panel" style="padding:12px"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><h3 style="margin:0">시간표 <span>칸에 차트번호·환자이름을 적으면 아래 개수가 세어져 수기치료표에 자동으로 들어갑니다${ed?" · 치료사 이름을 끌어서 순서를 바꿀 수 있습니다":""}</span></h3>
+      ${st.mode==="day"?"":`<div class="monthnav"><button class="btn ghost sm" id="sdp" aria-label="전날">◀</button><input type="date" id="sdd" value="${st.sdate}" style="height:30px"><button class="btn ghost sm" id="sdn" aria-label="다음날">▶</button></div>`}<b>${+st.sdate.slice(5,7)}/${+st.sdate.slice(8)} (${WDK[sw]})</b></div>
+    <div class="tbl-box" style="max-height:70vh"><table class="cmtab mxsheet"><thead><tr><th class="cmd">시간</th>${cols.map(c=>`<th ${ed?`draggable="true" data-mxcol="${c.id}" title="끌어서 순서 바꾸기"`:""}>${ed?"⠿ ":""}${esc(c.name)}</th>`).join("")}</tr></thead><tbody>
+      ${slots.map(m=>`<tr${m%30===0?' class="hh"':""}><td class="cmd">${m%30===0?hhmm(m):""}</td>${cols.map(c=>{ const x=T[`${m}|${c.name}`]; return `<td class="cm sl">${ed?`<input data-sl="${m}|${esc(c.name)}" value="${esc(x?.entry||"")}" placeholder=" " autocomplete="off" aria-label="${hhmm(m)} ${esc(c.name)}"><span class="slg" draggable="true" title="끌어서 다른 칸으로 옮기기">⠿</span>`:`<span>${esc(x?.entry||"")}</span>`}</td>`; }).join("")}</tr>`).join("")}
+      <tr class="sumrow"><td class="cmd">합계</td>${cols.map(c=>`<td class="num" data-slsum="${esc(c.name)}">${sheetCnt(c.name)}</td>`).join("")}</tr></tbody></table></div></section>`;
   const ttl=YR?`${st.year}년`:st.mode==="month"?`${R.y}년 ${R.m}월`:st.mode==="day"?`${st.date.replace(/-/g,". ")} (${WDK[new Date(st.date+"T00:00:00Z").getUTCDay()]})`:`${R.start.replace(/-/g,".")} ~ ${R.end.replace(/-/g,".")} (${days.length}일)`;
   main.innerHTML=`<div class="wrap carm">
     <div class="page-h"><div><h2>수기치료 카운트</h2><div class="meta">${ttl} · 물리치료사별 ${YR?"월별 합계 (연 보기는 합계만 · 고치려면 일·주·월로)":"하루 건수 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강"}</div></div>
@@ -4030,6 +4049,7 @@ async function renderManual(){
     <section class="kpis" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="kpi lead"><span class="k">수기치료 합계</span><span class="v num" id="mxk1">${total()}<small>건</small></span><span class="d" id="mxk1d">${cols.map(c=>`${esc(c.name)} ${colSum(c.name)}`).join(" · ")}</span></div>
       <div class="kpi"><span class="k">${YR?"월 평균 (기록한 달)":"하루 평균 (기록한 날)"}</span><span class="v num" id="mxk2">${(()=>{ const n=days.filter(d=>rowSum(d)>0).length; return n?(total()/n).toFixed(1):0; })()}<small>건</small></span></div></section>
     ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다</p>`:""}
+    ${sheetHtml}
     <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab mxct" data-cmt="mtx"><thead><tr><th class="cmd">${YR?`${st.year}년`:st.mode==="month"?`${R.m}월`:"날짜"}</th>${cols.map(c=>`<th>${esc(c.name)}${ed&&st.mode==="month"?` <button class="cmx" data-mxdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot">total</th></tr></thead><tbody>
       ${days.map(d=>`<tr><td class="cmd ${YR?"":dcls(d)}">${YR?`${+d.slice(5)}월`:st.mode==="month"?`${+d.slice(8)}일`:`${+d.slice(5,7)}/${+d.slice(8)} (${WDK[new Date(d+"T00:00:00Z").getUTCDay()]})`}</td>${cols.map(c=>cell(d,c.name)).join("")}<td class="tot num">${rowSum(d)}</td></tr>`).join("")}
       <tr class="sumrow"><td class="cmd">합계</td>${cols.map(c=>`<td class="num">${colSum(c.name)}</td>`).join("")}<td class="tot num">${total()}</td></tr></tbody></table></div>
@@ -4043,6 +4063,8 @@ async function renderManual(){
   if($("mxym")) $("mxym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("mxym").value)){ st.ym=$("mxym").value; renderManual(); } };
   if($("mxd")) $("mxd").onchange=()=>{ if($("mxd").value){ st.date=$("mxd").value; renderManual(); } };
   if($("mxf")) $("mxf").onchange=()=>{ if($("mxf").value){ st.from=$("mxf").value; renderManual(); } }; if($("mxt2")) $("mxt2").onchange=()=>{ if($("mxt2").value){ st.to=$("mxt2").value; renderManual(); } };
+  if($("sdd")) $("sdd").onchange=()=>{ if($("sdd").value){ st.sdate=$("sdd").value; again(); } };
+  if($("sdp")) $("sdp").onclick=()=>{ st.sdate=addDays(st.sdate,-1); again(); }; if($("sdn")) $("sdn").onclick=()=>{ st.sdate=addDays(st.sdate,1); again(); };
   $("mxcsv").onclick=()=>downloadCSV(`수기치료카운트_${YR?st.year:st.mode==="month"?st.ym:R.start+"_"+R.end}.csv`,[["날짜",...cols.map(c=>c.name),"total"],...days.map(d=>[d,...cols.map(c=>g(d,c.name)),rowSum(d)]),["합계",...cols.map(c=>colSum(c.name)),total()]]);
   if(!ed) return;
   const saveMany=async(list)=>{ if(!list.length) return true; const ups=list.filter(x=>x.v>0).map(x=>({branch_id:S.branch,cdate:x.d,name:x.n,cnt:x.v,updated_at:new Date().toISOString()})), dels=list.filter(x=>!(x.v>0));
@@ -4084,6 +4106,32 @@ async function renderManual(){
       if(await saveMany(list)){ toast(`${list.length}칸 붙여넣기`); again(); } });
     el.addEventListener("change",async()=>{ const k=keyOf(el); const v=+el.value||0; if((V[`${k.d}|${k.n}`]||0)===v) return; el.classList.add("saving");
       const ok=await saveMany([{...k,v}]); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); updTotals(el); }); });
+  if(SLOT){ const sh=main.querySelector("table.mxsheet");
+    const recount=async n=>{ const c=sheetCnt(n), d=st.sdate; const ok=await saveMany([{d,n,v:c}]); if(!ok) return; const sc=sh.querySelector(`[data-slsum="${CSS.escape(n)}"]`); if(sc) sc.textContent=c;
+      const ci=main.querySelector(`table.mxct [data-mx="${CSS.escape(d+"|"+n)}"]`); if(ci){ ci.value=c||""; updTotals(ci); } };
+    const putEntry=async(m,n,txt)=>{ const k=`${m}|${n}`, old=T[k]; txt=txt.trim();
+      if(!txt){ if(old){ const {error}=await sb.from("manual_tx").delete().eq("id",old.id); if(error){ toast(errMsg(error)); return false; } delete T[k]; } return true; }
+      const mm=txt.match(/^(\d+)\s*(.*)$/); const row={branch_id:S.branch,tx_date:st.sdate,therapist:n,seq:m,entry:txt,chart_no:mm?mm[1]:null,patient_name:(mm?mm[2]:txt).trim()||null,updated_at:new Date().toISOString()};
+      const {data,error}=await sb.from("manual_tx").upsert(row,{onConflict:"branch_id,tx_date,therapist,seq"}).select("id,therapist,seq,entry").single(); if(error){ toast(errMsg(error)); return false; } T[k]=data; return true; };
+    const SG=()=>[...sh.querySelectorAll("tbody tr:not(.sumrow)")].map(tr=>[...tr.querySelectorAll("input[data-sl]")]);
+    const go=(el,dr,dc)=>{ const G=SG(); for(let r=0;r<G.length;r++){ const c=G[r].indexOf(el); if(c>=0){ const t=G[r+dr]?.[c+dc]; if(t){ t.focus(); t.select(); } return; } } };
+    sh.querySelectorAll("input[data-sl]").forEach(el=>{ const [m,...nn]=el.dataset.sl.split("|"); const n=nn.join("|");
+      el.addEventListener("change",async()=>{ el.classList.add("saving"); const ok=await putEntry(+m,n,el.value); el.classList.remove("saving"); if(!ok){ el.classList.add("err"); return; } el.classList.remove("err"); el.classList.add("saved"); await recount(n); });
+      el.addEventListener("keydown",e=>{ if(e.isComposing) return; if(e.key==="Enter"||e.key==="ArrowDown"){ e.preventDefault(); go(el,e.shiftKey&&e.key==="Enter"?-1:1,0); } else if(e.key==="ArrowUp"){ e.preventDefault(); go(el,-1,0); } else if(e.key==="Tab"){ e.preventDefault(); go(el,0,e.shiftKey?-1:1); } });
+      // 칸 끌어서 다른 칸으로 옮기기 (Alt 없이: 칸 테두리에서 끌기)
+      const td=el.closest("td"); const gp=td.querySelector(".slg"); gp.addEventListener("dragstart",e=>{ if(!el.value.trim()){ e.preventDefault(); return; } e.dataTransfer.setData("text/mxsl",el.dataset.sl); e.dataTransfer.effectAllowed="move"; });
+      td.addEventListener("dragover",e=>{ if([...e.dataTransfer.types].includes("text/mxsl")){ e.preventDefault(); td.classList.add("cmsel"); } });
+      td.addEventListener("dragleave",()=>td.classList.remove("cmsel"));
+      td.addEventListener("drop",async e=>{ td.classList.remove("cmsel"); const src=e.dataTransfer.getData("text/mxsl"); if(!src||src===el.dataset.sl) return; e.preventDefault();
+        const se=sh.querySelector(`input[data-sl="${CSS.escape(src)}"]`); if(!se) return; const [sm,...sn]=src.split("|"); const snm=sn.join("|"); const a=se.value, b=el.value;
+        if(!(await putEntry(+sm,snm,b))||!(await putEntry(+m,n,a))) return again(); se.value=b; el.value=a; await recount(snm); if(snm!==n) await recount(n); toast(b?"두 칸을 맞바꿨습니다":"옮겼습니다"); }); });
+    // 치료사 열 순서 바꾸기
+    let dragCol=null; sh.querySelectorAll("th[data-mxcol]").forEach(th=>{ th.addEventListener("dragstart",e=>{ dragCol=+th.dataset.mxcol; e.dataTransfer.setData("text/mxcol",th.dataset.mxcol); });
+      th.addEventListener("dragover",e=>{ if(dragCol!=null){ e.preventDefault(); th.classList.add("cmsel"); } }); th.addEventListener("dragleave",()=>th.classList.remove("cmsel"));
+      th.addEventListener("drop",async e=>{ e.preventDefault(); th.classList.remove("cmsel"); const to=+th.dataset.mxcol, from=dragCol; dragCol=null; if(from==null||from===to) return;
+        const order=allCols.map(c=>c.id); order.splice(order.indexOf(from),1); order.splice(order.indexOf(to)+(order.indexOf(from)<0?0:0),0,from);
+        const res=await Promise.all(order.map((id,i)=>sb.from("mtx_cols").update({sort:i+1}).eq("id",id))); const er=res.find(r=>r.error); if(er) return toast(errMsg(er.error)); toast("치료사 순서를 바꿨습니다"); again(); }); });
+  }
   if($("mxta")) $("mxta").onclick=async()=>{ const n=$("mxt").value.trim(); if(!n) return toast("이름을 적어주세요"); const ex=allCols.find(c=>c.name===n);
     const res=ex ? await sb.from("mtx_cols").update({active:true,hidden_yms:(ex.hidden_yms||[]).filter(y=>y!==st.ym),first_ym:ex.first_ym&&ex.first_ym>st.ym?st.ym:ex.first_ym,last_ym:ex.last_ym&&ex.last_ym<st.ym?null:ex.last_ym}).eq("id",ex.id)
       : await sb.from("mtx_cols").insert({branch_id:S.branch,name:n,sort:Math.max(0,...allCols.map(c=>c.sort||0))+1,first_ym:st.ym,hidden_yms:[]});
