@@ -389,6 +389,7 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .regsum{float:right;margin:0 0 10px 14px;min-width:220px;max-width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sunk)}.regsum table{width:100%}.regsum td,.regsum th{padding:4px 8px}
 @media (max-width:900px){.regsum{float:none;margin:0 0 10px}}
 .mded [data-ci],.mded .mdt{cursor:text}.mded tr[data-ln] [data-ci]:hover,.mded .mdt:hover{outline:1px dashed var(--accent);outline-offset:-1px}
+.md td.mdck{text-align:center}.md td.mdck input{width:18px;height:18px;cursor:pointer}
 .mded td.mdx{width:28px;padding:0 2px;border-left:none}.mded tr .mdx .nmbtn{opacity:0}.mded tr:hover .mdx .nmbtn{opacity:.6}
 .mded .mdin{width:100%;font:inherit;resize:vertical}.mded .mdadd{margin:-2px 0 10px}
 .md td,.md th{text-align:left!important}
@@ -1933,7 +1934,8 @@ function mdRender(src,opt={}){
   const E=!!opt.edit; const L=i=>E?` data-ln="${i}"`:"";
   const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
   const lines=String(src||"").split(/\r?\n/); let out="", list=null, tbl=null;
-  const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); out+=`<div class="tbl-box"><table>${t.map((r,i)=>`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:`<td data-ci="${ci}">${inl(c)}</td>`).join("")}${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}">+ 줄 추가</button>`:""}`; };
+  const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
+  const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); const hasCk=t.some(r=>r.c.some(c=>CK.test(c))); out+=`<div class="tbl-box"><table>${t.map((r,i)=>`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:cellH(c,ci,r.ln)).join("")}${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}`:""}`; };
   const close=()=>{ if(list){ out+=`</${list}>`; list=null; } if(tbl){ const t=tbl; tbl=null; flushT(t); } };
   lines.forEach((raw,ln)=>{ const l=raw.trimEnd();
     if(/^\s*\|.*\|\s*$/.test(l)){ if(list){ out+=`</${list}>`; list=null; } const cells=l.trim().slice(1,-1).split("|").map(c=>c.trim()); if(cells.every(c=>/^:?-{2,}:?$/.test(c))) return; (tbl ||= []).push({c:cells,ln}); return; }
@@ -1969,11 +1971,17 @@ function bindMdEdit(box,doc,rerender){
     edit(td,()=>cellsOf(ln)[ci]??"",v=>setCell(ln,ci,v),(e,dir)=>{ let n=null;
       if(dir==="down") n=tr.nextElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="right") n=td.nextElementSibling; else n=td.previousElementSibling;
       if(n&&n.dataset.ci!=null) setTimeout(()=>cellEdit(n),0); }); };
-  box.querySelectorAll("tr[data-ln] [data-ci]").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
+  box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
   box.querySelectorAll(".mdt[data-ln]").forEach(el=>{ el.tabIndex=0; const ln=+el.dataset.ln; const go=()=>edit(el,()=>lines[ln].slice(preOf(lines[ln]).length),v=>{ lines[ln]=preOf(lines[ln])+v.replace(/\s*\n\s*/g," "); });
     el.addEventListener("click",e=>{ if(e.target.closest("a,.mdin,input")) return; e.stopPropagation(); go(); }); el.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===el){ e.preventDefault(); go(); } }); });
   box.querySelectorAll("[data-mck]").forEach(cb=>cb.onchange=()=>{ const ln=+cb.dataset.mck; lines[ln]=lines[ln].replace(/\[( |x|X)\]/,cb.checked?"[x]":"[ ]"); queue(); });
-  box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").join(" | ")+" |"); dirty=true; await save(); rerender(); });
+  box.querySelectorAll("[data-tck]").forEach(cb=>{ cb.closest("td").onclick=e=>{ if(e.target!==cb){ e.stopPropagation(); cb.click(); } else e.stopPropagation(); };
+    cb.onchange=()=>{ const [ln,ci]=cb.dataset.tck.split(":").map(Number); setCell(ln,ci,cb.checked?"[x]":"[ ]"); queue(); }; });
+  box.querySelectorAll("[data-mcol]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mcol.split(",").map(Number); const t=kstToday(); const lab=`${+t.slice(5,7)}/${+t.slice(8)}`;
+    if(cellsOf(lns[0]).includes(lab)) return toast(`${lab} 열이 이미 있습니다`);
+    const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
+    lns.forEach((ln,i)=>{ const c=cellsOf(ln); c.push(i===0?lab:(ln===sep?"---":"[ ]")); lines[ln]="| "+c.join(" | ")+" |"; }); dirty=true; await save(); rerender(); });
+  box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").map((x,i)=>b.hasAttribute("data-mk")&&i>0?"[ ]":x).join(" | ")+" |"); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } lines.splice(+b.dataset.mdel,1); dirty=true; await save(); rerender(); });
 }
 async function renderDocs(){
@@ -2182,6 +2190,13 @@ async function renderInventory(){
   bindSearch("iq",v=>{ st.q=v; return renderInventory(); }); if($("iqx")) $("iqx").onclick=()=>{ st.q=""; renderInventory(); };
   if($("icount")) $("icount").onclick=()=>{ st.count=!st.count; renderInventory(); };
   if($("icd")) $("icd").onchange=()=>{ st.cdate=$("icd").value||kstToday(); renderInventory(); };
+  // 재고조사 칸: Tab·화살표·Enter로 다음 칸
+  { const grid=[...document.querySelectorAll("tr")].map(tr=>[...tr.querySelectorAll("[data-cq],[data-co]")]).filter(r=>r.length);
+    grid.forEach((row,ri)=>row.forEach((el,ci)=>el.addEventListener("keydown",e=>{ if(e.isComposing) return; let r=ri,c=ci;
+      if(e.key==="Tab"){ const flat=grid.flat(); const i=flat.indexOf(el)+(e.shiftKey?-1:1); if(flat[i]){ e.preventDefault(); flat[i].focus(); flat[i].select(); } return; }
+      if(e.key==="ArrowRight") c++; else if(e.key==="ArrowLeft") c--; else if(e.key==="ArrowDown"||e.key==="Enter") r++; else if(e.key==="ArrowUp") r--; else return;
+      if(c>=row.length){ r++; c=0; } else if(c<0){ r--; c=(grid[r]||[]).length-1; }
+      const t=grid[r]?.[Math.min(c,(grid[r]||[]).length-1)]; if(!t) return; e.preventDefault(); t.focus(); t.select(); }))); }
   if($("isave")) $("isave").onclick=async()=>{ const d=st.cdate; const up=[];
     document.querySelectorAll("[data-cq]").forEach(el=>{ const v=parseFloat(el.value.replace(/,/g,"")); if(!isNaN(v)) up.push({item_id:+el.dataset.cq,branch_id:S.branch,log_date:d,kind:"재고",qty:v}); });
     document.querySelectorAll("[data-co]").forEach(el=>{ const v=parseFloat(el.value.replace(/,/g,"")); if(!isNaN(v)&&v) up.push({item_id:+el.dataset.co,branch_id:S.branch,log_date:d,kind:"발주",qty:v}); });
