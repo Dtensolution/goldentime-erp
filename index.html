@@ -641,7 +641,7 @@ const menuDept=()=>S.me.level===5?"의사":S.me.dept;
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return (seeAll()&&S.me.level!==5) || S.me.dept==="총괄"; }
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 씨암 칸을 쓰는 지점 (철산)
-const MTX_SLOT = ["gt-cs"]; // 수기치료 시간표를 쓰는 지점 (철산)
+const MTX_SLOT = ["gt-os"]; // 수기치료 시간표를 쓰는 지점 (운정)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
 const PATHS = ["지인소개","네이버 블로그","네이버 지도","카카오맵","유튜브","병원 간판","이마트 광고","GTX 광고","지하철역 광고","기타"];
@@ -4016,7 +4016,7 @@ async function renderManual(){
   const [cr,nr,set,tr]=await Promise.all([ sb.from("mtx_cols").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("mtx_counts").select("cdate,name,cnt").eq("branch_id",S.branch).gte("cdate",R.start).lte("cdate",R.end).limit(100000),
     typeof loadBranchSettings==="function"?loadBranchSettings():Promise.resolve({holidays:[]}),
-    SLOT?sb.from("manual_tx").select("id,therapist,seq,entry").eq("branch_id",S.branch).eq("tx_date",st.sdate):Promise.resolve({data:[]}) ]);
+    SLOT?sb.from("manual_tx").select("id,therapist,seq,entry").eq("branch_id",S.branch).eq("tx_date",st.sdate).gte("seq",360):Promise.resolve({data:[]}) ]);
   if(cr.error||nr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(cr.error||nr.error))}</div></div>`; return; }
   const allCols=cr.data||[]; const yms=[]; { let y=R.start.slice(0,7); while(y<=R.end.slice(0,7)){ yms.push(y); y=shiftMonth(y,1); } }
   const shownIn=(c,ym)=>c.active!==false&&!(c.hidden_yms||[]).includes(ym)&&(!c.first_ym||ym>=c.first_ym)&&(!c.last_ym||ym<=c.last_ym);
