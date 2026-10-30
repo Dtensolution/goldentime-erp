@@ -1935,7 +1935,11 @@ function mdRender(src,opt={}){
   const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
   const lines=String(src||"").split(/\r?\n/); let out="", list=null, tbl=null;
   const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
-  const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); const hasCk=t.some(r=>r.c.some(c=>CK.test(c))); out+=`<div class="tbl-box"><table>${t.map((r,i)=>`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:cellH(c,ci,r.ln)).join("")}${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}`:""}`; };
+  const DT=/^(\d{1,2})\/(\d{1,2})$/;
+  const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); const hasCk=t.some(r=>r.c.some(c=>CK.test(c)));
+    const hd=t[0].c, isD=hd.length>2&&hd.slice(1).every(c=>DT.test(c)); const mm=ci=>isD&&ci>0?` data-mm="${+hd[ci].match(DT)[1]}"`:"";
+    const addMm=h=>h.replace(/<(td|th) data-ci="(\d+)"/g,(x,tg,ci)=>`<${tg} data-ci="${ci}"${mm(+ci)}`);
+    out+=`<div class="tbl-box"${isD?' data-mdates="1"':""}><table>${t.map((r,i)=>addMm(`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:cellH(c,ci,r.ln)).join("")}`)+`${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}${isD&&hasCk?` <button type="button" class="btn ghost sm mdadd" data-mnext="${t.map(r=>r.ln).join(",")}">+ 다음 달 날짜 칸</button>`:""}`:""}`; };
   const close=()=>{ if(list){ out+=`</${list}>`; list=null; } if(tbl){ const t=tbl; tbl=null; flushT(t); } };
   lines.forEach((raw,ln)=>{ const l=raw.trimEnd();
     if(/^\s*\|.*\|\s*$/.test(l)){ if(list){ out+=`</${list}>`; list=null; } const cells=l.trim().slice(1,-1).split("|").map(c=>c.trim()); if(cells.every(c=>/^:?-{2,}:?$/.test(c))) return; (tbl ||= []).push({c:cells,ln}); return; }
@@ -1950,6 +1954,15 @@ function mdRender(src,opt={}){
   });
   close(); return out || `<p class="meta">내용이 없습니다.</p>`;
 }
+// 날짜 칸(M/D) 표: 월별로 나눠 보기
+function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {};
+  box.querySelectorAll('[data-mdates]').forEach((tb,ti)=>{ const ms=[...new Set([...tb.querySelectorAll("th[data-mm]")].map(x=>+x.dataset.mm))]; if(ms.length<2) return;
+    const k=key+":"+ti, cur=+kstToday().slice(5,7); let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]);
+    const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px";
+    const draw=()=>{ bar.innerHTML=ms.map(m=>`<button type="button" class="fchip" data-mmb="${m}" aria-pressed="${sel===m}">${m}월</button>`).join("")+`<button type="button" class="fchip" data-mmb="0" aria-pressed="${sel===0}">전체</button>`;
+      tb.querySelectorAll("[data-mm]").forEach(c=>c.style.display=sel&&+c.dataset.mm!==sel?"none":"");
+      bar.querySelectorAll("[data-mmb]").forEach(b=>b.onclick=()=>{ sel=+b.dataset.mmb; M[k]=sel; draw(); }); };
+    tb.before(bar); draw(); }); }
 // 업무게시판: 보기 화면에서 바로 고치기 (표 칸·글 줄)
 function bindMdEdit(box,doc,rerender){
   if(!box) return; let lines=String(doc.body||"").split(/\r?\n/); let timer=null, busy=false, dirty=false;
@@ -1981,6 +1994,10 @@ function bindMdEdit(box,doc,rerender){
     if(cellsOf(lns[0]).includes(lab)) return toast(`${lab} 열이 이미 있습니다`);
     const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
     lns.forEach((ln,i)=>{ const c=cellsOf(ln); c.push(i===0?lab:(ln===sep?"---":"[ ]")); lines[ln]="| "+c.join(" | ")+" |"; }); dirty=true; await save(); rerender(); });
+  box.querySelectorAll("[data-mnext]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mnext.split(",").map(Number); const hd=cellsOf(lns[0]); const last=hd.slice(1).map(c=>c.match(/^(\d{1,2})\//)).filter(Boolean).map(m=>+m[1]).pop()||+kstToday().slice(5,7);
+    const nm=last%12+1, y=+kstToday().slice(0,4)+(nm<last?1:0), nd=new Date(Date.UTC(y,nm,0)).getUTCDate(); const labs=[]; for(let d=1;d<=nd;d++){ const l=`${nm}/${d}`; if(!hd.includes(l)) labs.push(l); }
+    if(!labs.length) return toast(`${nm}월 칸이 이미 있습니다`); const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
+    lns.forEach((ln,i)=>{ const c=cellsOf(ln); labs.forEach(l=>c.push(i===0?l:(ln===sep?"---":"[ ]"))); lines[ln]="| "+c.join(" | ")+" |"; }); (window.__mdMon ||= {})[doc.id+":0"]=nm; dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").map((x,i)=>b.hasAttribute("data-mk")&&i>0?"[ ]":x).join(" | ")+" |"); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } lines.splice(+b.dataset.mdel,1); dirty=true; await save(); rerender(); });
 }
@@ -2014,6 +2031,7 @@ async function renderDocs(){
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
   if(cur&&canEditDoc(cur.dept)) bindMdEdit($("mdv"),cur,()=>renderDocs());
+  if(cur) bindMdMonths($("mdv"),cur.id);
   document.querySelectorAll("[data-doc]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.doc; renderDocs(); });
   bindSearch("dq",v=>{ st.q=v; return renderDocs(); });
   if($("dnew")) $("dnew").onclick=()=>docEditor(null, st.dept, ()=>renderDocs(), st);
