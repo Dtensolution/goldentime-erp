@@ -622,6 +622,7 @@ const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원",5
 // 전체 열람: 3등급(팀장)·5등급(의사)은 자기 지점의 모든 부서 화면을 본다 (의사는 보기만)
 const seeAll = () => S.me.level<=3 || S.me.level===5;
 // 부서별 메뉴 (3·4등급). 1·2등급과 총괄은 전부. 계정·원장 관리에서 1등급이 지점별로 바꿀 수 있습니다.
+const lvName=l=>+l===5?"의사":`${l}등급 ${LEVELS[l]}`;
 const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["manual","수기치료"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","씨암 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"]];
 const MENU_BASE=["staff","resv","ot","leave","docs","reg","info"];
 const MENU_DEFAULT={
@@ -752,7 +753,7 @@ async function renderSignup(){
     <div class="brand"><h1>회원가입 요청</h1><span class="by">D:TEN</span></div>
     <p class="sub" style="margin:4px 0 14px">요청을 넣으면 지점 원장·본부가 확인 후 승인합니다. 승인되면 아래 아이디·비밀번호로 로그인하세요.</p>
     <div class="field"><label for="sg_b">지점</label><select id="sg_b" required><option value="">지점 선택</option>${B.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></div>
-    <div class="field"><label for="sg_d">부서</label><select id="sg_d" required><option value="">부서 선택</option>${DEPTS.map(d=>`<option>${d}</option>`).join("")}</select></div>
+    <div class="field"><label for="sg_d">부서</label><select id="sg_d" required><option value="">부서 선택</option>${DEPTS.map(d=>`<option>${d}</option>`).join("")}<option value="의사">의사 (원장님)</option></select></div>
     <div class="form-2" style="gap:0 10px"><div class="field"><label for="sg_n">이름</label><input id="sg_n" required maxlength="30"></div>
     <div class="field"><label for="sg_t">직함 <small class="meta">(선택)</small></label><input id="sg_t" maxlength="20" placeholder="예: 주임"></div></div>
     <div class="field"><label for="sg_id">아이디 <small class="meta">영문·숫자 3~30자</small></label><input id="sg_id" required pattern="[A-Za-z0-9._\\-]{3,30}" autocomplete="username"></div>
@@ -786,7 +787,7 @@ function topbar(){
     : `<b>${esc(br?br.name:"-")}</b>`;
   return `<header class="top gut"><button class="brand brandlink" id="homeBtn" aria-label="대시보드로"><h1 style="color:var(--navy)">골든타임 ERP</h1><span class="by">D:TEN</span></button>
     <div class="branch">${ctl}</div>
-    <div class="me"><span class="lv">${me.level}등급 ${LEVELS[me.level]}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<button class="linkbtn" id="logout">로그아웃</button></div></header>`;
+    <div class="me"><span class="lv">${lvName(me.level)}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<button class="linkbtn" id="logout">로그아웃</button></div></header>`;
 }
 function render(){
   killCharts(); document.querySelectorAll(".shfloat,.clipbar").forEach(x=>x.remove());
@@ -1226,14 +1227,14 @@ async function renderUsers(){
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const brName=id=>S.branches.find(b=>b.id===id)?.name||"-";
   const list=(users||[]).filter(u=>lv===1?(u.branch_id===S.branch||u.level===1):true);
-  const lvOpts=(sel)=>[1,2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l==sel?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("");
+  const lvOpts=(sel)=>[1,2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l==sel?"selected":""}>${lvName(l)}</option>`).join("");
   const deptOpts=(sel)=>`<option value="">(없음)</option>`+DEPTS.map(d=>`<option ${d===sel?"selected":""}>${d}</option>`).join("");
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>계정·원장 관리</h2><div class="meta">${esc(brName(S.branch))} · 로그인 아이디로 들어오면 소속 지점으로 바로 입장합니다</div></div></div>
     ${reqs.length?`<section class="panel sgreq"><h3>가입 요청 <span>${reqs.length}건 · 등급·부서를 확인하고 승인하세요 (요청한 지점으로 들어갑니다)</span></h3><div class="tbl-box"><table><thead><tr><th>요청일</th><th>이름</th><th>아이디</th><th>지점</th><th>부서</th><th>직함</th><th>등급</th><th></th></tr></thead><tbody>
       ${reqs.map(r=>`<tr data-rq="${r.id}"><td class="num">${esc(new Date(r.created_at).toLocaleDateString("ko-KR"))}</td><td><b>${esc(r.name)}</b></td><td class="num">${esc(r.login_id)}</td><td>${esc(brName(r.branch_id))}</td>
         <td><select data-rqd style="height:28px">${DEPTS.map(d=>`<option ${d===r.dept?"selected":""}>${d}</option>`).join("")}${DEPTS.includes(r.dept)?"":`<option selected>${esc(r.dept)}</option>`}</select></td><td>${esc(r.title||"-")}</td>
-        <td><select data-rql style="height:28px">${[2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${l}등급 ${LEVELS[l]}</option>`).join("")}</select></td>
+        <td><select data-rql style="height:28px">${[2,3,4,5].filter(l=>lv===1||l>=3).map(l=>`<option value="${l}" ${l===(r.dept==="의사"?5:r.dept==="총괄"&&lv===1?2:4)?"selected":""}>${lvName(l)}</option>`).join("")}</select></td>
         <td style="white-space:nowrap"><button class="btn sm" data-rqok>승인</button> <button class="btn ghost sm" data-rqx>거절</button></td></tr>`).join("")}</tbody></table></div></section>`:""}
     <section class="panel"><h3>새 계정 만들기 <span>2~4등급은 소속 지점으로 바로 들어가고 지점 선택이 안 보입니다 · 처음 로그인 후 마이페이지에서 본인이 바꾸도록 안내하세요</span></h3>
       <form class="inline-form" id="uf" autocomplete="off">
@@ -1247,7 +1248,7 @@ async function renderUsers(){
         <button class="btn" type="submit" id="u_btn">계정 만들기</button>
       </form><p class="err" id="u_err"></p></section>
     <section class="panel"><h3>계정 목록 <span>${list.length}명</span></h3><div class="tbl-box"><table><thead><tr><th>이름</th><th>아이디</th><th>등급</th><th>지점</th><th>부서</th><th>직함</th>${lv===1?"<th>비밀번호 변경</th>":""}<th>상태</th><th></th></tr></thead><tbody>
-      ${list.map((u,ui)=>`<tr${ui>=5?` class="accmore"${S.accOpen?"":" hidden"}`:""}><td>${esc(u.name)}</td><td class="num">${esc(u.login_id)}</td><td>${u.level}등급 ${LEVELS[u.level]}</td><td>${u.level===1?"전 지점":esc(brName(u.branch_id))}</td><td>${esc(u.dept||"-")}</td><td>${esc(u.title||"-")}</td>${lv===1?`<td class="num">${u.pw_changed_at?esc(new Date(u.pw_changed_at).toLocaleDateString("ko-KR")):`<span class="pill wait">초기 비밀번호</span>`}</td>`:""}<td><span class="pill ${u.active?"ok":"off"}">${u.active?"사용":"중지"}</span></td>
+      ${list.map((u,ui)=>`<tr${ui>=5?` class="accmore"${S.accOpen?"":" hidden"}`:""}><td>${esc(u.name)}</td><td class="num">${esc(u.login_id)}</td><td>${lvName(u.level)}</td><td>${u.level===1?"전 지점":esc(brName(u.branch_id))}</td><td>${esc(u.dept||"-")}</td><td>${esc(u.title||"-")}</td>${lv===1?`<td class="num">${u.pw_changed_at?esc(new Date(u.pw_changed_at).toLocaleDateString("ko-KR")):`<span class="pill wait">초기 비밀번호</span>`}</td>`:""}<td><span class="pill ${u.active?"ok":"off"}">${u.active?"사용":"중지"}</span></td>
         <td>${(lv===1||u.level>=3)?`<button class="btn ghost sm" data-edit="${u.user_id}">수정</button> <button class="btn ghost sm" data-pw="${u.user_id}">비밀번호 재설정</button>`:""}</td></tr>`).join("")}
     </tbody></table></div>${list.length>5?`<button type="button" class="btn ghost sm" id="accTog" style="margin-top:8px">${S.accOpen?"▴ 접기":`▾ 나머지 ${list.length-5}명 펼치기`}</button>`:""}</section>
     ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 4등급 직원과 의사(5등급)에게 보이는 메뉴 · 1·2·3등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
@@ -3091,7 +3092,7 @@ async function renderMe(){
   const appts=(ar.data||[]).filter(a=>a.status!=="취소"&&a.status!=="변경"); const br=S.branches.find(b=>b.id===S.branch);
   const days=[...Array(7)].map((_,i)=>addDays(mon,i));
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>마이페이지</h2><div class="meta">${esc(me.name)}님 · ${esc(br?.name||"")}${me.dept?" · "+esc(me.dept):""} · ${me.level}등급 ${LEVELS[me.level]}</div></div></div>
+    <div class="page-h"><div><h2>마이페이지</h2><div class="meta">${esc(me.name)}님 · ${esc(br?.name||"")}${me.dept?" · "+esc(me.dept):""} · ${lvName(me.level)}</div></div></div>
     ${handoverSlot()}${me.level<=3?`<div id="alertbox"></div>`:""}
     ${notices.length?`<section class="panel" style="border-color:color-mix(in srgb,var(--bad) 40%,var(--line))"><h3 style="color:var(--bad)">📌 확인 안 한 필독 공지 <span>${notices.length}건</span></h3>
       ${notices.map(d=>`<div style="border-top:1px solid var(--line);padding:10px 0;display:flex;gap:10px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap"><div style="min-width:0;flex:1"><b>${esc(d.title)}</b> <span class="meta">${esc(d.dept)} · ${esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))}</span><div class="meta" style="margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(String(d.body||"").replace(/[#*|>\-\[\]]/g," ").slice(0,200))}</div></div>
