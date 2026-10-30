@@ -1992,11 +1992,15 @@ function bindMdEdit(box,doc,rerender){
   const edit=(el,get,put,next)=>{ if(el.querySelector(".mdin")) return; const old=get(); const w=el.offsetWidth;
     const ta=document.createElement("textarea"); ta.className="regin mdin"; ta.value=old; ta.rows=1; ta.style.minWidth=Math.max(80,w-8)+"px"; const keep=el.innerHTML; el.textContent=""; el.appendChild(ta); ta.focus(); ta.select();
     let done=false; const fin=sv=>{ if(done) return; done=true; const v=ta.value; if(sv&&v!==old){ put(v); queue(); el.textContent=v.replace(/\s*\n\s*/g," "); } else el.innerHTML=keep; };
-    ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); fin(true); next&&next(e,"down"); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true); next&&next(e,e.shiftKey?"left":"right"); } };
+    ta.onkeydown=e=>{ if(e.isComposing) return; const nav=d=>{ e.preventDefault(); fin(true); next&&next(e,d); };
+      if(next&&e.key==="ArrowDown") return nav("down"); if(next&&e.key==="ArrowUp") return nav("up");
+      if(next&&e.key==="ArrowRight"&&ta.selectionEnd===ta.value.length) return nav("right"); if(next&&e.key==="ArrowLeft"&&ta.selectionStart===0&&ta.selectionEnd===0||next&&e.key==="ArrowLeft"&&ta.selectionStart===0&&ta.selectionEnd===ta.value.length) return nav("left");
+      if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); fin(true); next&&next(e,"down"); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true); next&&next(e,e.shiftKey?"left":"right"); } };
     ta.onblur=()=>fin(true); };
   const cellEdit=td=>{ const tr=td.parentElement, ln=+tr.dataset.ln, ci=+td.dataset.ci;
     edit(td,()=>cellsOf(ln)[ci]??"",v=>setCell(ln,ci,v),(e,dir)=>{ let n=null;
-      if(dir==="down") n=tr.nextElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="right") n=td.nextElementSibling; else n=td.previousElementSibling;
+      const vis=x=>x&&x.style.display!=="none"; if(dir==="down") n=tr.nextElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="up") n=tr.previousElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="right"){ n=td.nextElementSibling; while(n&&!vis(n)) n=n.nextElementSibling; } else { n=td.previousElementSibling; while(n&&!vis(n)) n=n.previousElementSibling; }
+      if(n&&(n.tagName==="TH"||n.classList.contains("mdck")||n.classList.contains("mdx"))) n=null;
       if(n&&n.dataset.ci!=null) setTimeout(()=>cellEdit(n),0); }); };
   box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
   box.querySelectorAll(".mdt[data-ln]").forEach(el=>{ el.tabIndex=0; const ln=+el.dataset.ln; const go=()=>edit(el,()=>lines[ln].slice(preOf(lines[ln]).length),v=>{ lines[ln]=preOf(lines[ln])+v.replace(/\s*\n\s*/g," "); });
