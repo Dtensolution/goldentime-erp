@@ -631,9 +631,11 @@ const MENU_DEFAULT={
   "수술":["inv",...MENU_BASE],
   "경영지원":[...MENU_BASE],
   "의료진":[...MENU_BASE,"std"]};
-const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원"];
+MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
+const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
+const menuDept=()=>S.me.level===5?"의사":S.me.dept;
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
-function fullMenu(){ return seeAll() || S.me.dept==="총괄"; }
+function fullMenu(){ return (seeAll()&&S.me.level!==5) || S.me.dept==="총괄"; }
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 씨암 칸을 쓰는 지점 (철산)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
@@ -815,7 +817,7 @@ function render(){
     {id:"report",label:"월간 보고서",ok:lv<=2},
     {id:"pay",label:"인건비·인센티브",ok:lv===1},
     {id:"goals",label:"목표·알림 설정",ok:lv<=2},
-  ].filter(i=>i.sep||i.ok!==false||!i.id).filter(i=>!i.id||i.id==="me"||fullMenu()||deptMenus(S.me.dept).includes(i.id));
+  ].filter(i=>i.sep||i.ok!==false||!i.id).filter(i=>!i.id||i.id==="me"||fullMenu()||deptMenus(menuDept()).includes(i.id));
   if(lv>=3&&!fullMenu()&&S.menuFor!==S.branch){ S.menuFor=S.branch; loadBranchSettings().then(d=>{ const m=d.raw?.menus||null; if(JSON.stringify(m)!==JSON.stringify(S.menuCfg||null)){ S.menuCfg=m; render(); } }).catch(()=>{}); }
   { const ok=new Set(items.map(i=>i.id)); const base=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view; if(!ok.has(base)) S.view="me"; }
   $("app").innerHTML = topbar()+`<div class="shell"><nav class="side" aria-label="메뉴">${items.map(i=>i.sep?`<div class="sep">${i.sep}</div>`:
@@ -865,7 +867,7 @@ const charts=[];
 function killCharts(){ while(charts.length) charts.pop().destroy(); }
 function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 function mkChart(id,cfg){
-  if(!window.Chart) return;
+  if(!window.Chart||!document.getElementById(id)) return;
   const ink=cssv("--muted"), grid=cssv("--line");
   Chart.defaults.font.family=cssv("--f-body"); Chart.defaults.color=ink;
   const base={responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
@@ -1000,7 +1002,7 @@ async function renderDashOne(seg){
   rows.sort((x,y)=>x.close_date<y.close_date?-1:1); const prevR=rows.filter(x=>x.close_date<d&&+x.total>0).at(-1), wkR=rows.find(x=>x.close_date===addDays(d,-7)&&+x.total>0);
   const nav=`<div class="monthnav"><button class="btn ghost sm" id="op" aria-label="전날">◀</button><b class="num" style="min-width:130px">${d.slice(0,4)}. ${+d.slice(5,7)}. ${+d.slice(8)} (${WD[dd.getUTCDay()]})</b><button class="btn ghost sm" id="on" aria-label="다음날" ${d>=today?"disabled":""}>▶</button></div><input type="date" id="od" value="${d}" max="${today}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`;
   const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
-  const bind=()=>{ bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
+  const bind=()=>{ if(!$("op")) return; bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
   if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
   const A=aggRows([r]), P=prevR?aggRows([prevR]):null, W=wkR?aggRows([wkR]):null;
   const cmp=(f,fmt=won)=>{ const c=f(A); const parts=[]; [[P,prevR&&(prevR.close_date===addDays(d,-1)?"전일":`직전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)})`)],[W,"지난주 같은 요일"]].forEach(([X,lab])=>{ if(!X) return; const p=f(X); if(!p) return; const x=(c-p)/p; parts.push(`${lab} <span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"}${Math.abs(x*100).toFixed(1)}%</span>`); }); return parts.join(" · "); };
@@ -1244,9 +1246,9 @@ async function renderUsers(){
       ${list.map(u=>`<tr><td>${esc(u.name)}</td><td class="num">${esc(u.login_id)}</td><td>${u.level}등급 ${LEVELS[u.level]}</td><td>${u.level===1?"전 지점":esc(brName(u.branch_id))}</td><td>${esc(u.dept||"-")}</td><td>${esc(u.title||"-")}</td>${lv===1?`<td class="num">${u.pw_changed_at?esc(new Date(u.pw_changed_at).toLocaleDateString("ko-KR")):`<span class="pill wait">초기 비밀번호</span>`}</td>`:""}<td><span class="pill ${u.active?"ok":"off"}">${u.active?"사용":"중지"}</span></td>
         <td>${(lv===1||u.level>=3)?`<button class="btn ghost sm" data-edit="${u.user_id}">수정</button> <button class="btn ghost sm" data-pw="${u.user_id}">비밀번호 재설정</button>`:""}</td></tr>`).join("")}
     </tbody></table></div></section>
-    ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 3·4등급 직원에게 보이는 메뉴 · 1·2등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
+    ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 4등급 직원과 의사(5등급)에게 보이는 메뉴 · 1·2·3등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
       <div class="tbl-box"><table class="menutab"><thead><tr><th>부서</th>${MENU_PICK.map(([,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
-      ${MENU_DEPTS.map(d=>{ const m=deptMenus(d,bset?.raw?.menus); return `<tr><td><b>${d}</b></td>${MENU_PICK.map(([k,t])=>`<td><input type="checkbox" data-mn="${d}|${k}" ${m.includes(k)?"checked":""} aria-label="${d} ${t}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
+      ${MENU_DEPTS.map(d=>{ const m=deptMenus(d,bset?.raw?.menus); return `<tr><td><b>${d}</b>${d==="의사"?' <small class="meta">5등급</small>':""}</td>${MENU_PICK.map(([k,t])=>`<td><input type="checkbox" data-mn="${d}|${k}" ${m.includes(k)?"checked":""} aria-label="${d} ${t}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" id="mn_save">메뉴 저장</button><button class="btn ghost sm" id="mn_reset">기본값으로</button><span class="meta">메뉴만 숨깁니다. 실제 자료 권한(보기·고치기)은 등급·부서 기준 그대로입니다.</span></div></section>`:""}
     <section class="panel"><h3>원장 목록 <span>마감일지의 원장별 칸에 나옵니다</span></h3>
       <form class="inline-form" id="df"><div class="field"><label for="d_name">원장 이름</label><input id="d_name" placeholder="예: 홍길동 원장" required></div><button class="btn" type="submit">원장 추가</button></form>
