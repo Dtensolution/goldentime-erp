@@ -1117,7 +1117,8 @@ async function renderEntry(){
       <fieldset><legend>수납</legend><p class="fs-note">단위 원 · 단말기·통장 기준 실제 금액</p><div class="rows">
         ${num("f_card","카드",r.pay_card)}${num("f_cash","현금",r.pay_cash)}${num("f_free","└ Free (현금 중 무료분)",r.pay_free)}${num("f_acct","계좌이체",r.pay_account)}${num("f_unpaid","미수 발생",r.unpaid)}${num("f_unpaidIn","미수 입금",r.unpaid_in)}
         <div class="row calc"><span>수납 합계</span><output id="o_pay">–</output></div>
-        <div class="row calc"><span>차액 (총진료비 − 수납 합계)</span><output id="o_payd">–</output></div></div></fieldset>
+        ${num("f_cashc","실제 현금 (금고에서 센 금액)",r.extra?.cash_count)}
+        <div class="row calc"><span title="센 현금 − (현금 − Free)">시재 차액 (센 현금 − 받을 현금)</span><output id="o_cashd">–</output></div></div></fieldset>
       <div hidden><input id="x_cash" data-n value="${r.exp_cash?won(r.exp_cash):""}"><input id="x_card" data-n value="${r.exp_card?won(r.exp_card):""}"><input id="x_free" data-n value="${r.exp_free?won(r.exp_free):""}"><input id="i_cash" data-n value="${r.inc_cash?won(r.inc_cash):""}"><input id="i_card" data-n value="${r.inc_card?won(r.inc_card):""}"><input id="i_acct" data-n value="${r.inc_account?won(r.inc_account):""}"></div>
       <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
@@ -1142,7 +1143,7 @@ async function renderEntry(){
   const fmt=el=>{ const s=el.value.replace(/[^\d]/g,""); el.value=s?Number(s).toLocaleString("ko-KR"):""; };
   // ── 자동 저장: 바뀐 칸만 저장 ──
   const COL={f_total:"total",f_nonpay:"nonpay",f_out:"outpatient",f_inpat:"inpatient",f_surg:"surgery_cnt",f_card:"pay_card",f_cash:"pay_cash",f_free:"pay_free",f_acct:"pay_account",f_unpaid:"unpaid",f_unpaidIn:"unpaid_in",x_cash:"exp_cash",x_card:"exp_card",x_free:"exp_free",i_cash:"inc_cash",i_card:"inc_card",i_acct:"inc_account",f_note:"note"};
-  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": /^cx\d/.test(id)?"extra": null);
+  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": /^cx\d/.test(id)||id==="f_cashc"?"extra": null);
   const dirty=new Set(); let atimer=null, saving=null, savedOnce=!!row;
   const ptKeys=ptKeysEntry(); let ptManual=new Set((r.pt&&r.pt._m)||[]); let schedCnt=null;
   const buildAll=()=>{ const items={}; RESV_ITEMS.forEach((it,i)=>{ items[it]={resv:v(`rv_${i}_resv`),change:v(`rv_${i}_change`),cancel:v(`rv_${i}_cancel`)}; });
@@ -1153,7 +1154,8 @@ async function renderEntry(){
       pay_card:v("f_card"), pay_cash:v("f_cash"), pay_account:v("f_acct"), unpaid:v("f_unpaid"), unpaid_in:v("f_unpaidIn"),
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
       pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
-    if(CARM_ENTRY.includes(S.branch)) o.extra={...(r.extra||{}), carm:Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1]))};
+    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)) o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1]));
+    if($("f_cashc")){ if($("f_cashc").value.trim()) o.extra.cash_count=v("f_cashc"); else delete o.extra.cash_count; }
     return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
   async function autosave(all){ clearTimeout(atimer); if(saving) await saving; if(!all&&!dirty.size) return true;
@@ -1188,7 +1190,7 @@ async function renderEntry(){
     $("o_np").textContent=t?pct(np,t):"–";
     const sc=$("o_sum"); if(t&&(o||ip)){ const ok=o+ip===t; sc.textContent=ok?"일치":"차이 "+won(o+ip-t)+"원"; sc.style.color=ok?"var(--good)":"var(--warn)"; } else { sc.textContent="–"; sc.style.color=""; }
     $("o_pay").textContent=won(v("f_card")+v("f_cash")+v("f_acct"))+"원";
-    { const pd=t-(v("f_card")+v("f_cash")+v("f_acct")); const e=$("o_payd"); e.textContent=t?`${won(pd)}원`:"–"; }
+    { const cc=$("f_cashc")?.value.trim(); const e=$("o_cashd"); if(e){ if(cc){ const d=v("f_cashc")-(v("f_cash")-v("f_free")); e.textContent=d===0?"0원 · 일치":`${d>0?"+":""}${won(d)}원`; e.style.color=d===0?"var(--good)":"var(--warn)"; e.title=`받을 현금 ${won(v("f_cash")-v("f_free"))}원 (현금 ${won(v("f_cash"))} − Free ${won(v("f_free"))})`; } else { e.textContent="–"; e.style.color=""; } } }
     $("o_dn").textContent=won(docRows.reduce((a,_,i)=>a+v("dn"+i),0)); $("o_dr").textContent=won(docRows.reduce((a,_,i)=>a+v("dr"+i),0));
     { const da=docRows.reduce((a,_,i)=>a+v("da"+i),0), o=$("o_da"); o.textContent=da?won(da):"–"; o.title=da&&t?(da===t?"총진료비와 일치":`총진료비와 ${won(da-t)}원 차이`):""; o.style.color=da&&t&&da!==t?"var(--warn)":""; const dd=$("o_dad"); if(dd){ dd.textContent=da&&t?(da===t?"0원 · 일치":`${da-t>0?"+":""}${won(da-t)}원`):"–"; dd.style.color=da&&t?(da===t?"var(--good)":"var(--warn)"):""; } }
     $("o_rate").textContent=pct(v("rv_visit"),v("rv_real"));
@@ -1937,9 +1939,9 @@ function mdRender(src,opt={}){
   const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
   const DT=/^(\d{1,2})\/(\d{1,2})$/;
   const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); const hasCk=t.some(r=>r.c.some(c=>CK.test(c)));
-    const hd=t[0].c, isD=hd.length>2&&hd.slice(1).every(c=>DT.test(c)); const mm=ci=>isD&&ci>0?` data-mm="${+hd[ci].match(DT)[1]}"`:"";
+    const hd=t[0].c, isD=hd.filter(c=>DT.test(c)).length>=2; const mm=ci=>isD&&DT.test(hd[ci]||"")?` data-mm="${+hd[ci].match(DT)[1]}"`:"";
     const addMm=h=>h.replace(/<(td|th) data-ci="(\d+)"/g,(x,tg,ci)=>`<${tg} data-ci="${ci}"${mm(+ci)}`);
-    out+=`<div class="tbl-box"${isD?' data-mdates="1"':""}><table>${t.map((r,i)=>addMm(`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:cellH(c,ci,r.ln)).join("")}`)+`${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}${isD&&hasCk?` <button type="button" class="btn ghost sm mdadd" data-mnext="${t.map(r=>r.ln).join(",")}">+ 다음 달 날짜 칸</button>`:""}`:""}`; };
+    out+=`<div class="tbl-box"${isD?' data-mdates="1"':""}><table>${t.map((r,i)=>addMm(`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}">${inl(c)}</th>`:cellH(c,ci,r.ln)).join("")}`)+`${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk||isD?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}${isD?` <button type="button" class="btn ghost sm mdadd" data-mnext="${t.map(r=>r.ln).join(",")}">+ 다음 달 날짜 칸</button>`:""}`:""}`; };
   const close=()=>{ if(list){ out+=`</${list}>`; list=null; } if(tbl){ const t=tbl; tbl=null; flushT(t); } };
   lines.forEach((raw,ln)=>{ const l=raw.trimEnd();
     if(/^\s*\|.*\|\s*$/.test(l)){ if(list){ out+=`</${list}>`; list=null; } const cells=l.trim().slice(1,-1).split("|").map(c=>c.trim()); if(cells.every(c=>/^:?-{2,}:?$/.test(c))) return; (tbl ||= []).push({c:cells,ln}); return; }
@@ -1993,11 +1995,18 @@ function bindMdEdit(box,doc,rerender){
   box.querySelectorAll("[data-mcol]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mcol.split(",").map(Number); const t=kstToday(); const lab=`${+t.slice(5,7)}/${+t.slice(8)}`;
     if(cellsOf(lns[0]).includes(lab)) return toast(`${lab} 열이 이미 있습니다`);
     const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
-    lns.forEach((ln,i)=>{ const c=cellsOf(ln); c.push(i===0?lab:(ln===sep?"---":"[ ]")); lines[ln]="| "+c.join(" | ")+" |"; }); dirty=true; await save(); rerender(); });
+    const isCk=lns.some(ln=>ln!==lns[0]&&/\[( |x|X)\]/.test(lines[ln])); const w0=cellsOf(lns[0]).length;
+    const key=x=>{ const m=String(x).match(/^(\d{1,2})\/(\d{1,2})$/); return m?(+m[1])*100+(+m[2]):null; }; const tk=key(lab); const H0=cellsOf(lns[0]); let pos=H0.findIndex(h=>key(h)!=null&&key(h)>tk); if(pos<0) pos=w0;
+    lns.forEach((ln,i)=>{ const c=cellsOf(ln); while(c.length<w0) c.push(""); c.splice(pos,0,i===0?lab:(ln===sep?"---":(isCk?"[ ]":""))); lines[ln]="| "+c.join(" | ")+" |"; }); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mnext]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mnext.split(",").map(Number); const hd=cellsOf(lns[0]); const last=hd.slice(1).map(c=>c.match(/^(\d{1,2})\//)).filter(Boolean).map(m=>+m[1]).pop()||+kstToday().slice(5,7);
-    const nm=last%12+1, y=+kstToday().slice(0,4)+(nm<last?1:0), nd=new Date(Date.UTC(y,nm,0)).getUTCDate(); const labs=[]; for(let d=1;d<=nd;d++){ const l=`${nm}/${d}`; if(!hd.includes(l)) labs.push(l); }
+    const dts=hd.map(c=>c.match(/^(\d{1,2})\/(\d{1,2})$/)).filter(Boolean); const yy=+kstToday().slice(0,4); const dd=dts.map(m=>new Date(Date.UTC(yy,+m[1]-1,+m[2]))); const weekly=dd.length>=3&&(dd[dd.length-1]-dd[0])/864e5/(dd.length-1)>=5;
+    const wcount=[0,0,0,0,0,0,0]; dd.forEach(x=>wcount[x.getUTCDay()]++); const wdom=wcount.indexOf(Math.max(...wcount));
+    const nm=last%12+1, y=+kstToday().slice(0,4)+(nm<last?1:0), nd=new Date(Date.UTC(y,nm,0)).getUTCDate(); const labs=[];
+    const wd=weekly?wdom:null;
+    for(let d=1;d<=nd;d++){ if(weekly&&new Date(Date.UTC(y,nm-1,d)).getUTCDay()!==wd) continue; const l=`${nm}/${d}`; if(!hd.includes(l)) labs.push(l); }
     if(!labs.length) return toast(`${nm}월 칸이 이미 있습니다`); const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
-    lns.forEach((ln,i)=>{ const c=cellsOf(ln); labs.forEach(l=>c.push(i===0?l:(ln===sep?"---":"[ ]"))); lines[ln]="| "+c.join(" | ")+" |"; }); (window.__mdMon ||= {})[doc.id+":0"]=nm; dirty=true; await save(); rerender(); });
+    const isCk=lns.some(ln=>ln!==lns[0]&&/\[( |x|X)\]/.test(lines[ln]));
+    lns.forEach((ln,i)=>{ const c=cellsOf(ln); while(c.length<hd.length) c.push(""); labs.forEach(l=>c.push(i===0?l:(ln===sep?"---":(isCk?"[ ]":"")))); lines[ln]="| "+c.join(" | ")+" |"; }); { let el=b; while(el&&!(el.matches&&el.matches("[data-mdates]"))) el=el.previousElementSibling; const ti=[...box.querySelectorAll("[data-mdates]")].indexOf(el); (window.__mdMon ||= {})[doc.id+":"+Math.max(0,ti)]=nm; } dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").map((x,i)=>b.hasAttribute("data-mk")&&i>0?"[ ]":x).join(" | ")+" |"); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } lines.splice(+b.dataset.mdel,1); dirty=true; await save(); rerender(); });
 }
