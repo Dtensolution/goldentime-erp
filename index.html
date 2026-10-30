@@ -854,7 +854,7 @@ const ptN=(r,k)=>Number(r.pt?.[k]||0);
 function aggRows(rows){
   const a={days:rows.length,total:0,nonpay:0,out:0,inpat:0,surg:0,cash:0,free:0,newP:0,reP:0,real:0,visit:0,consult:0,pt:{},docs:{}};
   rows.forEach(r=>{ a.total+=+r.total; a.nonpay+=+r.nonpay; a.out+=+r.outpatient; a.inpat+=+r.inpatient; a.surg+=+r.surgery_cnt; a.cash+=+r.pay_cash; a.free+=+(r.pay_free||0);
-    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); });
+    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt||0);
     ptItemsOf(S.branch).forEach(k=>a.pt[k]=(a.pt[k]||0)+ptN(r,k));
     (r.doctors||[]).forEach(d=>{ const k=d.name||"기타"; (a.docs[k] ||= {nw:0,re:0,amt:0}); a.docs[k].nw+= +d.new||0; a.docs[k].re+= +d.re||0; a.docs[k].amt+= +d.amt||0; a.docAmt=(a.docAmt||0)+(+d.amt||0); a.newP+= +d.new||0; a.reP+= +d.re||0; }); });
   a.visits=a.newP+a.reP; a.perVisit=a.visits?a.total/a.visits:0; a.outPerVisit=a.visits?a.out/a.visits:0;
@@ -973,7 +973,7 @@ async function renderDash(){
       <section class="panel"><h3>예약 이행 <span>실 예약 vs 실제 방문 · 선은 이행률</span></h3><div class="cbox"><canvas id="c6" role="img" aria-label="예약 이행 그래프"></canvas></div></section>
       <section class="panel"><h3>수술 · 비급여 <span>수술 건수(막대), 비급여 원(선)</span></h3><div class="cbox"><canvas id="c7" role="img" aria-label="수술 비급여 그래프"></canvas></div></section>
     </div>
-    ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")}</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
+    ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm · 근전도 (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")} · 근전도 ${won(T.emgE||0)}건</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
     <div id="ceBox"><p class="meta">씨암·근전도 불러오는 중…</p></div>
     <section class="panel"><h3>전광판 표 <span>최근 순 · 금액 원</span></h3><div class="tbl-box">${tbl}</div></section>
   </div>`;
@@ -991,7 +991,7 @@ async function renderDash(){
   mkChart("c4",{data:{labels:L,datasets:docNames.map((n,i)=>({label:n,data:B.map(b=>{const d=b.a.docs[n];return d?d.nw+d.re:0}),backgroundColor:DOC_COLORS[i%DOC_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c5",{data:{labels:L,datasets:ptItemsOf(S.branch).filter(k=>T.pt[k]).map((k,i)=>({label:k,data:B.map(b=>b.a.pt[k]||0),backgroundColor:PT_COLORS[Math.max(0,ptItemsOf(S.branch).indexOf(k))%PT_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c6",{data:{labels:L,datasets:[{label:"실 예약",data:B.map(b=>b.a.real),backgroundColor:cssv("--bar-weekend"),order:2},{label:"실제 방문",data:B.map(b=>b.a.visit),backgroundColor:navy,order:2},{type:"line",label:"이행률",data:B.map(b=>+(b.a.keep*100).toFixed(1)),borderColor:good,backgroundColor:good,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{...pctAxis,beginAtZero:false}}}});
-  if(CARM_ENTRY.includes(S.branch)) mkChart("c8",{data:{labels:L,datasets:CARM_KEYS.map((k,i)=>({label:k,data:B.map(b=>b.a.cx?.[k]||0),backgroundColor:[navy,sky][i%2],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
+  if(CARM_ENTRY.includes(S.branch)) mkChart("c8",{data:{labels:L,datasets:[...CARM_KEYS.map((k,i)=>({label:k,data:B.map(b=>b.a.cx?.[k]||0),backgroundColor:[navy,sky][i%2],stack:"s"})),{label:"근전도",data:B.map(b=>b.a.emgE||0),backgroundColor:"#e8a13a",stack:"e"}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
   mkChart("c7",{data:{labels:L,datasets:[{label:"수술 건수",data:B.map(b=>b.a.surg),backgroundColor:navy,order:2},{type:"line",label:"비급여(원)",data:B.map(b=>Math.round(b.a.nonpay)),borderColor:sky,backgroundColor:sky,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}},plugins:{tooltip:{callbacks:{label:c=>c.dataset.yAxisID==="y2"?`비급여 ${won(c.raw)}원`:`수술 ${c.raw}건`}}}}});
 }
 async function renderDashOne(seg){
@@ -1028,7 +1028,7 @@ async function renderDashOne(seg){
     <div class="grid2">
       <section class="panel"><h3>도수 · 충격파 <span>종류별 건수 · 도수 상담 ${won(A.consult)}건</span></h3>${ptK.length?`<div class="cbox"><canvas id="o3" role="img" aria-label="도수 충격파"></canvas></div>`:`<p class="meta">입력 없음</p>`}</section>
       <section class="panel"><h3>수술 · 예약 <span>이 날</span></h3><div class="tbl-box"><table><tbody>
-        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr>${CARM_ENTRY.includes(S.branch)?CARM_KEYS.map(k=>`<tr><td>${k}</td><td class="num">${won(A.cx?.[k]||0)}건</td></tr>`).join(""):""}<tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
+        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr>${CARM_ENTRY.includes(S.branch)?CARM_KEYS.map(k=>`<tr><td>${k}</td><td class="num">${won(A.cx?.[k]||0)}건</td></tr>`).join("")+`<tr><td>근전도</td><td class="num">${won(A.emgE||0)}건</td></tr>`:""}<tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
     </div>
     <section class="panel"><h3>비교 <span>이 날 · 전일 · 지난주 같은 요일 · 금액 원</span></h3><div class="tbl-box"><table><thead><tr><th>구분</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
       ${cmpRows.map(([l,a],i)=>`<tr class="${i===0?"cur":""}"><td>${l}</td>${rowCells(a)}</tr>`).join("")}</tbody></table></div></section>
@@ -1135,7 +1135,7 @@ async function renderEntry(){
         <div hidden>${WHY.map((w,i)=>`<input id="rw_${i}" data-n value="${rv.why?.[w]?won(rv.why[w]):""}">`).join("")}</div>
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${ptKeysEntry().map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
-      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}</div></fieldset>`:""}
+      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt)}</div></fieldset>`:""}
       <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
     </div>
@@ -1145,7 +1145,7 @@ async function renderEntry(){
   const fmt=el=>{ const s=el.value.replace(/[^\d]/g,""); el.value=s?Number(s).toLocaleString("ko-KR"):""; };
   // ── 자동 저장: 바뀐 칸만 저장 ──
   const COL={f_total:"total",f_nonpay:"nonpay",f_out:"outpatient",f_inpat:"inpatient",f_surg:"surgery_cnt",f_card:"pay_card",f_cash:"pay_cash",f_free:"pay_free",f_acct:"pay_account",f_unpaid:"unpaid",f_unpaidIn:"unpaid_in",x_cash:"exp_cash",x_card:"exp_card",x_free:"exp_free",i_cash:"inc_cash",i_card:"inc_card",i_acct:"inc_account",f_note:"note"};
-  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": /^cx\d/.test(id)||id==="f_cashc"?"extra": null);
+  const colOf=id=> COL[id] || (/^d[nra]\d/.test(id)?"doctors": /^r[vw]_/.test(id)?"resv": /^pt\d/.test(id)?"pt": /^fp\d/.test(id)?"paths": /^cx\d/.test(id)||id==="cxe"||id==="f_cashc"?"extra": null);
   const dirty=new Set(); let atimer=null, saving=null, savedOnce=!!row;
   const ptKeys=ptKeysEntry(); let ptManual=new Set((r.pt&&r.pt._m)||[]); let schedCnt=null;
   const buildAll=()=>{ const items={}; RESV_ITEMS.forEach((it,i)=>{ items[it]={resv:v(`rv_${i}_resv`),change:v(`rv_${i}_change`),cancel:v(`rv_${i}_cancel`)}; });
@@ -1156,7 +1156,7 @@ async function renderEntry(){
       pay_card:v("f_card"), pay_cash:v("f_cash"), pay_account:v("f_acct"), unpaid:v("f_unpaid"), unpaid_in:v("f_unpaidIn"),
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
       pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
-    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)) o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1]));
+    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else delete o.extra.emg_cnt; }
     if($("f_cashc")){ if($("f_cashc").value.trim()) o.extra.cash_count=v("f_cashc"); else delete o.extra.cash_count; }
     return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
