@@ -859,7 +859,7 @@ const ptN=(r,k)=>Number(r.pt?.[k]||0);
 function aggRows(rows){
   const a={days:rows.length,total:0,nonpay:0,out:0,inpat:0,surg:0,cash:0,free:0,newP:0,reP:0,real:0,visit:0,consult:0,pt:{},docs:{}};
   rows.forEach(r=>{ a.total+=+r.total; a.nonpay+=+r.nonpay; a.out+=+r.outpatient; a.inpat+=+r.inpatient; a.surg+=+r.surgery_cnt; a.cash+=+r.pay_cash; a.free+=+(r.pay_free||0);
-    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt||0);
+    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt??r.extra?.emg??0);
     ptItemsOf(S.branch).forEach(k=>a.pt[k]=(a.pt[k]||0)+ptN(r,k));
     (r.doctors||[]).forEach(d=>{ const k=d.name||"기타"; (a.docs[k] ||= {nw:0,re:0,amt:0}); a.docs[k].nw+= +d.new||0; a.docs[k].re+= +d.re||0; a.docs[k].amt+= +d.amt||0; a.docAmt=(a.docAmt||0)+(+d.amt||0); a.newP+= +d.new||0; a.reP+= +d.re||0; }); });
   a.visits=a.newP+a.reP; a.perVisit=a.visits?a.total/a.visits:0; a.outPerVisit=a.visits?a.out/a.visits:0;
@@ -1140,7 +1140,7 @@ async function renderEntry(){
         <div hidden>${WHY.map((w,i)=>`<input id="rw_${i}" data-n value="${rv.why?.[w]?won(rv.why[w]):""}">`).join("")}</div>
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${ptKeysEntry().map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
-      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt)}</div></fieldset>`:""}
+      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt??r.extra?.emg)}</div></fieldset>`:""}
       <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
     </div>
@@ -1161,7 +1161,7 @@ async function renderEntry(){
       pay_card:v("f_card"), pay_cash:v("f_cash"), pay_account:v("f_acct"), unpaid:v("f_unpaid"), unpaid_in:v("f_unpaidIn"),
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
       pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
-    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else delete o.extra.emg_cnt; }
+    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else { delete o.extra.emg_cnt; delete o.extra.emg; } }
     if($("f_cashc")){ if($("f_cashc").value.trim()) o.extra.cash_count=v("f_cashc"); else delete o.extra.cash_count; }
     return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
