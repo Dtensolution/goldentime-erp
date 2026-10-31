@@ -82,6 +82,7 @@ nav.side button[aria-current="page"]{background:var(--navy-soft);color:var(--nav
 nav.side button:disabled{color:var(--muted);cursor:default;opacity:.6}
 nav.side .soon{font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
 nav.side .subnav{display:flex;flex-direction:column;gap:1px;margin:0 0 4px 12px;border-left:2px solid var(--line);padding-left:4px}nav.side .subnav button{padding:6px 10px;font-size:13px}
+nav.side button.sep{display:flex;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;text-align:left;border-radius:6px}nav.side button.sep:hover{background:var(--sunk)}
 nav.side .sep{font-size:11px;color:var(--muted);letter-spacing:.06em;padding:14px 12px 4px}
 main{min-width:0;padding-block:20px 64px}
 .wrap{max-width:min(1800px,100%);margin:0 auto;display:grid;gap:20px}
@@ -428,7 +429,7 @@ table.inv tr.low td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 table.inv tr.low td.num:nth-last-child(2){color:var(--warn);font-weight:700}
 table.inv thead th{position:sticky;top:0;z-index:2}
 table.inv{width:auto;min-width:min(100%,900px)}table.inv th,table.inv td{padding:4px 8px;line-height:1.35}
-table.inv .inm{width:300px;max-width:300px;white-space:normal;overflow-wrap:anywhere}table.inv td.inm b{font-weight:600}
+table.inv .inm{width:300px;min-width:220px;max-width:300px;white-space:normal;overflow-wrap:anywhere;word-break:keep-all}table.inv th{white-space:nowrap}table.inv td.num{white-space:nowrap}table.inv td.inm b{font-weight:600}
 table.inv .isp{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 table.reg th,table.resv th,table.resv td{text-align:left!important}
@@ -833,18 +834,22 @@ function render(){
     {id:"log",label:"변경 기록",ok:lv<=2},
   ].filter(i=>i.sep||i.ok!==false||!i.id).filter(i=>!i.id||i.id==="me"||fullMenu()||deptMenus(menuDept()).includes(i.id))
    .filter((i,k,a)=>!i.sep||(a[k+1]&&!a[k+1].sep));
-  const invOpen=S.view==="inv"||S.invOpen;
+  const invOpen=!!S.invOpen; let navClosed; try{ navClosed=new Set(JSON.parse(localStorage.getItem("gt-navclosed")||"[]")); }catch(_){ navClosed=new Set(); }
+  { let g=null; items.forEach(i=>{ if(i.sep) g=i.sep; else i.grp=g; }); }
+  const curGrp=items.find(i=>i.id&&(S.view===i.id||S.view===i.id+"s"||(S.view==="price"&&i.id===(S.priceKind==="emg"?"semg":"spt"))))?.grp;
   if(lv>=3&&!fullMenu()&&S.menuFor!==S.branch){ S.menuFor=S.branch; loadBranchSettings().then(d=>{ const m=d.raw?.menus||null; if(JSON.stringify(m)!==JSON.stringify(S.menuCfg||null)){ S.menuCfg=m; render(); } }).catch(()=>{}); }
   { const ok=new Set(items.map(i=>i.id)); const base=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view; if(!ok.has(base)) S.view="me"; }
-  $("app").innerHTML = topbar()+`<div class="shell"><nav class="side" aria-label="메뉴">${items.map(i=>i.sep?`<div class="sep">${i.sep}</div>`:
-    i.id?`<button data-v="${i.id}" ${(S.view===i.id||S.view===i.id+"s"||(S.view==="price"&&i.id===(S.priceKind==="emg"?"semg":"spt")))?'aria-current="page"':""}>${i.label}${i.id==="inv"?`<span class="meta" aria-hidden="true">${invOpen?"▾":"▸"}</span>`:""}</button>${i.id==="inv"&&invOpen?`<div class="subnav">${INV_DEPTS.map(d=>`<button data-invd="${d}" ${S.view==="inv"&&S.invV?.dept===d?'aria-current="page"':""}>${d}</button>`).join("")}</div>`:""}`:`<button disabled>${i.label}<span class="soon">준비 중</span></button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
+  $("app").innerHTML = topbar()+`<div class="shell"><nav class="side" aria-label="메뉴">${items.map(i=>i.sep?`<button type="button" class="sep" data-navg="${esc(i.sep)}" aria-expanded="${!navClosed.has(i.sep)}">${i.sep}<span aria-hidden="true">${navClosed.has(i.sep)?"▸":"▾"}</span></button>`:
+    i.id?`<button data-v="${i.id}" ${i.grp?`data-grp="${esc(i.grp)}" ${navClosed.has(i.grp)&&i.grp!==curGrp?"hidden":""}`:""} ${(S.view===i.id||S.view===i.id+"s"||(S.view==="price"&&i.id===(S.priceKind==="emg"?"semg":"spt")))?'aria-current="page"':""}>${i.label}${i.id==="inv"?`<span class="meta" aria-hidden="true">${invOpen?"▾":"▸"}</span>`:""}</button>${i.id==="inv"&&invOpen?`<div class="subnav" data-grp="${esc(i.grp||"")}" ${navClosed.has(i.grp)&&i.grp!==curGrp?"hidden":""}>${INV_DEPTS.map(d=>`<button data-invd="${d}" ${S.view==="inv"&&S.invV?.dept===d?'aria-current="page"':""}>${d}</button>`).join("")}</div>`:""}`:`<button disabled>${i.label}<span class="soon">준비 중</span></button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
   $("logout").onclick=()=>doLogout(); if($("appInstall")) $("appInstall").onclick=installHelp;
   if(lv<=2) sb.from("signup_requests").select("id",{count:"exact",head:true}).eq("status","pending").then(({count})=>{ const b=document.querySelector('nav.side button[data-v="users"]'); if(b&&count) b.insertAdjacentHTML("beforeend",` <span class="pill wait" title="가입 요청">${count}</span>`); },()=>{});
   $("homeBtn").onclick=()=>{ S.view=canDash()?"dash":defaultView(); render(); };
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=async()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; }
     if(S.view==="staff"&&b.dataset.v!=="staff"&&shDirtyN()>0){ if(confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다.\n[확인] 저장하고 이동 · [취소] 저장하지 않고 이동 (근무표로 돌아오면 그대로 남아 있음)`)){ const r=await shFlush(); toast(r.fail?`${r.fail}칸 저장 실패: ${r.msg}`:`${r.n}칸 저장했습니다`); } }
-    if(b.dataset.v==="inv"){ S.invOpen=S.view==="inv"?!S.invOpen:true; } S.view=b.dataset.v; render(); });
+    if(b.dataset.v==="inv"){ if(S.view==="inv"){ S.invOpen=!S.invOpen; const sn=document.querySelector("nav.side .subnav"); if(sn&&!S.invOpen){ sn.remove(); b.querySelector("span").textContent="▸"; return; } } else S.invOpen=true; } S.view=b.dataset.v; render(); });
+  document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=!navClosed.has(g); close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed",JSON.stringify([...navClosed])); }catch(_){}
+    document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector("span").textContent=close?"▸":"▾"; });
   document.querySelectorAll("nav.side [data-invd]").forEach(b=>b.onclick=()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; } const st=S.invV ||= {dept:b.dataset.invd, cat:"전체", q:"", count:false, cdate:kstToday(), low:false}; st.dept=b.dataset.invd; st.cat="전체"; S.invOpen=true; S.view="inv"; render(); });
   const v=S.view;
   if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
@@ -2416,7 +2421,7 @@ async function renderRegisters(opts={}){
   const counts=Object.fromEntries(REG_DEPTS.map(d=>[d,regsAll.filter(r=>r.dept===d).length]));
   let cur=regs.find(r=>r.id===st.id)||regs[0]||null; st.id=cur?.id||null;
   let months=[]; if(cur?.date_col){ const {data:md}=await sb.from("register_rows").select("row_date").eq("register_id",cur.id).not("row_date","is",null).limit(20000);
-    const mc={}; (md||[]).forEach(x=>{ const m=x.row_date.slice(0,7); mc[m]=(mc[m]||0)+1; }); const cm=kstToday().slice(0,7); if(!mc[cm]&&Object.keys(mc).some(m=>m>=shiftMonth(cm,-1))) mc[cm]=0; months=Object.keys(mc).sort().reverse().map(m=>[m,mc[m]]);
+    const mc={}; (md||[]).forEach(x=>{ const m=x.row_date.slice(0,7); mc[m]=(mc[m]||0)+1; }); const cm=kstToday().slice(0,7); if(!mc[cm]&&Object.keys(mc).some(m=>m>=shiftMonth(cm,-1))) mc[cm]=0; if(st.month&&mc[st.month]==null) mc[st.month]=0; months=Object.keys(mc).sort().reverse().map(m=>[m,mc[m]]);
     if(st.month===null) st.month=months[0]?.[0]||""; }
   let rows=[]; if(cur){ let qy=sb.from("register_rows").select("id,row_date,data,sort,updated_at").eq("register_id",cur.id).order("row_date",{ascending:false,nullsFirst:false}).order("sort").limit(5000);
     if(st.month&&cur.date_col){ const R=monthRange(st.month); qy=qy.gte("row_date",R.start).lte("row_date",R.end); }
@@ -2443,7 +2448,7 @@ async function renderRegisters(opts={}){
       <section class="panel" style="min-width:0">${cur?`
         <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
-        ${cur.date_col&&months.length?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month}">전체</button></div>`:""}
+        ${cur.date_col&&(months.length||ed)?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month}">전체</button>${ed?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="month" id="rmnew" value="${shiftMonth(months[0]?.[0]||kstToday().slice(0,7),1)}" aria-label="추가할 년·월" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rmgo">+ 년·월 추가</button></span>`:""}</div>`:""}
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
         ${regSum()}
         <div class="tbl-box reg-box"><table class="reg"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
@@ -2457,6 +2462,7 @@ async function renderRegisters(opts={}){
   document.querySelectorAll("[data-rg]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.rg; st.q=""; st.limit=300; st.month=null; renderRegisters(opts); });
   bindSearch("rq",v=>{ st.q=v; return renderRegisters(opts); });
   document.querySelectorAll("[data-rmo]").forEach(b=>b.onclick=()=>{ st.month=b.dataset.rmo; st.limit=300; renderRegisters(opts); });
+  if($("rmgo")) $("rmgo").onclick=()=>{ const v=$("rmnew").value; if(!/^\d{4}-\d{2}$/.test(v)) return toast("년·월을 고르세요"); st.month=v; st.limit=300; renderRegisters(opts); toast(`${v.slice(0,4)}년 ${+v.slice(5)}월 — [+ 행 추가]로 적으면 이 달에 저장됩니다`); };
   if($("rmore")) $("rmore").onclick=()=>{ st.limit+=500; renderRegisters(opts); };
   if($("rcsv")) $("rcsv").onclick=()=>downloadCSV(`${cur.name}.csv`,[cols.map(c=>c.label),...shownAll.map(r=>cols.map(c=>r.data?.[c.key]??""))]);
   if($("rnew")) $("rnew").onclick=async()=>{ const name=prompt("새 목록 이름"); if(!name) return; const lab=(prompt("열 이름을 쉼표로 적으세요 (예: 날짜, 이름, 내용, 비고)","날짜, 내용, 비고")||"").split(",").map(s=>s.trim()).filter(Boolean); if(!lab.length) return;
