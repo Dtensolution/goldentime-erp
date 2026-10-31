@@ -1429,7 +1429,7 @@ async function renderSched(kind){
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>${cfg.title}</h2><div class="meta">${perm==="edit"?"빈 칸을 누르면 예약을 넣고, 예약을 누르면 고칠 수 있습니다":"보기 전용 권한입니다"} · 예약 ${live.length}건${appts.length-live.length?` · 취소·노쇼·변경 ${appts.length-live.length}건`:""}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div>${S.me.level<=3?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
+        <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div><button class="btn ghost sm" id="apfind" title="차트번호·이름으로 예약 찾기 (기간 넓게)">🔍 환자 찾기</button>${S.me.level<=3?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
         <div class="monthnav"><button class="btn ghost sm" id="sp" aria-label="이전">◀</button><b class="num" style="min-width:150px">${label}</b><button class="btn ghost sm" id="sn" aria-label="다음">▶</button></div>
         <button class="btn ghost sm" id="st">오늘</button>${st.mode==="range"?`<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="rf" value="${start}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="rt" value="${end}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-rq="${k}">${t}</button>`).join("")}</span>`:st.mode==="month"?`<input type="month" id="sm" value="${st.date.slice(0,7)}" aria-label="월 선택" style="height:30px;padding:0 6px">`:st.mode==="year"?`<select id="sy" aria-label="연도 선택" style="height:30px">${[...Array(7)].map((_,i)=>+kstToday().slice(0,4)-4+i).map(y=>`<option ${String(y)===st.date.slice(0,4)?"selected":""}>${y}</option>`).join("")}</select>`:`<input type="date" id="sd" value="${st.date}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`}
         ${canEdit&&grid?`<button class="btn ghost sm" id="sundo" ${(S.schedUndo[kind]||[]).length?"":"disabled"} title="끌어서 옮긴 예약을 원래대로">↶ 되돌리기${(S.schedUndo[kind]||[]).length?` (${S.schedUndo[kind].length})`:""}</button>`:""}
@@ -1471,6 +1471,7 @@ async function renderSched(kind){
   document.querySelectorAll("[data-rq]").forEach(b=>b.onclick=()=>{ st.to=kstToday(); st.from=addDays(st.to,-(+b.dataset.rq)+1); renderSched(kind); });
   document.querySelectorAll("[data-day]").forEach(b=>b.onclick=()=>{ st.date=b.dataset.day; st.mode="day"; renderSched(kind); });
   document.querySelectorAll("[data-mon]").forEach(b=>b.onclick=()=>{ st.date=b.dataset.mon+"-01"; st.mode="month"; renderSched(kind); });
+  $("apfind").onclick=()=>apptFind(kind,lanes,d=>{ st.mode="day"; st.date=d; renderSched(kind); });
   if($("goPrice")) $("goPrice").onclick=()=>{ S.priceKind=kind; S.priceBack=S.view; S.view="price"; render(); };
   document.querySelectorAll("[data-sm]").forEach(b=>b.onclick=()=>{ if(b.dataset.sm==="stats"){ S.view=kind==="pt"?"spts":"semgs"; render(); return; } st.mode=b.dataset.sm; renderSched(kind); });
   if($("dns")) $("dns").onclick=async()=>{ const {error}=await sb.from("sched_day_notes").upsert({branch_id:S.branch,kind,note_date:st.date,note:$("dn").value.trim()||null,updated_by:S.user.id,updated_at:new Date().toISOString()}); toast(error?errMsg(error):"메모 저장됨"); };
@@ -1578,6 +1579,34 @@ function apptDialog(ctx, a, preset){
 }
 
 // ── 스케줄 통계 (월별) ──
+// 스케줄: 차트번호·이름으로 기간 넓게 찾기 (담당 선생님 확인용)
+function apptFind(kind,lanes,goDay){ const dlg=$("dlg"); const st=S.apFind ||= {q:"",range:"1"};
+  dlg.innerHTML=`<form method="dialog" style="min-width:min(760px,92vw)"><h3 style="margin:0 0 10px">🔍 환자 찾기 · ${esc(SCHED[kind].title)}</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="afq" placeholder="차트번호 또는 이름" value="${esc(st.q)}" style="height:34px;padding:0 10px;width:200px" autocomplete="off">
+      <div class="seg" role="group" aria-label="기간">${[["1","최근 1개월"],["3","3개월"],["6","6개월"],["12","1년"]].map(([k,t])=>`<button type="button" data-afr="${k}" aria-pressed="${st.range===k}">${t}</button>`).join("")}</div>
+      <button type="button" class="btn sm" id="afgo">찾기</button></div>
+    <p class="meta" style="margin:6px 0">지난 기간 + 앞으로 1개월 예약까지 찾습니다 · 줄을 누르면 그 날 스케줄로 이동</p>
+    <div id="afres" class="tbl-box" style="max-height:60vh"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn ghost" value="cancel">닫기</button></div></form>`;
+  dlg.showModal(); const inp=$("afq"); setTimeout(()=>inp.focus(),0);
+  const laneNm=id=>lanes.find(l=>l.id===id)?.name||"";
+  const run=async()=>{ const q=inp.value.trim().replace(/[,()%*]/g,""); st.q=q; const box=$("afres"); if(!q){ box.innerHTML=`<p class="meta" style="padding:10px">차트번호나 이름을 적어주세요.</p>`; return; }
+    box.innerHTML=`<p class="meta" style="padding:10px">찾는 중…</p>`;
+    const from=addDays(kstToday(),-Math.round(+st.range*30.5)), to=addDays(kstToday(),31);
+    const filt=/^\d+$/.test(q)?`chart_no.eq.${q},patient_name.ilike.%${q}%`:`patient_name.ilike.%${q}%,chart_no.ilike.%${q}%`;
+    const {data,error}=await sb.from("appointments").select("id,appt_date,start_min,minutes,lane_id,item,staff,doctor,status,chart_no,patient_name").eq("branch_id",S.branch).eq("kind",kind).gte("appt_date",from).lte("appt_date",to).or(filt).order("appt_date",{ascending:false}).order("start_min",{ascending:false}).limit(500);
+    if(error){ box.innerHTML=`<p class="err" style="padding:10px">${esc(errMsg(error))}</p>`; return; }
+    const L=data||[]; const staffCnt={}; L.filter(a=>!LOST_ST.has(a.status)&&a.staff).forEach(a=>staffCnt[a.staff]=(staffCnt[a.staff]||0)+1);
+    const top=Object.entries(staffCnt).sort((a,b)=>b[1]-a[1]);
+    box.innerHTML=!L.length?`<p class="meta" style="padding:10px">${esc(q)} — 이 기간에 예약이 없습니다. 기간을 늘려 보세요.</p>`:
+      `${top.length?`<p style="margin:8px 10px"><b>담당 선생님:</b> ${top.map(([n,c],i)=>`${i?"":"<b>"}${esc(n)} ${c}회${i?"":"</b>"}`).join(" · ")} <span class="meta">(최근 담당: ${esc(L.find(a=>!LOST_ST.has(a.status)&&a.staff)?.staff||"-")})</span></p>`:""}
+      <table><thead><tr><th>날짜</th><th>시간</th><th>환자</th><th>치료</th><th>담당</th><th>방</th><th>상태</th></tr></thead><tbody>
+      ${L.map(a=>`<tr data-afd="${a.appt_date}" style="cursor:pointer${LOST_ST.has(a.status)?";opacity:.55":""}"><td class="num">${a.appt_date.slice(2).replace(/-/g,".")} (${"일월화수목금토"[new Date(a.appt_date+"T00:00:00Z").getUTCDay()]})</td><td class="num">${hhmm(a.start_min)}</td><td>${esc([a.chart_no,a.patient_name].filter(Boolean).join(" "))}</td><td>${esc(a.item||"")}</td><td><b>${esc(a.staff||"")}</b></td><td class="meta">${esc(laneNm(a.lane_id))}</td><td>${esc(a.status)}</td></tr>`).join("")}</tbody></table>${L.length>=500?`<p class="meta" style="padding:6px 10px">500건까지만 보여줍니다</p>`:""}`;
+    box.querySelectorAll("[data-afd]").forEach(tr=>tr.onclick=()=>{ dlg.close(); goDay(tr.dataset.afd); }); };
+  inp.onkeydown=e=>{ if(e.key==="Enter"&&!e.isComposing){ e.preventDefault(); run(); } };
+  $("afgo").onclick=run; dlg.querySelectorAll("[data-afr]").forEach(b=>b.onclick=()=>{ st.range=b.dataset.afr; dlg.querySelectorAll("[data-afr]").forEach(x=>x.setAttribute("aria-pressed",x===b)); run(); });
+  if(st.q) run();
+}
 async function renderSchedStats(kind){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   S.statMonth ||= kstToday().slice(0,7);
