@@ -277,6 +277,7 @@ dialog::backdrop{background:rgb(0 0 0 / .35)}
 .sc-body{position:relative;background-image:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px 54px),repeating-linear-gradient(to bottom,color-mix(in srgb,var(--line) 45%,transparent) 0 1px,transparent 1px 18px)}
 .sc-body[data-col]{cursor:copy}
 .sc-time .sc-body{background-image:none}
+.sc-col.sc-time{position:sticky;left:0;z-index:4;background:var(--surface);box-shadow:1px 0 0 var(--line),4px 0 6px -4px rgb(0 0 0 / .15)}.sc-col.sc-time .sc-h{z-index:5}
 .tl{position:absolute;right:6px;transform:translateY(-1px);font-family:var(--f-num);font-size:11px;color:var(--muted)}
 .ap{position:absolute;overflow:hidden;text-align:left;border:1px solid var(--navy);border-left-width:3px;border-radius:5px;background:var(--navy-soft);color:var(--ink);padding:2px 5px;font-size:13px;line-height:1.3;cursor:pointer;display:flex;flex-direction:column;gap:1px}
 .ap b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1381,7 +1382,7 @@ async function renderSched(kind){
   const colHtml=cols.map((c,ci)=>{
     const list=appts.filter(a=>inCol(a,c)).sort((a,b)=>a.start_min-b.start_min||a.id-b.id);
     const tracks=[]; list.forEach(a=>{ let t=tracks.findIndex(e=>e<=a.start_min); if(t<0){ t=tracks.length; tracks.push(0);} tracks[t]=a.start_min+a.minutes; a._t=t; });
-    const n=Math.max(1,tracks.length);
+    const n=Math.max(1,tracks.length); c._n=n;
     const cards=list.map(a=>{ const top=(a.start_min-cfg.from)/10*SLOT_H+1, h=Math.max(SLOT_H-2,a.minutes/10*SLOT_H-2);
       const laneName = "";
       const ct=a.contact||{}; const inpB=a.inpatient?`<em class="inp" title="입원">입</em>`:""; const nthB=kind==="emg"&&a._k?`<em class="nth n${a._k}" title="${a.exam_no?"직접 지정":"자동 계산 ("+a._n+"번째 검사)"}">${a._k}차</em>`:""; const badges=kind==="emg"?`${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
@@ -1434,7 +1435,7 @@ async function renderSched(kind){
     ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
     ${grid&&kind==="pt"&&items.length?`<div class="iclg">${items.filter(i=>i.active!==false).map(i=>`<span style="--ic:${icOf(i.name)}"><i></i>${esc(i.name)}</span>`).join("")}<span>· 완료는 ✓ 표시 · 취소·노쇼·변경은 회색</span></div>`:""}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
-    `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px repeat(${cols.length},minmax(${st.mode==="week"?(lanes.length>1?92:120):150}px,1fr))">
+    `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px ${cols.map(c=>`minmax(${Math.max(st.mode==="week"?(lanes.length>1?140:160):150,(c._n||1)*(st.mode==="week"?96:110))}px,1fr)`).join(" ")}">
       <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
     ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
     ${blocksPanel(kind,blocks,lanes,canEdit,cfg)}
