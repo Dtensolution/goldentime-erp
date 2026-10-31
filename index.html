@@ -208,6 +208,10 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
   body.printing-report .shell{display:block} body.printing-report main{padding:0!important} body.printing-report .wrap{max-width:none;padding:0}
   body.printing-report .report{border:0;box-shadow:none;padding:0} body.printing-report table.rpt{page-break-inside:avoid} body.printing-report .report h2{page-break-after:avoid}
   @page{size:A4;margin:14mm} }
+@media print{ body.printing-list .top, body.printing-list nav.side, body.printing-list #toast, body.printing-list .chips, body.printing-list .page-h > div:last-child, body.printing-list .brushes, body.printing-list .noprint, body.printing-list main button, body.printing-list .cmhelp, body.printing-list .chips{display:none!important}
+  body.printing-list .shell{display:block} body.printing-list main{padding:0!important} body.printing-list .wrap{max-width:none;padding:0}
+  body.printing-list .tbl-box{max-height:none!important;overflow:visible!important;border:0} body.printing-list thead th{position:static!important} body.printing-list .panel{border:0;box-shadow:none;padding:0}
+  body.printing-list table{font-size:11px} body.printing-list tr{page-break-inside:avoid} @page{size:A4;margin:10mm} }
 .alerts{display:grid;gap:6px;margin:0 0 14px}
 .alert{display:flex;gap:10px;align-items:center;justify-content:flex-start;column-gap:20px;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:8px;padding:8px 12px;background:var(--surface);font-size:13.5px}
 .alert.bad{border-left-color:var(--bad);background:color-mix(in srgb,var(--bad) 6%,var(--surface))}
@@ -2038,7 +2042,7 @@ async function renderDocs(){
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
   if(dr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(dr.error))}</div></div>`; return; }
-  const docs=dr.data||[], nm=id=>(ur.data||[]).find(u=>u.user_id===id)?.name||"-";
+  const docs=(dr.data||[]).filter(d=>!String(d.title||"").startsWith(INV_LED)), nm=id=>(ur.data||[]).find(u=>u.user_id===id)?.name||"-";
   const q=st.q.toLowerCase();
   const list = q ? docs.filter(d=>(d.title+" "+d.body).toLowerCase().includes(q)) : docs.filter(d=>d.dept===st.dept);
   let cur = docs.find(d=>d.id===st.id); if(!cur || (!q && cur.dept!==st.dept)) cur=list[0]||null; st.id=cur?.id||null;
@@ -2188,14 +2192,17 @@ function downloadCSV(name,rows){ const csv="﻿"+rows.map(r=>r.map(v=>{ const s=
 // ── 물품·재고 ──
 const INV_DEPTS=["간호","병동","수술","원무","물리치료","영상의학","임상병리","경영지원"];
 const INV_NOLOW=["간호","수술"]; // '기준보다 적음' 표시를 쓰지 않는 파트
-const INV_ORDER_ONLY=["수술"]; // 재고 입력 없이 발주만 적는 파트 (날짜 칸에 발주량을 그대로 표시)
+const INV_ORDER_ONLY=["수술"]; const INV_LED="📦 "; // 제목이 이걸로 시작하는 게시판 글 = 물품·재고 안의 장부 // 재고 입력 없이 발주만 적는 파트 (날짜 칸에 발주량을 그대로 표시)
 function canEditInv(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (me.level===3 && ["간호","병동","수술"].includes(dept) && ["간호","병동","수술"].includes(me.dept)); }
 async function renderInventory(){
+  if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.invV ||= {dept: INV_DEPTS.includes(S.me.dept)?S.me.dept:"간호", cat:"전체", q:"", count:false, cdate:kstToday(), low:false};
   const ir=await sb.from("inv_items").select("*").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",true).order("category").order("sort").order("id");
   if(ir.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ir.error))}</div></div>`; return; }
   const items=ir.data||[]; const ids=items.map(i=>i.id);
+  const lr=await sb.from("dept_docs").select("id,title,body,updated_at,updated_by,dept").eq("branch_id",S.branch).eq("dept",st.dept).like("title",INV_LED+"%").order("sort").order("id");
+  const leds=lr.data||[]; const led=st.led?leds.find(d=>d.id===st.led):null; if(!led) st.led=null;
   let logs=[]; for(let i=0;i<ids.length;i+=300){ const r=await sb.from("inv_logs").select("id,item_id,log_date,kind,qty,note").in("item_id",ids.slice(i,i+300)).gte("log_date",addDays(kstToday(),-400)).order("log_date"); if(r.data) logs=logs.concat(r.data); }
   const L={}; logs.forEach(l=>{ (L[l.item_id] ||= []).push(l); });
   const OO=INV_ORDER_ONLY.includes(st.dept); const hasStock=!OO&&logs.some(l=>l.kind==="재고");
@@ -2221,19 +2228,22 @@ async function renderInventory(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span style="display:inline-flex;align-items:center"><input id="iq" placeholder="품목·코드·업체 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:220px"></span>${st.q?`<button class="btn ghost sm" id="iqx">지우기</button>`:""}
         ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button>`:""}
-        <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button></div></div>
+        <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button><button class="btn ghost sm" id="iprint" title="목록만 인쇄">🖨 인쇄</button></div></div>
     <div class="chips">${INV_DEPTS.map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
-    <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${st.cat===c}">${esc(c)}</button>`).join("")}
-      ${useLow?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
+    <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&st.cat===c}">${esc(c)}</button>`).join("")}
+      ${leds.map(d=>`<button class="fchip ledchip" data-iled="${d.id}" aria-pressed="${led?.id===d.id}">📒 ${esc(d.title.slice(INV_LED.length))}</button>`).join("")}${canEditDoc(st.dept)?`<button class="fchip" id="iledadd" title="이 파트 물품·재고에 장부 추가">+ 장부</button>`:""}
+      ${useLow&&!led?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
     ${st.count?`<div class="brushes"><b>${OO?"발주":"재고조사"}</b><label class="meta" for="icd">날짜</label><input type="date" id="icd" value="${st.cdate}" style="height:30px;padding:0 6px"><span class="meta">${OO?"발주 칸에 주문할 수량을 적고 저장하세요. 그 날짜 칸에 발주량이 그대로 나옵니다.":"수량 칸에 현재 재고를, 발주 칸에 주문할 수량을 적고 저장하세요. 빈칸은 저장하지 않습니다."}</span><button class="btn sm" id="isave">저장</button></div>`:""}
+    ${led?`<section class="panel"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><h3 style="margin:0">📒 ${esc(led.title.slice(INV_LED.length))}</h3>${canEditDoc(st.dept)?`<span class="meta noprint">표 칸을 누르면 바로 고칩니다 · Enter 저장 · Tab·화살표 이동</span> <b id="mdst" class="noprint"></b><button class="btn ghost sm noprint" id="ledren">이름 바꾸기</button><button class="btn ghost sm noprint" id="ledfull">전체 수정</button>`:""}</div>
+      <div class="md${canEditDoc(st.dept)?" mded":""}" id="mdv">${mdRender(led.body,{edit:canEditDoc(st.dept)})}</div></section>`:`
     <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 300px)"><table class="inv"><thead><tr><th class="inm">품목</th><th class="isp">규격</th><th>단위</th><th title="기준치">기준</th>${OO?"":`<th title="가장 최근 재고조사 수량">현재</th><th title="현재 − 기준">±</th>`}${dates.map(d=>`<th>${+d.slice(5,7)}/${+d.slice(8)}</th>`).join("")}${st.count?(OO?`<th>발주</th>`:`<th>재고 입력</th><th>발주</th>`):""}<th></th></tr></thead><tbody>
       ${shown.map(i=>{ const c=(i.category||"기타"); let g=""; if(c!==grp){ grp=c; g=`<tr class="grp"><td colspan="${(OO?6:8)+dates.length+(st.count?(OO?1:2):0)}">${esc(c)}</td></tr>`; }
         const lt=last(i); const low=useLow&&i.std_qty!=null&&lt&&+lt.qty<+i.std_qty;
         return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}${i.vendor?` <small class="meta">${esc(i.vendor)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${i.std_qty!=null?fmtQ(i.std_qty):""}</td>${OO?"":`<td class="num" title="${lt?`${lt.log_date} 재고조사`:"재고조사 기록 없음"}">${lt?fmtQ(lt.qty):""}</td><td class="num">${diffH(i)}</td>`}${dates.map(d=>cell(i,d)).join("")}
           ${st.count?`${OO?"":`<td><input data-cq="${i.id}" inputmode="decimal" style="height:28px;width:64px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="재고");return x?fmtQ(x.qty):"";})()}"></td>`}<td><input data-co="${i.id}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="발주");return x?fmtQ(x.qty):"";})()}"></td>`:""}
           <td>${ed?`<button class="nmbtn" style="opacity:.6" data-iedit="${i.id}" aria-label="${esc(i.name)} 수정">⋯</button>`:""}</td></tr>`; }).join("")||`<tr><td colspan="99" class="empty">품목이 없습니다.</td></tr>`}
-    </tbody></table></div></section>
-    ${st.ledger?(()=>{ const byD=(a,b)=>a.log_date<b.log_date?-1:a.log_date>b.log_date?1:0; const rows=[];
+    </tbody></table></div></section>`}
+    ${!led&&st.ledger?(()=>{ const byD=(a,b)=>a.log_date<b.log_date?-1:a.log_date>b.log_date?1:0; const rows=[];
       shown.forEach(it=>{ const A=L[it.id]||[]; const ords=A.filter(l=>l.kind==="발주").sort(byD), rcv=A.filter(l=>l.kind==="입고").sort(byD);
         const link=r=>{ const m=String(r.note||"").match(/@ord:(\d+)/); return m?+m[1]:null; }; const used=new Set();
         ords.forEach((o,k)=>{ const nx=ords[k+1]?.log_date; const R=rcv.filter(r=>link(r)===o.id||(link(r)==null&&r.log_date>=o.log_date&&(!nx||r.log_date<nx))); R.forEach(r=>used.add(r.id)); rows.push({it,o,R}); });
@@ -2252,7 +2262,14 @@ async function renderInventory(){
         </tbody></table></div></section>`; })():""}
   </div>`;
   document.querySelectorAll("[data-idp]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.idp; st.cat="전체"; renderInventory(); });
-  document.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.ic; renderInventory(); });
+  document.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.ic; st.led=null; renderInventory(); });
+  document.querySelectorAll("[data-iled]").forEach(b=>b.onclick=()=>{ st.led=+b.dataset.iled; renderInventory(); });
+  if($("iledadd")) $("iledadd").onclick=async()=>{ const nm=(prompt("장부 이름 (예: 약품 관리 장부)")||"").trim(); if(!nm) return;
+    const {data,error}=await sb.from("dept_docs").insert({branch_id:S.branch,dept:st.dept,title:INV_LED+nm,body:"| 날짜 | 품목 | 수량 | 사인 | 메모 |\n| --- | --- | --- | --- | --- |\n|  |  |  |  |  |"}).select("id").single(); if(error) return toast(errMsg(error)); st.led=data.id; renderInventory(); };
+  if(led){ if(canEditDoc(st.dept)) bindMdEdit($("mdv"),led,()=>renderInventory()); bindMdMonths($("mdv"),led.id);
+    if($("ledren")) $("ledren").onclick=async()=>{ const nm=(prompt("장부 이름",led.title.slice(INV_LED.length))||"").trim(); if(!nm) return; const {error}=await sb.from("dept_docs").update({title:INV_LED+nm}).eq("id",led.id); if(error) return toast(errMsg(error)); renderInventory(); };
+    if($("ledfull")) $("ledfull").onclick=()=>{ const v=$("mdv"); v.id="dv"; docEditor(led,st.dept,()=>renderInventory(),{}); }; }
+  $("iprint").onclick=()=>{ document.body.classList.add("printing-list"); const done=()=>{ document.body.classList.remove("printing-list"); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); window.print(); setTimeout(done,60000); };
   if($("ilow")) $("ilow").onclick=()=>{ st.low=!st.low; renderInventory(); };
   bindSearch("iq",v=>{ st.q=v; return renderInventory(); }); if($("iqx")) $("iqx").onclick=()=>{ st.q=""; renderInventory(); };
   if($("icount")) $("icount").onclick=()=>{ st.count=!st.count; renderInventory(); };
