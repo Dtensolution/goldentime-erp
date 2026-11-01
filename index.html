@@ -68,6 +68,8 @@ input,select,textarea{border:1px solid var(--line);border-radius:6px;background:
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .err{color:var(--bad);font-size:13px;min-height:20px}
 
+.page-h.sched-h{position:sticky;top:56px;z-index:6;background:var(--bg);padding:8px 0;margin:-8px 0 8px;box-shadow:0 6px 8px -8px rgb(0 0 0 / .25)}
+@media (max-width:760px){ .page-h.sched-h{position:static;box-shadow:none} }
 .top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:56px;padding-block:8px}
 .top .brand h1{font-size:17px}
 .branch{display:flex;align-items:center;gap:8px;margin-left:auto}
@@ -270,6 +272,7 @@ table.ctab td,table.ctab th{white-space:nowrap}
 .inline-form .field input,.inline-form .field select{height:36px}
 dialog{border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:20px;width:min(440px,92vw)}
 dialog::backdrop{background:rgb(0 0 0 / .35)}
+dialog.wide{width:min(1200px,96vw)!important;max-height:94vh}
 
 .sc-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .sc-grid{display:grid;min-width:max-content}
@@ -1427,7 +1430,7 @@ async function renderSched(kind){
       </tbody></table></div></section>`;
   }
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>${cfg.title}</h2><div class="meta">${perm==="edit"?"빈 칸을 누르면 예약을 넣고, 예약을 누르면 고칠 수 있습니다":"보기 전용 권한입니다"} · 예약 ${live.length}건${appts.length-live.length?` · 취소·노쇼·변경 ${appts.length-live.length}건`:""}</div></div>
+    <div class="page-h sched-h"><div><h2>${cfg.title}</h2><div class="meta">${perm==="edit"?"빈 칸을 누르면 예약을 넣고, 예약을 누르면 고칠 수 있습니다":"보기 전용 권한입니다"} · 예약 ${live.length}건${appts.length-live.length?` · 취소·노쇼·변경 ${appts.length-live.length}건`:""}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <div class="seg" role="group" aria-label="보기">${[["day","일"],["week","주"],["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-sm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}<button data-sm="stats" aria-pressed="false">통계</button></div><button class="btn ghost sm" id="apfind" title="차트번호·이름으로 예약 찾기 (기간 넓게)">🔍 환자 찾기</button>${S.me.level<=3?`<button class="btn ghost sm" id="goPrice">치료 단가</button>`:""}
         <div class="monthnav"><button class="btn ghost sm" id="sp" aria-label="이전">◀</button><b class="num" style="min-width:150px">${label}</b><button class="btn ghost sm" id="sn" aria-label="다음">▶</button></div>
@@ -1581,14 +1584,14 @@ function apptDialog(ctx, a, preset){
 // ── 스케줄 통계 (월별) ──
 // 스케줄: 차트번호·이름으로 기간 넓게 찾기 (담당 선생님 확인용)
 function apptFind(kind,lanes,goDay){ const dlg=$("dlg"); const st=S.apFind ||= {q:"",range:"1"};
-  dlg.innerHTML=`<form method="dialog" style="min-width:min(760px,92vw)"><h3 style="margin:0 0 10px">🔍 환자 찾기 · ${esc(SCHED[kind].title)}</h3>
+  dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 10px">🔍 환자 찾기 · ${esc(SCHED[kind].title)}</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input id="afq" placeholder="차트번호 또는 이름" value="${esc(st.q)}" style="height:34px;padding:0 10px;width:200px" autocomplete="off">
       <div class="seg" role="group" aria-label="기간">${[["1","최근 1개월"],["3","3개월"],["6","6개월"],["12","1년"]].map(([k,t])=>`<button type="button" data-afr="${k}" aria-pressed="${st.range===k}">${t}</button>`).join("")}</div>
       <button type="button" class="btn sm" id="afgo">찾기</button></div>
     <p class="meta" style="margin:6px 0">지난 기간 + 앞으로 1개월 예약까지 찾습니다 · 줄을 누르면 그 날 스케줄로 이동</p>
-    <div id="afres" class="tbl-box" style="max-height:60vh"></div>
+    <div id="afres" class="tbl-box" style="max-height:calc(90vh - 190px);min-height:40vh"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn ghost" value="cancel">닫기</button></div></form>`;
-  dlg.showModal(); const inp=$("afq"); setTimeout(()=>inp.focus(),0);
+  dlg.classList.add("wide"); dlg.addEventListener("close",()=>dlg.classList.remove("wide"),{once:true}); dlg.showModal(); const inp=$("afq"); setTimeout(()=>inp.focus(),0);
   const laneNm=id=>lanes.find(l=>l.id===id)?.name||"";
   const run=async()=>{ const q=inp.value.trim().replace(/[,()%*]/g,""); st.q=q; const box=$("afres"); if(!q){ box.innerHTML=`<p class="meta" style="padding:10px">차트번호나 이름을 적어주세요.</p>`; return; }
     box.innerHTML=`<p class="meta" style="padding:10px">찾는 중…</p>`;
@@ -2245,7 +2248,7 @@ async function renderInventory(){
   const ko=(a,b)=>String(a||"").localeCompare(String(b||""),"ko",{numeric:true});
   const catOrder=[...new Set(items.map(i=>i.category||"기타"))];
   const shown=items.filter(i=>(q||st.cat==="전체"||(i.category||"기타").split(" · ")[0]===st.cat)&&(!q||[i.name,i.code,i.spec,i.vendor,i.category].join(" ").toLowerCase().includes(q))&&(!st.low||(i.std_qty!=null&&last(i)&&+last(i).qty<+i.std_qty)))
-    .sort((a,b)=>catOrder.indexOf(a.category||"기타")-catOrder.indexOf(b.category||"기타")||ko(a.name,b.name)||ko(a.spec,b.spec)||(a.id-b.id));
+    .sort((a,b)=>catOrder.indexOf(a.category||"기타")-catOrder.indexOf(b.category||"기타")||ko(a.name,b.name)||(sizeRank(b.spec)-sizeRank(a.spec))||ko(a.spec,b.spec)||(a.id-b.id));
   const ed=canEditInv(st.dept);
   const cell=(i,d)=>{ const a=(L[i.id]||[]).filter(l=>l.log_date===d); const s=a.find(l=>l.kind==="재고"), o=a.find(l=>l.kind==="발주"), r=a.find(l=>l.kind==="입고");
     if(OO) return `<td class="num" title="발주">${o?fmtQ(o.qty):""}${r?`<small class="rcv" title="입고">입${fmtQ(r.qty)}</small>`:""}</td>`;
@@ -2256,7 +2259,7 @@ async function renderInventory(){
     <div class="page-h"><div><h2>물품·재고</h2><div class="meta">${esc(st.dept)} · ${items.length}품목${st.q?` · "${esc(st.q)}" 찾은 결과 ${shown.length}개 (분류 상관없이)`:""} · 재고조사한 날짜별 수량 (작은 글씨: +발주 / 입고)</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span style="display:inline-flex;align-items:center"><input id="iq" placeholder="품목·코드·업체 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:220px"></span>${st.q?`<button class="btn ghost sm" id="iqx">지우기</button>`:""}
-        ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button>`:""}
+        ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button><button class="btn ${st.edit?"":"ghost"} sm" id="iedit" title="기준 수량 고치기 · 쓰지 않는 물품 삭제">${st.edit?"편집 끝":"✏️ 기준·삭제 편집"}</button>`:""}
         <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button><button class="btn ghost sm" id="iprint" title="목록만 인쇄">🖨 인쇄</button></div></div>
     <div class="chips">${INV_DEPTS.map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
     <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&st.cat===c}">${esc(c)}</button>`).join("")}
@@ -2268,9 +2271,9 @@ async function renderInventory(){
     <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 300px)"><table class="inv"><thead><tr><th class="inm">품목</th><th class="isp">규격</th><th>단위</th><th title="기준치">기준</th>${OO?"":`<th title="가장 최근 재고조사 수량">현재</th><th title="현재 − 기준">±</th>`}${dates.map(d=>`<th>${+d.slice(5,7)}/${+d.slice(8)}</th>`).join("")}${st.count?(OO?`<th>발주</th>`:`<th>재고 입력</th><th>발주</th>`):""}<th></th></tr></thead><tbody>
       ${shown.map(i=>{ const c=(i.category||"기타"); let g=""; if(c!==grp){ grp=c; g=`<tr class="grp"><td colspan="${(OO?6:8)+dates.length+(st.count?(OO?1:2):0)}">${esc(c)}</td></tr>`; }
         const lt=last(i); const low=useLow&&i.std_qty!=null&&lt&&+lt.qty<+i.std_qty;
-        return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}${i.vendor?` <small class="meta">${esc(i.vendor)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${i.std_qty!=null?fmtQ(i.std_qty):""}</td>${OO?"":`<td class="num" title="${lt?`${lt.log_date} 재고조사`:"재고조사 기록 없음"}">${lt?fmtQ(lt.qty):""}</td><td class="num">${diffH(i)}</td>`}${dates.map(d=>cell(i,d)).join("")}
+        return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}${i.vendor?` <small class="meta">${esc(i.vendor)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${st.edit&&ed?`<input data-istd="${i.id}" value="${i.std_qty!=null?fmtQ(i.std_qty):""}" inputmode="decimal" style="height:26px;width:60px;padding:0 6px;text-align:right">`:i.std_qty!=null?fmtQ(i.std_qty):""}</td>${OO?"":`<td class="num" title="${lt?`${lt.log_date} 재고조사`:"재고조사 기록 없음"}">${lt?fmtQ(lt.qty):""}</td><td class="num">${diffH(i)}</td>`}${dates.map(d=>cell(i,d)).join("")}
           ${st.count?`${OO?"":`<td><input data-cq="${i.id}" inputmode="decimal" style="height:28px;width:64px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="재고");return x?fmtQ(x.qty):"";})()}"></td>`}<td><input data-co="${i.id}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="발주");return x?fmtQ(x.qty):"";})()}"></td>`:""}
-          <td>${ed?`<button class="nmbtn" style="opacity:.6" data-iedit="${i.id}" aria-label="${esc(i.name)} 수정">⋯</button>`:""}</td></tr>`; }).join("")||`<tr><td colspan="99" class="empty">품목이 없습니다.</td></tr>`}
+          <td style="white-space:nowrap">${ed?`<button class="nmbtn" style="opacity:.6" data-iedit="${i.id}" aria-label="${esc(i.name)} 수정" title="품목 수정">⋯</button>${st.edit?`<button class="btn ghost sm idel" data-idel="${i.id}" title="쓰지 않는 물품 삭제">삭제</button>`:""}`:""}</td></tr>`; }).join("")||`<tr><td colspan="99" class="empty">품목이 없습니다.</td></tr>`}
     </tbody></table></div></section>`}
     ${!led&&st.ledger?(()=>{ const byD=(a,b)=>a.log_date<b.log_date?-1:a.log_date>b.log_date?1:0; const rows=[];
       shown.forEach(it=>{ const A=L[it.id]||[]; const ords=A.filter(l=>l.kind==="발주").sort(byD), rcv=A.filter(l=>l.kind==="입고").sort(byD);
@@ -2318,6 +2321,12 @@ async function renderInventory(){
   if($("iadd")) $("iadd").onclick=()=>invDialog(null,st.dept,cats,()=>renderInventory());
   document.querySelectorAll("[data-iedit]").forEach(b=>b.onclick=()=>invDialog(items.find(x=>x.id===+b.dataset.iedit),st.dept,cats,()=>renderInventory()));
   $("ileg").onclick=()=>{ st.ledger=!st.ledger; renderInventory(); };
+  if($("iedit")) $("iedit").onclick=()=>{ st.edit=!st.edit; const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); };
+  document.querySelectorAll("[data-istd]").forEach(el=>{ el.onchange=async()=>{ const t=el.value.replace(/,/g,"").trim(); const v=t===""?null:parseFloat(t); if(t!==""&&isNaN(v)) return toast("숫자를 적어주세요");
+      const {error}=await sb.from("inv_items").update({std_qty:v}).eq("id",+el.dataset.istd); if(error) return toast(errMsg(error)); const it=items.find(x=>x.id===+el.dataset.istd); if(it) it.std_qty=v; el.style.background="color-mix(in srgb,var(--good) 14%,transparent)"; toast("기준 수량 저장"); };
+    el.onkeydown=e=>{ if(e.key==="Enter"||e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const L=[...document.querySelectorAll("[data-istd]")]; const n=L[L.indexOf(el)+(e.key==="ArrowUp"?-1:1)]; el.dispatchEvent(new Event("change")); if(n){ n.focus(); n.select(); } } }; });
+  document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="정말 삭제?"; b.style.color="var(--bad)"; b.style.borderColor="var(--bad)"; return; }
+    const {error}=await sb.from("inv_items").update({active:false}).eq("id",+b.dataset.idel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); toast("삭제했습니다 (기록은 남아 있어 필요하면 되살릴 수 있습니다)"); });
   document.querySelectorAll("[data-onote]").forEach(el=>el.onchange=async()=>{ const {error}=await sb.from("inv_logs").update({note:el.value.trim()||null}).eq("id",+el.dataset.onote); toast(error?errMsg(error):"메모 저장"); });
   document.querySelectorAll("[data-radd]").forEach(b=>b.onclick=async()=>{ const oid=b.dataset.radd, itId=+b.dataset.it; const d=document.querySelector(`[data-rdt="${oid}"]`).value, q=parseFloat(document.querySelector(`[data-rqt="${oid}"]`).value.replace(/,/g,""));
     if(!d) return toast("입고일을 고르세요"); if(isNaN(q)||q<=0) return toast("입고 수량을 적으세요");
@@ -2326,6 +2335,10 @@ async function renderInventory(){
   document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; return; } const {error}=await sb.from("inv_logs").delete().eq("id",+b.dataset.rdel); if(error) return toast(errMsg(error)); renderInventory(); });
   $("icsv").onclick=()=>downloadCSV(`물품재고_${st.dept}_${kstToday()}.csv`,[["분류","코드","품목","규격","단위","기준",...dates,"업체"],...shown.map(i=>[i.category||"",i.code||"",i.name,i.spec||"",i.unit||"",i.std_qty??"",...dates.map(d=>{ const x=(L[i.id]||[]).find(l=>l.log_date===d&&l.kind==="재고"); return x?x.qty:""; }),i.vendor||""])]);
 }
+// 규격 크기 순서 (큰 것 먼저): 특대>대>중>소>특소, 4XL>…>XL>L>M>S>XS>2XS
+function sizeRank(sp){ const t=String(sp||"").toUpperCase().replace(/\s+/g," "); let m=t.match(/(?<![A-Z0-9])(4XL|3XL|2XL|XXL|XL|2XS|XXS|XS|L|M|S)(?![A-Z])/);
+  const L={"4XL":10,"3XL":9,"2XL":8,"XXL":8,"XL":7,"L":6,"M":5,"S":3,"XS":2,"2XS":1,"XXS":1}; if(m) return L[m[1]];
+  if(/플러스\s*소/.test(t)) return 3.5; if((m=t.match(/특대|특소|대|중|소/))) return {"특대":7,"대":6,"중":5,"소":3,"특소":2}[m[0]]; return 0; }
 const fmtQ=v=>{ const n=+v; return Number.isInteger(n)?n.toLocaleString("ko-KR"):String(n); };
 function invDialog(it,dept,cats,reload){ const dlg=$("dlg");
   dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${it?"품목 수정":"품목 추가"} · ${esc(dept)}</h3>
@@ -2339,14 +2352,14 @@ function invDialog(it,dept,cats,reload){ const dlg=$("dlg");
       <div class="field"><label for="v_p">단가(원)</label><input id="v_p" inputmode="numeric" value="${it?.price??""}"></div>
       <div class="field" style="grid-column:1/-1"><label for="v_v">업체</label><input id="v_v" value="${esc(it?.vendor||"")}"></div>
     </div><p class="err" id="v_e"></p>
-    <div style="display:flex;justify-content:space-between;gap:8px">${it?`<button type="button" class="btn ghost" id="v_del" style="color:var(--bad);border-color:var(--bad)">목록에서 숨기기</button>`:"<span></span>"}
+    <div style="display:flex;justify-content:space-between;gap:8px">${it?`<button type="button" class="btn ghost" id="v_del" style="color:var(--bad);border-color:var(--bad)">삭제 (쓰지 않는 물품)</button>`:"<span></span>"}
     <div style="display:flex;gap:8px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button type="button" class="btn" id="v_ok">저장</button></div></div></form>`;
   dlg.showModal();
   $("v_ok").onclick=async()=>{ const name=$("v_n").value.trim(); if(!name){ $("v_e").textContent="품목명을 적어주세요."; return; }
     const nz=v=>v.trim()===""?null:v.trim(); const row={name,category:nz($("v_c").value),code:nz($("v_cd").value),spec:nz($("v_s").value),unit:nz($("v_u").value),std_qty:nz($("v_q").value)==null?null:+$("v_q").value,price:nz($("v_p").value)==null?null:+$("v_p").value.replace(/[^\d]/g,""),vendor:nz($("v_v").value)};
     const res = it ? await sb.from("inv_items").update(row).eq("id",it.id) : await sb.from("inv_items").insert({...row,branch_id:S.branch,dept});
     if(res.error){ $("v_e").textContent=errMsg(res.error); return; } dlg.close(); reload(); };
-  if($("v_del")) $("v_del").onclick=async()=>{ const b=$("v_del"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 숨김"; return; } const {error}=await sb.from("inv_items").update({active:false}).eq("id",it.id); if(error){ $("v_e").textContent=errMsg(error); return; } dlg.close(); reload(); };
+  if($("v_del")) $("v_del").onclick=async()=>{ const b=$("v_del"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; } const {error}=await sb.from("inv_items").update({active:false}).eq("id",it.id); if(error){ $("v_e").textContent=errMsg(error); return; } dlg.close(); reload(); };
 }
 
 // ── 엑셀 업로드 ──
@@ -2538,8 +2551,8 @@ async function renderRegisters(opts={}){
 // ── 예약관리 ──
 const VISITS=["내원","변경","취소"];
 const RESV_WHY=["갑작스러운 일정","호전되어 안 와도 됨","개인사정(파악불가)","연락 안 됨","기타"];
-async function renderResv(){
-  const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
+async function renderResv(keep){
+  const main=$("main"); const kp=keep?{y:window.scrollY,b:[...main.querySelectorAll(".tbl-box")].map(x=>x.scrollTop)}:null; if(!keep) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.rvV ||= {mode:"day", date:kstToday(), month:kstToday().slice(0,7), q:"", f:"전체"};
   if(st.mode==="day"){
     const {data,error}=await sb.from("reservations").select("*").eq("branch_id",S.branch).eq("resv_date",st.date).order("resv_time").order("id");
@@ -2575,13 +2588,14 @@ async function renderResv(){
     document.querySelectorAll("[data-vf]").forEach(b=>b.onclick=()=>{ st.f=b.dataset.vf; renderResv(); });
     bindSearch("vq",v=>{ st.q=v; return renderResv(); });
     document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=async()=>{ const tr=b.closest("tr"), id=+tr.dataset.v; const r=all.find(x=>x.id===id); const v=r.visit===b.dataset.vs?null:b.dataset.vs;
-      const {error}=await sb.from("reservations").update({visit:v,reason:v==="내원"||!v?null:r.reason}).eq("id",id); if(error) return toast(errMsg(error)); renderResv(); });
+      const {error}=await sb.from("reservations").update({visit:v,reason:v==="내원"||!v?null:r.reason}).eq("id",id); if(error) return toast(errMsg(error)); renderResv(true); });
     document.querySelectorAll("[data-vw]").forEach(s=>s.onchange=async()=>{ const {error}=await sb.from("reservations").update({reason:s.value||null}).eq("id",s.dataset.vw); if(error) toast(errMsg(error)); else toast("사유 저장"); });
     document.querySelectorAll("[data-vm]").forEach(b=>b.onclick=()=>{});
     $("vadd").onclick=()=>resvDialog(null,st.date,()=>renderResv());
     document.querySelectorAll("[data-vx]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="삭제"; b.classList.remove("sure"); } },4000); return; }
-      const {error}=await sb.from("reservations").delete().eq("id",+b.dataset.vx); if(error) return toast(errMsg(error)); toast("예약을 삭제했습니다"); const y=window.scrollY; renderResv().then(()=>window.scrollTo(0,y)); });
-    document.querySelectorAll("[data-ve]").forEach(b=>b.onclick=()=>resvDialog(all.find(x=>x.id===+b.dataset.ve),st.date,()=>renderResv()));
+      const {error}=await sb.from("reservations").delete().eq("id",+b.dataset.vx); if(error) return toast(errMsg(error)); toast("예약을 삭제했습니다"); renderResv(true); });
+    document.querySelectorAll("[data-ve]").forEach(b=>b.onclick=()=>resvDialog(all.find(x=>x.id===+b.dataset.ve),st.date,()=>renderResv(true)));
+    if(kp){ window.scrollTo(0,kp.y); main.querySelectorAll(".tbl-box").forEach((x,i)=>{ if(kp.b[i]!=null) x.scrollTop=kp.b[i]; }); }
     $("vup").onclick=()=>$("vf").click(); $("vf").onchange=()=>resvUpload($("vf").files[0],st);
   } else {
     const R=monthRange(st.month);
@@ -3660,6 +3674,7 @@ function floatScroll(wrap){ document.querySelectorAll(".shfloat").forEach(x=>x.r
   window.addEventListener("scroll",place,{passive:true}); window.addEventListener("resize",place); place(); setTimeout(place,300); }
 function stickHead(wrap,sel){ if(!wrap) return; for(let i=__sticky.length-1;i>=0;i--) if(!__sticky[i].wrap.isConnected) __sticky.splice(i,1); __sticky.push({wrap,sel}); stickRun(); }
 function stickTop(){ let t=0; const tb=document.querySelector("header.top"); if(tb&&getComputedStyle(tb).position==="sticky") t=Math.max(t,tb.getBoundingClientRect().bottom);
+  const sh=document.querySelector(".sched-h"); if(sh&&getComputedStyle(sh).position==="sticky"){ if(tb) sh.style.top=(getComputedStyle(tb).position==="sticky"?tb.offsetHeight:0)+"px"; t=Math.max(t,sh.getBoundingClientRect().bottom); }
   const nv=document.querySelector("nav.side"); if(nv&&getComputedStyle(nv).position==="sticky"){ const r=nv.getBoundingClientRect(); if(r.width>r.height) t=Math.max(t,r.bottom); } return t; }
 function stickRun(){ const top=stickTop();
   for(const it of __sticky){ if(!it.wrap.isConnected) continue; const r=it.wrap.getBoundingClientRect(); const cells=it.wrap.querySelectorAll(it.sel); if(!cells.length) continue;
