@@ -2502,6 +2502,7 @@ async function renderRegisters(opts={}){
   const cols=cur?.columns||[]; const q=st.q.toLowerCase();
   const shownAll=q?rows.filter(r=>Object.values(r.data||{}).join(" ").toLowerCase().includes(q)):rows; const shown=shownAll.slice(0,st.limit);
   const ed=cur&&canRegWrite(cur.dept); const edDef=ed&&S.me.level<=3;
+  let hidRegs=[]; if(S.me.level<=3&&canRegWrite(st.dept)){ const {data:hr}=await sb.from("registers").select("id,name").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",false).order("sort"); hidRegs=hr||[]; }
   const regSum=()=>{ const g=cols.find(c=>c.group); if(!g) return ""; const sc=cols.filter(c=>c.sum); const by={};
           const num=v=>{ const n=+String(v??"").replace(/[,\s원]/g,""); return isFinite(n)?n:0; };
           shownAll.forEach(r=>{ const k=String(r.data?.[g.key]??"").trim(); if(!k) return; const o=by[k] ||= {n:0,s:sc.map(()=>0)}; o.n++; sc.forEach((c,i)=>o.s[i]+=num(r.data?.[c.key])); });
@@ -2517,7 +2518,7 @@ async function renderRegisters(opts={}){
     ${opts.top||""}${fixed?"":`<div class="chips">${REG_DEPTS.map(d=>`<button class="fchip" data-rd="${d}" aria-pressed="${st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>`}
     <div class="doc-shell${opts.hideList?" nolist":""}">
       <aside class="panel doc-list" ${opts.hideList?"hidden":""}>${regs.map(r=>`<button class="doc-item" data-rg="${r.id}" aria-current="${cur&&r.id===cur.id}"><b>${esc(r.name)}</b></button>`).join("")||`<p class="meta">목록이 없습니다.</p>`}
-        ${(S.me.level<=3&&canRegWrite(st.dept))?`<button class="btn ghost block" id="rnew" style="margin-top:10px">+ 새 목록</button>`:""}</aside>
+        ${(S.me.level<=3&&canRegWrite(st.dept))?`<button class="btn ghost block" id="rnew" style="margin-top:10px">+ 새 목록</button>${hidRegs.length?`<details style="margin-top:10px"><summary class="meta">숨긴 목록 ${hidRegs.length}개</summary>${hidRegs.map(r=>`<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><span style="flex:1;font-size:13px">${esc(r.name)}</span><button class="btn ghost sm" data-rrs="${r.id}">되살리기</button></div>`).join("")}</details>`:""}`:""}</aside>
       <section class="panel" style="min-width:0">${cur?`
         <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
@@ -2555,7 +2556,8 @@ async function renderRegisters(opts={}){
       td.addEventListener("click",open); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); open(); } }); });
     document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } const {error}=await sb.from("register_rows").delete().eq("id",b.dataset.rdel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); });
   }
-  if($("rdel")) $("rdel").onclick=async()=>{ const b=$("rdel"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 숨김"; return; } const {error}=await sb.from("registers").update({active:false}).eq("id",cur.id); if(error) return toast(errMsg(error)); st.id=null; renderRegisters(opts); };
+  document.querySelectorAll("[data-rrs]").forEach(b=>b.onclick=async()=>{ const {error}=await sb.from("registers").update({active:true}).eq("id",+b.dataset.rrs); if(error) return toast(errMsg(error)); st.id=+b.dataset.rrs; toast("목록을 되살렸습니다"); renderRegisters(opts); });
+  if($("rdel")) $("rdel").onclick=async()=>{ if(!confirm(`'${cur.name}' 목록을 숨길까요?\n\n숨기면 모든 직원 화면에서 이 목록이 사라집니다. (입력된 자료는 지워지지 않고, 왼쪽 아래 [숨긴 목록]에서 되살릴 수 있습니다)`)) return; const {error}=await sb.from("registers").update({active:false}).eq("id",cur.id); if(error) return toast(errMsg(error)); st.id=null; renderRegisters(opts); };
   if($("rcol")) $("rcol").onclick=()=>{ const dlg=$("dlg");
     dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${esc(cur.name)} · 열 편집</h3>
       <div class="field"><label for="cn">목록 이름</label><input id="cn" value="${esc(cur.name)}"></div>
