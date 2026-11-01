@@ -2357,7 +2357,18 @@ async function renderInventory(){
     const ex=(L[itId]||[]).find(l=>l.kind==="입고"&&l.log_date===d); const {error}=await sb.from("inv_logs").upsert({item_id:itId,branch_id:S.branch,log_date:d,kind:"입고",qty:(ex?+ex.qty:0)+q,note:`@ord:${oid}`},{onConflict:"item_id,log_date,kind"});
     if(error) return toast(errMsg(error)); toast(ex?`입고 ${fmtQ(q)} 더함 (그날 합계 ${fmtQ(+ex.qty+q)})`:"입고 기록"); renderInventory(); });
   document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; return; } const {error}=await sb.from("inv_logs").delete().eq("id",+b.dataset.rdel); if(error) return toast(errMsg(error)); renderInventory(); });
-  $("icsv").onclick=()=>downloadCSV(`물품재고_${st.dept}_${kstToday()}.csv`,[["분류","코드","품목","규격","단위","기준",...dates,"업체"],...shown.map(i=>[i.category||"",i.code||"",i.name,i.spec||"",i.unit||"",i.std_qty??"",...dates.map(d=>{ const x=(L[i.id]||[]).find(l=>l.log_date===d&&l.kind==="재고"); return x?x.qty:""; }),i.vendor||""])]);
+  $("icsv").onclick=()=>{ const sum=(i,d,k)=>{ const X=(L[i.id]||[]).filter(l=>l.log_date===d&&l.kind===k); return X.length?X.reduce((a,l)=>a+(+l.qty),0):""; };
+    if(st.ledger&&!led){ // 발주·입고 비교 화면: 발주 건별로 발주일·발주량·입고·차이·메모
+      const byD=(a,b)=>a.log_date<b.log_date?-1:a.log_date>b.log_date?1:0; const out=[];
+      shown.forEach(it=>{ const A=L[it.id]||[]; const ords=A.filter(l=>l.kind==="발주").sort(byD), rcv=A.filter(l=>l.kind==="입고").sort(byD); const link=r=>{ const m=String(r.note||"").match(/@ord:(\d+)/); return m?+m[1]:null; }; const used=new Set();
+        ords.forEach((o,k)=>{ const nx=ords[k+1]?.log_date; const R=rcv.filter(r=>link(r)===o.id||(link(r)==null&&r.log_date>=o.log_date&&(!nx||r.log_date<nx))); R.forEach(r=>used.add(r.id)); out.push({it,o,R}); });
+        rcv.filter(r=>!used.has(r.id)).forEach(r=>out.push({it,o:null,R:[r]})); });
+      out.sort((a,b)=>{ const x=(a.o||a.R[0]).log_date, y=(b.o||b.R[0]).log_date; return x<y?1:x>y?-1:ko(a.it.name,b.it.name); });
+      return downloadCSV(`발주입고_${st.dept}_${kstToday()}.csv`,[["발주일","분류","품목","규격","단위","발주량","입고일 · 입고량","입고 합계","차이","메모","업체"],...out.map(({it,o,R})=>{ const rs=R.reduce((a,r)=>a+(+r.qty),0); return [o?o.log_date:"",it.category||"",it.name,it.spec||"",it.unit||"",o?o.qty:"",R.map(r=>`${r.log_date} ${r.qty}`).join(" / "),R.length?rs:"",o&&R.length?rs-(+o.qty):"",String(o?.note||"").replace(/@ord:\d+/g,"").trim(),it.vendor||""]; })]); }
+    // 날짜별: 재고 수량과 발주 수량을 날짜마다 따로 (발주가 있는 날만 발주 칸)
+    const sD=OO?[]:[...new Set(logs.filter(l=>l.kind==="재고").map(l=>l.log_date))].sort().slice(-8), oD=[...new Set(logs.filter(l=>l.kind==="발주").map(l=>l.log_date))].sort().slice(-12);
+    const C=[]; [...new Set([...sD,...oD])].sort().forEach(d=>{ if(sD.includes(d)) C.push([d,"재고"]); if(oD.includes(d)) C.push([d,"발주"]); });
+    downloadCSV(`물품${OO?"발주":"재고"}_${st.dept}_${kstToday()}.csv`,[["분류","코드","품목","규격","단위","기준",...C.map(([d,k])=>`${d} ${k}`),"업체"],...shown.map(i=>[i.category||"",i.code||"",i.name,i.spec||"",i.unit||"",i.std_qty??"",...C.map(([d,k])=>sum(i,d,k)),i.vendor||""])]); };
 }
 // 규격 크기 순서 (큰 것 먼저): 특대>대>중>소>특소, 4XL>…>XL>L>M>S>XS>2XS
 function sizeRank(sp){ const t=String(sp||"").toUpperCase().replace(/\s+/g," "); let m=t.match(/(?<![A-Z0-9])(4XL|3XL|2XL|XXL|XL|2XS|XXS|XS|L|M|S)(?![A-Z])/);
