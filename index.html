@@ -636,7 +636,7 @@ const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원",5
 const seeAll = () => S.me.level<=3 || S.me.level===5;
 // 부서별 메뉴 (3·4등급). 1·2등급과 총괄은 전부. 계정·원장 관리에서 1등급이 지점별로 바꿀 수 있습니다.
 const lvName=l=>+l===5?"의사":`${l}등급 ${LEVELS[l]}`;
-const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["manual","수기치료"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","씨암 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"]];
+const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["manual","수기치료"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","C-arm 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"]];
 const MENU_BASE=["staff","resv","ot","leave","docs","reg","info"];
 const MENU_DEFAULT={
   "원무":["entry","cal","spt","cons","semg",...MENU_BASE,"upload"],
@@ -653,7 +653,7 @@ const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리"
 const menuDept=()=>S.me.level===5?"의사":S.me.dept;
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return (seeAll()&&S.me.level!==5) || S.me.dept==="총괄"; }
-const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 씨암 칸을 쓰는 지점 (철산)
+const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
 const MTX_SLOT = ["gt-os"]; // 수기치료 시간표를 쓰는 지점 (운정)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
 const WHY = ["갑작스러운 일정","연락 안 됨","개인 사정·기타"];
@@ -810,7 +810,7 @@ function render(){
   const itemOk={dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
     users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"씨암 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(deptMenus(menuDept()));
   const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
@@ -904,7 +904,7 @@ function bucketize(rows,mode,md){
     if(!B.has(key)) B.set(key,{key,label,rows:[]}); B.get(key).rows.push(r); });
   return [...B.values()].sort((a,b)=>a.key<b.key?-1:1).map(b=>({...b,a:aggRows(b.rows)}));
 }
-// 대시보드: 씨암·근전도 건수 그래프 (씨암 카운트 표 · 근전도 스케줄에서 집계)
+// 대시보드: C-arm·근전도 건수 그래프 (C-arm 카운트 표 · 근전도 스케줄에서 집계)
 async function fillCarmEmg(boxId,start,end,bm,md,note){
   const box=$(boxId); if(!box) return;
   const keyOf=d=>bm==="day"?d:bm==="week"?weekOf(d).key:bm==="month"?d.slice(0,7):d.slice(0,4);
@@ -924,8 +924,8 @@ async function fillCarmEmg(boxId,start,end,bm,md,note){
   const tot=o=>Object.values(o).reduce((s,v)=>s+v,0);
   const cT=tot(docT), tT=tot(techT), eT=E.length;
   box.innerHTML=`<div class="grid2">
-    <section class="panel"><h3>씨암(C-arm) 건수 <span>${note||""}원장별 ${won(cT)}건 · 방사선사 기록 ${won(tT)}건 (선)</span></h3>${C.length?`<div class="cbox"><canvas id="${boxId}c" role="img" aria-label="씨암 건수 그래프"></canvas></div>
-      <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>원장</th><th>건수</th></tr></thead><tbody>${docs.map(n=>`<tr><td>${esc(n)}</td><td class="num">${won(tot(perDoc[n]))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">이 기간 씨암 카운트가 없습니다.</p>`}</section>
+    <section class="panel"><h3>C-arm(C-arm) 건수 <span>${note||""}원장별 ${won(cT)}건 · 방사선사 기록 ${won(tT)}건 (선)</span></h3>${C.length?`<div class="cbox"><canvas id="${boxId}c" role="img" aria-label="C-arm 건수 그래프"></canvas></div>
+      <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>원장</th><th>건수</th></tr></thead><tbody>${docs.map(n=>`<tr><td>${esc(n)}</td><td class="num">${won(tot(perDoc[n]))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">이 기간 C-arm 카운트가 없습니다.</p>`}</section>
     <section class="panel"><h3>근전도 건수 <span>${note||""}예약·완료 ${won(eT)}건 · 신환 ${won(tot(emgNew))}건 (선) · 취소·노쇼·변경 제외</span></h3>${eT?`<div class="cbox"><canvas id="${boxId}e" role="img" aria-label="근전도 건수 그래프"></canvas></div>
       <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>담당 원장</th><th>건수</th></tr></thead><tbody>${emgDocs.map(n=>`<tr><td>${esc(n)}</td><td class="num">${won(tot(perEmg[n]))}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">이 기간 근전도 기록이 없습니다.</p>`}</section></div>`;
   const L=keys.map(k=>lab[k]), navy=cssv("--navy"), warn=cssv("--warn");
@@ -991,10 +991,10 @@ async function renderDash(){
       <section class="panel"><h3>수술 · 비급여 <span>수술 건수(막대), 비급여 원(선)</span></h3><div class="cbox"><canvas id="c7" role="img" aria-label="수술 비급여 그래프"></canvas></div></section>
     </div>
     ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm · 근전도 (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")} · 근전도 ${won(T.emgE||0)}건</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
-    <div id="ceBox"><p class="meta">씨암·근전도 불러오는 중…</p></div>
+    <div id="ceBox"><p class="meta">C-arm·근전도 불러오는 중…</p></div>
     <section class="panel"><h3>전광판 표 <span>최근 순 · 금액 원</span></h3><div class="tbl-box">${tbl}</div></section>
   </div>`;
-  bindDash(); fillCarmEmg("ceBox",start,end,bm,mode==="range").catch(e=>{ const b=$("ceBox"); if(b) b.innerHTML=`<p class="meta">씨암·근전도: ${esc(errMsg(e))}</p>`; });
+  bindDash(); fillCarmEmg("ceBox",start,end,bm,mode==="range").catch(e=>{ const b=$("ceBox"); if(b) b.innerHTML=`<p class="meta">C-arm·근전도: ${esc(errMsg(e))}</p>`; });
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn"), good=cssv("--good");
   const pctAxis={position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>v+"%"}};
   if(mode==="week"&&window.__wk) drawTrend("trw",window.__wk);
@@ -1049,7 +1049,7 @@ async function renderDashOne(seg){
     </div>
     <section class="panel"><h3>비교 <span>이 날 · 전일 · 지난주 같은 요일 · 금액 원</span></h3><div class="tbl-box"><table><thead><tr><th>구분</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
       ${cmpRows.map(([l,a],i)=>`<tr class="${i===0?"cur":""}"><td>${l}</td>${rowCells(a)}</tr>`).join("")}</tbody></table></div></section>
-    <div id="ceBox1"><p class="meta">씨암·근전도 불러오는 중…</p></div>
+    <div id="ceBox1"><p class="meta">C-arm·근전도 불러오는 중…</p></div>
   </div>`;
   bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{});
   const navy=cssv("--navy"), sky=cssv("--accent"), warn=cssv("--warn");
@@ -1201,7 +1201,7 @@ async function renderEntry(){
     ptKeys.forEach((k,i)=>{ if(ptManual.has(k)) return; const el=$("pt"+i); if(!el) return; const nv=schedCnt[k]||0; if(v("pt"+i)!==nv){ el.value=nv?won(nv):""; ch=true; } });
     ptHint(); if(ch||force){ dirty.add("pt"); autosave(); } }
   if(CARM_ENTRY.includes(S.branch)) sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",date).then(({data})=>{ const n=$("cxnote"); if(!n||!data||!data.length) return;
-    const sm=k=>data.filter(x=>x.kind===k).reduce((a,x)=>a+(+x.cnt||0),0); n.textContent=`그날 건수 · 참고: 씨암 카운트 표(원장 기준) 씨암 ${sm("doc")} · 소관절 ${sm("doc_s")}`; });
+    const sm=k=>data.filter(x=>x.kind===k).reduce((a,x)=>a+(+x.cnt||0),0); n.textContent=`그날 건수 · 참고: C-arm 카운트 표(원장 기준) C-arm ${sm("doc")} · 소관절 ${sm("doc_s")}`; });
   sb.from("appointments").select("item,status").eq("branch_id",S.branch).eq("kind","pt").eq("appt_date",date).then(({data,error})=>{
     if(error||!data||!data.length){ ptHint(); return; } schedCnt={}; data.filter(a=>!LOST_ST.has(a.status)).forEach(a=>{ const k=ptKeyOf(S.branch,a.item); schedCnt[k]=(schedCnt[k]||0)+1; }); applySched(false); });
   function calc(){
@@ -3862,7 +3862,7 @@ async function undoMove(kind,reload){
   toast(`${u.who} 예약을 원래 자리(${hhmm(u.prev.start_min)})로 되돌렸습니다`); reload();
 }
 
-// ── 씨암(C-arm) 카운트 ──
+// ── C-arm(C-arm) 카운트 ──
 function canCarmEdit(){ return S.me.level<=3||S.me.dept==="영상의학"; }
 async function renderCarm(){
   killCharts(); const main=$("main"); const keepY=S.cmKeepY??null; S.cmKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
@@ -3885,9 +3885,9 @@ async function renderCarm(){
   const sum=(k,list,d)=>list.reduce((s,c)=>s+g(d,k,c.name),0);
   const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
   const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0), techS:days.reduce((s,d)=>s+sum("tech_s",techs,d),0), docS:days.reduce((s,d)=>s+sum("doc_s",docs,d),0)};
-  // 소관절 칸 사용(지점 설정 carm_small): 사람마다 소관절·씨암 두 칸
+  // 소관절 칸 사용(지점 설정 carm_small): 사람마다 소관절·C-arm 두 칸
   const small=!!(set&&set.raw&&set.raw.carm_small);
-  const headS=(list,tot,extra)=>`<thead><tr><th class="cmd" rowspan="2">${R.m}월</th>${list.map(c=>`<th colspan="2">${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot" colspan="3">합계</th>${extra?`<th class="cfh" rowspan="2">${extra}</th>`:""}</tr><tr>${list.map(()=>`<th class="sub">소관절</th><th class="sub">씨암</th>`).join("")}<th class="sub">소관절</th><th class="sub">씨암</th><th class="tot">ALL</th></tr></thead>`;
+  const headS=(list,tot,extra)=>`<thead><tr><th class="cmd" rowspan="2">${R.m}월</th>${list.map(c=>`<th colspan="2">${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot" colspan="3">합계</th>${extra?`<th class="cfh" rowspan="2">${extra}</th>`:""}</tr><tr>${list.map(()=>`<th class="sub">소관절</th><th class="sub">C-arm</th>`).join("")}<th class="sub">소관절</th><th class="sub">C-arm</th><th class="tot">ALL</th></tr></thead>`;
   const rowS=(k,list,d)=>list.map(c=>cell(d,k+"_s",c.name)+cell(d,k,c.name)).join("")+`<td class="tot num">${sum(k+"_s",list,d)}</td><td class="tot num">${sum(k,list,d)}</td><td class="tot num"><b>${sum(k+"_s",list,d)+sum(k,list,d)}</b></td>`;
   const sumS=(k,list)=>list.map(c=>`<td class="num">${colSum(k+"_s",c.name)}</td><td class="num">${colSum(k,c.name)}</td>`).join("")+`<td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k,list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d)+sum(k,list,d),0)}</td>`;
   const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기" aria-label="${esc(c.name)} 열을 이 달에서 빼기">×</button>`:""}</th>`).join("");
@@ -3895,7 +3895,7 @@ async function renderCarm(){
     return `<td class="cf">${ed?`<button class="btn ghost sm cfbtn" data-cf="${d}">확정</button>`:""}</td>`; };
   const nCf=Object.keys(CF).length;
   main.innerHTML=`<div class="wrap carm">
-    <div class="page-h"><div><h2>씨암(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강 · 확정 ${nCf}일</div></div>
+    <div class="page-h"><div><h2>C-arm(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강 · 확정 ${nCf}일</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><input type="month" id="cmym" value="${st.ym}" aria-label="월 선택" class="ympick"><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
     <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
       ${small?`<div class="kpi"><span class="k">소관절 합계</span><span class="v num" id="cmk2">${T.techS+T.docS}<small>건</small></span><span class="d">방사선사 ${T.techS} · 원장 ${T.docS}</span></div>`:`<div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>`}
@@ -3915,7 +3915,7 @@ async function renderCarm(){
   const again=()=>{ S.cmKeepY=window.scrollY; return renderCarm(); };
   $("cmp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderCarm(); }; $("cmn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderCarm(); };
   $("cmym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("cmym").value)){ st.ym=$("cmym").value; renderCarm(); } };
-  $("cmcsv").onclick=()=>downloadCSV(`씨암카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):""]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
+  $("cmcsv").onclick=()=>downloadCSV(`C-arm카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):""]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
   // 확정·해제
   main.querySelectorAll("[data-cf]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cf; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="확정할까요?"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="확정"; b.classList.remove("sure"); } },4000); return; }
     const {error}=await sb.from("carm_confirm").insert({branch_id:S.branch,cdate:d,confirmed_name:S.me.name}); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정 · 이제 팀장(3등급) 이상만 고칠 수 있습니다`); again(); });
@@ -4115,7 +4115,7 @@ async function renderStd(){
       const {error}=await sb.from("std_docs").delete().eq("id",st.edit); if(error) return toast(errMsg(error)); toast("삭제했습니다"); st.edit=null; renderStd(); };
   }
 }
-// ── 수기치료 카운트 (씨암 카운트와 같은 방식 · 날짜 × 물리치료사) ──
+// ── 수기치료 카운트 (C-arm 카운트와 같은 방식 · 날짜 × 물리치료사) ──
 async function renderManual(){
   killCharts(); const main=$("main"); const keepY=S.mxKeepY??null; S.mxKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st=S.mxV ||= {ym:kstToday().slice(0,7)}; st.mode ||= "month"; st.date ||= kstToday(); st.from ||= addDays(kstToday(),-6); st.to ||= kstToday(); st.year ||= +kstToday().slice(0,4);
