@@ -235,6 +235,7 @@ table.trendtbl tr.cur td{font-weight:600;background:var(--navy-soft)}
 .shtab thead th,.sc-h{will-change:transform}
 .shtab thead th.stuck,.sc-h.stuck{box-shadow:0 2px 0 var(--line)}
 .blk{position:absolute;left:0;right:0;z-index:1;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 18%,transparent) 0 6px,color-mix(in srgb,var(--muted) 8%,transparent) 6px 12px);border-top:1px solid color-mix(in srgb,var(--muted) 35%,transparent);border-bottom:1px solid color-mix(in srgb,var(--muted) 35%,transparent);cursor:not-allowed;display:flex;align-items:flex-start;justify-content:center}
+.blk.auto{background:repeating-linear-gradient(135deg,color-mix(in srgb,#d17a12 14%,transparent) 0 6px,color-mix(in srgb,#d17a12 5%,transparent) 6px 12px)}
 .blk span{font-size:10.5px;color:var(--muted);background:var(--surface);padding:0 4px;border-radius:3px;margin-top:2px}
 .ap{z-index:2}
 .ap.dragsrc{opacity:.35}
@@ -1361,7 +1362,7 @@ async function renderSched(kind){
     kind==="emg" ? sb.from("doctors").select("name,active").eq("branch_id",S.branch).order("sort") : Promise.resolve({data:[]}),
     sb.from("sched_blocks").select("*").eq("branch_id",S.branch).eq("kind",kind).order("id")
   ]);
-  const blocks=br&&!br.error?(br.data||[]):[];
+  const dbBlocks=br&&!br.error?(br.data||[]):[]; let blocks=dbBlocks;
   const err = lr.error||ir.error||ar.error||nr.error;
   if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const lanes=(lr.data||[]).filter(l=>l.active), items=ir.data||[], appts=ar.data||[], notes=nr.data||[];
@@ -1369,8 +1370,9 @@ async function renderSched(kind){
   const IC=["#1a5fd0","#2f8f4e","#d17a12","#8e44ad","#c0392b","#0f8c8c","#b8860b","#d6336c","#5d6d7e","#6b8e23","#3949ab","#a0522d"];
   const icOf=name=>{ let i=items.findIndex(x=>x.name===name); if(i<0){ i=0; for(const ch of String(name||"")) i=(i*31+ch.charCodeAt(0))>>>0; } return IC[i%IC.length]; };
   const docNames=(dr.data||[]).filter(d=>d.active).map(d=>d.name);
-  const {data:thr}=await sb.from("staff").select("name,dept,sort,active").eq("branch_id",S.branch).eq("active",true).in("dept",kind==="emg"?["임상병리"]:["물리치료"]).order("sort");
+  const {data:thr}=await sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).eq("active",true).in("dept",kind==="emg"?["임상병리"]:["물리치료"]).order("sort");
   const therapists=(thr||[]).filter(s=>!PLACEHOLDER.test(s.name)).map(s=>s.name);
+  if(SCHED_AUTO.includes(kind)&&grid) blocks=[...dbBlocks,...await shiftBlocks(kind,(thr||[]).filter(s=>!PLACEHOLDER.test(s.name)),start,end,cfg).catch(()=>[])];
   const staffNames=[...new Set([...therapists])];
   if(kind==="emg") await emgOrder(appts,end).catch(()=>{});
   const d0=new Date(st.date+"T00:00:00Z");
@@ -1397,7 +1399,7 @@ async function renderSched(kind){
       return `<button class="ap ${ST_CLASS[a.status]||""}${icx?" icol":""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="${icx?`--ic:${icOf(a.item)};`:""}top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
         <b>${icx&&a.status==="완료"?'<em class="okm" title="완료">✓</em>':""}${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item].filter(Boolean).map(esc).join(" / "):`${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.needle_doctor?"니들링 "+esc(a.needle_doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span></button>`; }).join("");
     return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h${st.mode==="week"?" sc-go":""}" ${st.mode==="week"?`data-goday="${c.date}" role="button" tabindex="0" title="${c.date} 하루 보기"`:""}>${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
-      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return `<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
+      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return b.auto?`<div class="blk auto" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="근무 스케줄에 따라 자동으로 막힘 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.who?" · 이날 근무: "+esc(b.who):""} (근무 스케줄을 바꾸면 자동으로 바뀝니다)"><span>⏰ 근무 시간 외</span></div>`:`<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
   // 집계
   const live=appts.filter(a=>!LOST_ST.has(a.status));
@@ -1445,7 +1447,7 @@ async function renderSched(kind){
     `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px ${cols.map(c=>`minmax(${Math.max(st.mode==="week"?(lanes.length>1?140:160):150,(c._n||1)*(st.mode==="week"?96:110))}px,1fr)`).join(" ")}">
       <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
     ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
-    ${blocksPanel(kind,blocks,lanes,canEdit,cfg)}
+    ${blocksPanel(kind,dbBlocks,lanes,canEdit,cfg)}
     <div class="grid2">
       <section class="panel"><h3>치료별 집계 <span>${periodName} · 예상 매출은 예약+완료 × 단가</span></h3>${byItem.length?`<div class="tbl-box"><table><thead><tr><th>치료</th><th>예약</th><th>완료</th><th>취소·노쇼</th><th>변경</th><th>예상 매출</th></tr></thead><tbody>
         ${byItem.map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${x.r}</td><td class="num">${x.d}</td><td class="num">${x.x}</td><td class="num">${x.c||0}</td><td class="num">${won(x.amt)}원</td></tr>`).join("")}
@@ -3683,14 +3685,29 @@ window.addEventListener("scroll",stickRun,{passive:true}); window.addEventListen
 
 // ── 예약 불가 시간 ──
 const DOW_K=["일","월","화","수","목","금","토"];
+// 근무 스케줄 기준 자동 막음: 그날 담당 부서 근무자 누구도 근무하지 않는 시간을 막음 (그날 근무표가 모두 입력된 경우에만)
+const SCHED_AUTO=["emg"];
+async function shiftBlocks(kind,staff,start,end,cfg){
+  const ids=staff.map(s=>s.id); if(!ids.length) return [];
+  const [hr,cr]=await Promise.all([sb.from("shifts").select("staff_id,work_date,value").in("staff_id",ids).gte("work_date",start).lte("work_date",end), sb.from("shift_codes").select("code,start_min,end_min,is_off").eq("branch_id",S.branch)]);
+  if(hr.error) return []; const codes=Object.fromEntries((cr.data||[]).map(c=>[c.code,c])); const nm=Object.fromEntries(staff.map(s=>[s.id,s.name]));
+  const byD={}; (hr.data||[]).forEach(h=>{ if(h.value!=null&&String(h.value).trim()!=="") (byD[h.work_date] ||= {})[h.staff_id]=h.value; });
+  const out=[];
+  Object.entries(byD).forEach(([d,M])=>{ if(ids.some(id=>M[id]==null)) return; // 근무표가 비어 있는 직원이 있으면 막지 않음
+    const iv=[], who=[]; let unk=false;
+    ids.forEach(id=>{ const v0=M[id], v=shAlias(v0); if(isOffVal(v0,codes)||isOffVal(v,codes)) return; const t=shInterval(v0,codes)||shInterval(v,codes); if(t){ iv.push(t); who.push(nm[id]+" "+v0); } else unk=true; });
+    if(unk) return; iv.sort((a,b)=>a[0]-b[0]); let cur=cfg.from; const gaps=[];
+    for(const [a,b] of iv){ if(a>cur) gaps.push([cur,Math.min(a,cfg.to)]); cur=Math.max(cur,b); if(cur>=cfg.to) break; } if(cur<cfg.to) gaps.push([cur,cfg.to]);
+    gaps.filter(g=>g[1]>g[0]).forEach((g,i)=>out.push({id:"auto-"+d+"-"+i,auto:true,bdate:d,lane_id:null,start_min:g[0],end_min:g[1],note:"근무 시간 외 (근무 스케줄)",who:who.join(", ")||"근무자 없음"})); });
+  return out; }
 function blocksFor(blocks,date,laneId){ const dow=new Date(date+"T00:00:00Z").getUTCDay();
   return (blocks||[]).filter(b=>(b.lane_id==null||b.lane_id===laneId)&&((b.bdate&&b.bdate===date)||(!b.bdate&&Array.isArray(b.dows)&&b.dows.includes(dow)))); }
 function blockHit(blocks,row){ const s=row.start_min, e=s+(+row.minutes||0); return blocksFor(blocks,row.appt_date,row.lane_id).filter(b=>b.start_min<e&&s<b.end_min); }
 const blkLabel=b=>`${b.bdate?b.bdate.slice(5).replace("-","/"):"매주 "+(b.dows||[]).slice().sort((a,c)=>((a+6)%7)-((c+6)%7)).map(d=>DOW_K[d]).join("")} ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" "+b.note:""}`;
 function blocksPanel(kind,blocks,lanes,canEdit,cfg){
-  if(!canEdit&&!(blocks||[]).length) return "";
+  if(!canEdit&&!(blocks||[]).length&&!SCHED_AUTO.includes(kind)) return "";
   const tOpts=sel=>{ const o=[]; for(let m=cfg.from-60;m<=cfg.to+60;m+=10) o.push(`<option value="${m}" ${m===sel?"selected":""}>${hhmm(m)}</option>`); return o.join(""); };
-  return `<details class="panel" id="blkp" ${S.blkOpen?"open":""}><summary><b>🚫 예약 막음</b> <span class="meta">${(blocks||[]).length}개 · 회색 빗금 칸엔 예약이 안 들어갑니다${canEdit?" · 빈 칸 오른쪽 클릭으로 바로 막기, 빗금 오른쪽 클릭으로 풀기":""}</span></summary>
+  return `<details class="panel" id="blkp" ${S.blkOpen?"open":""}><summary><b>🚫 예약 막음</b> <span class="meta">${(blocks||[]).length}개 · 회색 빗금 칸엔 예약이 안 들어갑니다${SCHED_AUTO.includes(kind)?" · 주황 빗금(⏰)은 근무 스케줄에 근무자가 없는 시간이라 자동으로 막힘":""}${canEdit?" · 빈 칸 오른쪽 클릭으로 바로 막기, 빗금 오른쪽 클릭으로 풀기":""}</span></summary>
     <div class="tbl-box" style="margin-top:10px"><table class="fin"><thead><tr><th>언제</th><th>시간</th><th>방</th><th>메모</th><th></th></tr></thead><tbody>
     ${(blocks||[]).map(b=>`<tr><td>${b.bdate?`${b.bdate} (${DOW_K[new Date(b.bdate+"T00:00:00Z").getUTCDay()]})`:"매주 "+(b.dows||[]).slice().sort((a,c)=>((a+6)%7)-((c+6)%7)).map(d=>DOW_K[d]).join("·")}</td><td class="num">${hhmm(b.start_min)}~${hhmm(b.end_min)}</td><td>${b.lane_id?esc(lanes.find(l=>l.id===b.lane_id)?.name||"(숨긴 방)"):"모든 방"}</td><td>${esc(b.note||"")}</td><td>${canEdit?`<button class="btn ghost sm" data-bdel="${b.id}">삭제</button>`:""}</td></tr>`).join("")||`<tr><td colspan="5" class="meta">아직 없습니다</td></tr>`}
     </tbody></table></div>
