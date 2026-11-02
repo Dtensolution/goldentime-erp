@@ -973,8 +973,11 @@ async function renderDash(){
   const last=B[B.length-1], prev=B[B.length-2]; const unit={day:"전일",week:"전주",month:"전월",year:"전년"}[bm];
   const chg=(f)=>{ if(!prev) return ""; const p=f(prev.a), c=f(last.a); if(!p) return ""; const x=(c-p)/p; return ` · ${last.label} ${unit} 대비 <span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"}${Math.abs(x*100).toFixed(1)}%</span>`; };
   const per = bm==="day"?"일":bm==="week"?"주":bm==="month"?"월":"년";
+  const closedR=rows.filter(r=>+r.total>0), cD=closedR.length, lastC=closedR.map(r=>r.close_date).sort().at(-1);
+  const projM=cD?Math.round(T.total/cD*R.days):0;
   const kpis=[
-    {k:"총진료비",v:won(T.total),u:"원",d:isCurMonth?`월말 예상 ${won(Math.round(T.total/T.days*R.days))}원`:`${per}평균 ${won(Math.round(T.total/B.length))}원`,lead:true},
+    {k:"총진료비",v:won(T.total),u:"원",d:isCurMonth?`마감 ${cD}일 · 하루 평균 ${won(Math.round(cD?T.total/cD:0))}원`:`${per}평균 ${won(Math.round(T.total/B.length))}원`,lead:true},
+    ...(isCurMonth?[{k:`${R.m}월 예상 매출`,v:cD?wonMan(projM):"–",u:"",d:cD?`하루 평균 × ${R.days}일 · ${+lastC.slice(5,7)}/${+lastC.slice(8)}까지 마감 ${cD}일 기준${cD<5?" (초반이라 변동 큼)":""}`:"이번 달 마감일지가 아직 없습니다"}]:[]),
     {k:"비급여 비중",v:(T.npRate*100).toFixed(1)+"%",u:"",d:`비급여 ${won(T.nonpay)}원`},
     {k:"건당진료비",v:won(Math.round(T.perVisit)),u:"원",d:`외래 건당 ${won(Math.round(T.outPerVisit))}원`},
     {k:"총 진료 인원",v:won(T.visits),u:"명",d:`신환 ${won(T.newP)} · 재진 ${won(T.reP)}`+chg(a=>a.visits)},
@@ -1033,11 +1036,14 @@ async function renderDashOne(seg){
   const nav=`<div class="monthnav"><button class="btn ghost sm" id="op" aria-label="전날">◀</button><b class="num" style="min-width:130px">${d.slice(0,4)}. ${+d.slice(5,7)}. ${+d.slice(8)} (${WD[dd.getUTCDay()]})</b><button class="btn ghost sm" id="on" aria-label="다음날" ${d>=today?"disabled":""}>▶</button></div><input type="date" id="od" value="${d}" max="${today}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`;
   const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
   const bind=()=>{ if(!$("op")) return; bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
-  if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
+  const pjM=(()=>{ const ym=d.slice(0,7), MR=monthRange(ym); const M=rows.filter(x=>x.close_date.startsWith(ym)&&+x.total>0); const sum=M.reduce((t,x)=>t+(+x.total),0), n=M.length; return n?`<section class="kpis"><div class="kpi lead"><span class="k">${MR.m}월 예상 매출</span><span class="v num">${wonMan(Math.round(sum/n*MR.days))}</span><span class="d">${MR.m}월 누적 ${wonMan(sum)} · 마감 ${n}일 하루 평균 ${wonMan(Math.round(sum/n))} × ${MR.days}일</span></div></section>`:""; })();
+  if(!r){ main.innerHTML=`<div class="wrap">${head}${pjM}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
   const A=aggRows([r]), P=prevR?aggRows([prevR]):null, W=wkR?aggRows([wkR]):null;
   const cmp=(f,fmt=won)=>{ const c=f(A); const parts=[]; [[P,prevR&&(prevR.close_date===addDays(d,-1)?"전일":`직전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)})`)],[W,"지난주 같은 요일"]].forEach(([X,lab])=>{ if(!X) return; const p=f(X); if(!p) return; const x=(c-p)/p; parts.push(`${lab} <span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"}${Math.abs(x*100).toFixed(1)}%</span>`); }); return parts.join(" · "); };
   const kpis=[
     {k:"총진료비",v:won(A.total),u:"원",d:cmp(a=>a.total)||`외래 ${won(A.out)} · 입원 ${won(A.inpat)}`,lead:true},
+    (()=>{ const ym=d.slice(0,7), MR=monthRange(ym); const M=rows.filter(x=>x.close_date.startsWith(ym)&&x.close_date<=d&&+x.total>0); const sum=M.reduce((t,x)=>t+(+x.total),0), n=M.length; const done=ym<today.slice(0,7)&&d===MR.end;
+      return {k:`${MR.m}월 예상 매출`,v:n?wonMan(done?sum:Math.round(sum/n*MR.days)):"–",u:"",d:n?`${MR.m}월 누적 ${wonMan(sum)} · 마감 ${n}일 하루 평균 ${wonMan(Math.round(sum/n))} × ${MR.days}일${n<5?" (초반이라 변동 큼)":""}`:`${MR.m}월 마감일지가 아직 없습니다`}; })(),
     {k:"비급여 비중",v:(A.npRate*100).toFixed(1)+"%",u:"",d:`비급여 ${won(A.nonpay)}원`},
     {k:"건당진료비",v:won(Math.round(A.perVisit)),u:"원",d:`외래 건당 ${won(Math.round(A.outPerVisit))}원`},
     {k:"총 진료 인원",v:won(A.visits),u:"명",d:`신환 ${won(A.newP)} · 재진 ${won(A.reP)}`+(cmp(a=>a.visits)?" · "+cmp(a=>a.visits):"")},
@@ -3597,7 +3603,7 @@ async function computeGoal(set){
   const T=Object.fromEntries((tg||[]).map(t=>[t.metric,+t.value]));
   const closed=rows.filter(r=>+r.total>0).sort((x,y)=>x.close_date<y.close_date?-1:1); const A=aggRows(closed); const act=goalActual(A); const cut=closed.at(-1)?.close_date||null;
   const W=monthWorkdays(ym,set,cut);
-  const items=GOAL_METRICS.map(m=>{ const target=T[m.k]||0, a=act[m.k]||0; const proj=m.ratio?null:(W.done?a+a/W.done*W.left:null); const need=m.ratio?null:(W.left?Math.max(0,(target-a)/W.left):null);
+  const items=GOAL_METRICS.map(m=>{ const target=T[m.k]||0, a=act[m.k]||0; const dn=W.done>0?W.done:closed.length; const proj=m.ratio?null:(dn?a+a/dn*W.left:null); const need=m.ratio?null:(W.left?Math.max(0,(target-a)/W.left):null);
     return {m,target,actual:a,proj,need,pct:target?(m.ratio?a/target:a/target)*100:null}; });
   return {ym,items,W,cut,has:items.some(i=>i.target>0)};
 }
