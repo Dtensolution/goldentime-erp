@@ -234,7 +234,7 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .gbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
 .goal .gd{font-size:12px;color:var(--muted)}
 .projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
-table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg.nowrap td{max-width:none}
+table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
 .tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
@@ -757,7 +757,8 @@ function saveLast(){ try{ if(!S.me||!S.user) return; sessionStorage.setItem("gt-
 addEventListener("beforeunload",saveLast);
 function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(seeAll()) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
 function canDash(){ return seeAll(); }
-function canEntry(){ return S.me.level<=3 || S.me.dept==="원무"; }
+const ENTRY_ALL=["gt-cs"]; // 마감일지를 전 직원이 입력하는 지점 (철산)
+function canEntry(){ return S.me.level<=3 || S.me.dept==="원무" || (ENTRY_ALL.includes(S.branch)&&S.me.level===4); }
 
 function renderLogin(){
   $("app").innerHTML = `<div class="login-wrap gut"><form class="login" id="lf" autocomplete="on">
@@ -831,14 +832,14 @@ function render(){
     dpay:seeAll()||S.me.dept==="원무",sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
   const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
   const DEPT_FN={"원무":["entry","dpay","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
-  grp("공통",g=>{ add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
+  grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
   else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
@@ -2517,6 +2518,11 @@ function preview(box,head,rows,n,bad,save,nSheets){
 
 // ── 업무 기록부 (구글시트처럼 쓰는 목록) ──
 const REG_DEPTS=["간호","병동","수술","원무","물리치료","영상의학","임상병리","청구","경영지원"];
+// 업무 기록부 표에서 옆·위·아래 칸 찾기 (화살표 이동)
+function regNb(td,dr,dc){ const tr=td.parentElement; if(dc){ let n=dc>0?td.nextElementSibling:td.previousElementSibling; while(n&&!n.dataset.k) n=dc>0?n.nextElementSibling:n.previousElementSibling; return n; }
+  let r=dr>0?tr.nextElementSibling:tr.previousElementSibling; while(r&&r.hidden) r=dr>0?r.nextElementSibling:r.previousElementSibling; return r?.querySelector(`td[data-k="${CSS.escape(td.dataset.k)}"]`)||null; }
+const ROLE_DEPT=[[/의사|원장/,"의료진"],[/물리|물치|방과/,"물리치료"],[/방사선/,"영상의학"],[/임상/,"임상병리"],[/수술/,"수술"],[/병동/,"병동"],[/간호/,"간호"],[/원무/,"원무"],[/청소|아르바이트/,"경영지원"]];
+const roleColor=v=>{ const s=String(v||""); const m=ROLE_DEPT.find(([re])=>re.test(s)); return m?deptColor(m[1]):null; };
 function canRegWrite(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (dept==="공통"&&me.level<=3); }
 async function renderRegisters(opts={}){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
@@ -2565,7 +2571,7 @@ async function renderRegisters(opts={}){
         ${tcol?`<div class="seg" role="group" aria-label="${esc(tcol.label)}" style="margin:0 0 8px">${[...tcol.opts,"전체"].map(o=>`<button data-rtab="${esc(o)}" aria-pressed="${tv===o}">${esc(o)} <small>${o==="전체"?rows.length:tabCnt[o]}</small></button>`).join("")}</div>`:""}
         ${regSum()}
         <div class="tbl-box reg-box"><table class="reg${opts.nowrap?" nowrap":""}"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
-          ${shown.map(r=>`<tr data-r="${r.id}">${cols.map(c=>`<td data-k="${esc(c.key)}" ${ed?'tabindex="0"':""}>${esc(r.data?.[c.key]??"")}</td>`).join("")}${ed?`<td class="rx"><button class="nmbtn" data-rdel="${r.id}" aria-label="행 삭제" title="행 삭제">×</button></td>`:""}</tr>`).join("")||`<tr><td colspan="99" class="meta">자료가 없습니다.</td></tr>`}
+          ${shown.map(r=>{ const dcol=cols.find(c=>c.deptcolor); const rc=dcol?roleColor(r.data?.[dcol.key]):null; return `<tr data-r="${r.id}"${rc?` class="rcol" style="--rc:${rc}"`:""}>${cols.map(c=>`<td data-k="${esc(c.key)}" ${c.deptcolor&&rc?'class="rcc"':""} ${ed?'tabindex="0"':""}>${esc(r.data?.[c.key]??"")}</td>`).join("")}${ed?`<td class="rx"><button class="nmbtn" data-rdel="${r.id}" aria-label="행 삭제" title="행 삭제">×</button></td>`:""}</tr>`; }).join("")||`<tr><td colspan="99" class="meta">자료가 없습니다.</td></tr>`}
         </tbody></table></div>
         ${shownAll.length>shown.length?`<div style="text-align:center;margin-top:8px"><button class="btn ghost sm" id="rmore">${shownAll.length-shown.length}행 더 보기</button></div>`:""}`
       :`<div class="empty">왼쪽에서 목록을 고르세요.</div>`}</section>
@@ -2598,9 +2604,14 @@ async function renderRegisters(opts={}){
         td.textContent=""; td.appendChild(ta); ta.focus(); if(ta.select&&!isDate) try{ ta.select(); }catch(_){} if(isOpt){ ta.onchange=()=>ta.blur(); try{ ta.showPicker&&ta.showPicker(); }catch(_){} }
         let done=false; const fin=async save=>{ if(done) return; done=true; const v=ta.value; td.textContent=save?v:old; if(!save||v===old) return; const data={...(row.data||{}),[k]:v}; if(!v) delete data[k];
           const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; const rs=document.querySelector(".regsum"); if(rs&&(cols.find(c=>c.key===k)?.group||cols.find(c=>c.key===k)?.sum)) rs.outerHTML=regSum(); };
-        ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); fin(true).then(()=>{ const nx=tr.nextElementSibling?.querySelector(`td[data-k="${k}"]`); if(nx) nx.click(); }); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>{ const n=e.shiftKey?td.previousElementSibling:td.nextElementSibling; if(n&&n.dataset.k) n.click(); }); } };
+        const mv=(dr,dc)=>fin(true).then(()=>{ const t=regNb(td,dr,dc); if(t) t.click(); });
+        ta.onkeydown=e=>{ const single=!/\n/.test(ta.value||""); const at0=ta.selectionStart===0&&ta.selectionEnd===0, atEnd=ta.selectionStart!=null&&ta.selectionStart===String(ta.value).length;
+          if(!isOpt&&single&&(e.key==="ArrowDown"||e.key==="ArrowUp")&&!e.shiftKey){ e.preventDefault(); return mv(e.key==="ArrowDown"?1:-1,0); }
+          if(!isOpt&&!isDate&&((e.key==="ArrowLeft"&&at0)||(e.key==="ArrowRight"&&atEnd))){ e.preventDefault(); return mv(0,e.key==="ArrowRight"?1:-1); }
+          if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); fin(true).then(()=>{ const nx=tr.nextElementSibling?.querySelector(`td[data-k="${k}"]`); if(nx) nx.click(); }); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>{ const n=e.shiftKey?td.previousElementSibling:td.nextElementSibling; if(n&&n.dataset.k) n.click(); }); } };
         ta.onblur=()=>fin(true); };
-      td.addEventListener("click",open); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); open(); } }); });
+      td.addEventListener("click",open); td.addEventListener("keydown",e=>{ if(e.target!==td) return; if(e.key==="Enter"){ e.preventDefault(); open(); return; }
+        const d={ArrowDown:[1,0],ArrowUp:[-1,0],ArrowRight:[0,1],ArrowLeft:[0,-1]}[e.key]; if(d){ e.preventDefault(); const t=regNb(td,d[0],d[1]); if(t) t.focus(); } }); });
     document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } const {error}=await sb.from("register_rows").delete().eq("id",b.dataset.rdel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); });
   }
   document.querySelectorAll("[data-rrs]").forEach(b=>b.onclick=async()=>{ const {error}=await sb.from("registers").update({active:true}).eq("id",+b.dataset.rrs); if(error) return toast(errMsg(error)); st.id=+b.dataset.rrs; toast("목록을 되살렸습니다"); renderRegisters(opts); });
@@ -3548,8 +3559,10 @@ async function renderHQ(){
 
 // ── 목표 · 이상신호 ──
 const GOAL_METRICS=[
-  {k:"total",label:"총진료비",money:true},{k:"newP",label:"신환",u:"명"},{k:"visits",label:"총 진료 인원",u:"명"},
-  {k:"pt",label:"도수·충격파",u:"건"},{k:"nonpay",label:"비급여",money:true},{k:"npRate",label:"비급여 비중",u:"%",ratio:true}];
+  {k:"total",label:"총진료비",money:true},{k:"out",label:"외래 매출",money:true},{k:"inpat",label:"입원 매출",money:true},{k:"newP",label:"신환",u:"명"},{k:"visits",label:"총 진료 인원",u:"명"},
+  {k:"dosu",label:"도수 건수",u:"건"},{k:"shock",label:"충격파 건수",u:"건"},{k:"ptAmt",label:"도수·충격파 매출",money:true,note:"건수 × 치료 단가"},{k:"nonpay",label:"비급여",money:true},{k:"npRate",label:"비급여 비중",u:"%",ratio:true}];
+// 치료 단가 (도수·충격파 매출 계산용) — 지점별로 한 번 불러와 둠
+async function loadPtPrice(){ S.ptPrice ||= {}; if(S.ptPrice[S.branch]) return S.ptPrice[S.branch]; const {data}=await sb.from("sched_items").select("name,price").eq("branch_id",S.branch).eq("kind","pt"); return S.ptPrice[S.branch]=Object.fromEntries((data||[]).map(i=>[i.name,+i.price||0])); }
 const ALERT_DEFS=[
   {k:"miss",label:"직전 영업일 마감일지가 비어 있음",th:null},
   {k:"sum",label:"외래+입원 ≠ 총진료비, 또는 원장별 진료비 합계 ≠ 총진료비",th:null},
@@ -3566,8 +3579,9 @@ async function loadBranchSettings(branch=S.branch){
 }
 function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); if(set.holidays.some(h=>h.d===iso)) return 0; return dow===0?+(set.sun??1):dow===6?+set.sat:1; }
 function monthWorkdays(ym,set,cut){ const R=monthRange(ym); let done=0,left=0,all=0; for(let i=1;i<=R.days;i++){ const d=`${ym}-${String(i).padStart(2,"0")}`; const w=dayWeight(d,set); all+=w; if(cut&&d<=cut) done+=w; else left+=w; } return {all,done,left}; }
-function goalActual(A){ return {total:A.total,newP:A.newP,visits:A.visits,pt:A.dosu+A.shock,nonpay:A.nonpay,npRate:A.npRate*100}; }
-const fmtGoal=(m,v)=>m.money?wonMan(Math.round(v)):m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
+function goalActual(A){ const pr=(S.ptPrice||{})[S.branch]||{}; const ptAmt=Object.entries(A.pt||{}).reduce((t,[k,n])=>t+(+n||0)*(pr[k]||0),0);
+  return {total:A.total,out:A.out,inpat:A.inpat,newP:A.newP,visits:A.visits,dosu:A.dosu,shock:A.shock,pt:A.dosu+A.shock,ptAmt,nonpay:A.nonpay,npRate:A.npRate*100}; }
+const fmtGoal=(m,v)=>m.money?won(Math.round(v))+"원":m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
 const goalSlot=()=>`<div id="projbox"></div><div id="goalbox"></div><div id="alertbox"></div>`;
 function drawProj(G){ const el=$("projbox"); if(!el||!G) return; const t=G.items.find(i=>i.m.k==="total"); const m=+G.ym.slice(5);
   el.innerHTML=`<div class="projline"><span class="pk">${m}월 예상 매출</span><b class="num">${t&&t.proj!=null?won(Math.round(t.proj))+"원":"마감일지가 들어오면 계산됩니다"}</b>${t&&t.proj!=null?`<small>지금까지 ${won(Math.round(t.actual))}원 · 남은 영업일 ${fmtN(G.W.left)}일 반영</small>`:""}</div>`; }
@@ -3613,7 +3627,7 @@ function drawAlerts(list,id="alertbox"){
 }
 async function computeGoal(set){
   const today=kstToday(), ym=today.slice(0,7), R=monthRange(ym);
-  const [{data:tg},rows]=await Promise.all([ sb.from("branch_targets").select("metric,value").eq("branch_id",S.branch).eq("ym",ym), loadRange(R.start,R.end) ]);
+  const [{data:tg},rows]=await Promise.all([ sb.from("branch_targets").select("metric,value").eq("branch_id",S.branch).eq("ym",ym), loadRange(R.start,R.end), loadPtPrice().catch(()=>({})) ]);
   const T=Object.fromEntries((tg||[]).map(t=>[t.metric,+t.value]));
   const closed=rows.filter(r=>+r.total>0).sort((x,y)=>x.close_date<y.close_date?-1:1); const A=aggRows(closed); const act=goalActual(A); const cut=closed.at(-1)?.close_date||null;
   const W=monthWorkdays(ym,set,cut);
@@ -3642,7 +3656,7 @@ async function fillGoalsAlerts(){
 async function renderGoals(){
   killCharts(); const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const lv=S.me.level, ed1=lv===1, edT=lv<=2; const st=S.glV ||= {ym:kstToday().slice(0,7)}; const R=monthRange(st.ym), pym=shiftMonth(st.ym,-1), PR=monthRange(pym);
-  const [set,{data:tg},rows]=await Promise.all([ loadBranchSettings(), sb.from("branch_targets").select("*").eq("branch_id",S.branch).in("ym",[st.ym,pym]), loadRange(PR.start,R.end) ]);
+  const [set,{data:tg},rows]=await Promise.all([ loadBranchSettings(), sb.from("branch_targets").select("*").eq("branch_id",S.branch).in("ym",[st.ym,pym]), loadRange(PR.start,R.end), loadPtPrice().catch(()=>({})) ]);
   const cur=aggRows(rows.filter(r=>r.close_date>=R.start&&+r.total>0)), prv=aggRows(rows.filter(r=>r.close_date<R.start&&+r.total>0)); const ac=goalActual(cur), ap=goalActual(prv);
   const T=Object.fromEntries((tg||[]).filter(t=>t.ym===st.ym).map(t=>[t.metric,+t.value])); const PT=Object.fromEntries((tg||[]).filter(t=>t.ym===pym).map(t=>[t.metric,+t.value]));
   const W=monthWorkdays(st.ym,set,null); const hol=set.holidays.filter(h=>h.d.startsWith(st.ym.slice(0,4))).sort((a,b)=>a.d<b.d?-1:1);
@@ -3653,7 +3667,7 @@ async function renderGoals(){
     <section class="panel"><h3>${R.m}월 목표 <span>칸을 고치면 바로 저장 · 비우면 목표 없음</span></h3>
       ${edT?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button class="btn ghost sm" data-gfill="5">지난달 실적 +5%로 채우기</button><button class="btn ghost sm" data-gfill="10">+10%</button>${Object.keys(PT).length?`<button class="btn ghost sm" id="gcopy">지난달 목표 그대로</button>`:""}</div>`:""}
       <div class="tbl-box"><table class="fin"><thead><tr><th>항목</th><th>지난달 실적</th><th>지난달 목표</th><th>${R.m}월 목표</th><th>${R.m}월 지금까지</th><th>달성률</th></tr></thead><tbody>
-      ${GOAL_METRICS.map(m=>`<tr><td>${m.label}${m.money?" (원)":m.ratio?" (%)":""}</td><td class="num">${fmtGoal(m,ap[m.k]||0)}</td><td class="num">${PT[m.k]?fmtGoal(m,PT[m.k]):"–"}</td><td>${inp(m,T[m.k])}</td><td class="num">${fmtGoal(m,ac[m.k]||0)}</td><td class="num">${T[m.k]?((ac[m.k]||0)/T[m.k]*100).toFixed(0)+"%":"–"}</td></tr>`).join("")}
+      ${GOAL_METRICS.map(m=>`<tr><td>${m.label}${m.money?" (원)":m.ratio?" (%)":""}${m.note?` <small class="meta">${m.note}</small>`:""}</td><td class="num">${fmtGoal(m,ap[m.k]||0)}</td><td class="num">${PT[m.k]?fmtGoal(m,PT[m.k]):"–"}</td><td>${inp(m,T[m.k])}</td><td class="num">${fmtGoal(m,ac[m.k]||0)}</td><td class="num">${T[m.k]?((ac[m.k]||0)/T[m.k]*100).toFixed(0)+"%":"–"}</td></tr>`).join("")}
       </tbody></table></div></section>
     <div class="grid2" style="align-items:start">
       <section class="panel"><h3>영업일 <span>${R.m}월 ${fmtN(W.all)}일 · 일요일 휴무 · 월말 예상 계산에 씁니다</span></h3>
