@@ -896,6 +896,7 @@ function aggRows(rows){
   rows.forEach(r=>{ a.total+=+r.total; a.nonpay+=+r.nonpay; a.out+=(+r.outpatient||(+r.total>0?Math.max(0,+r.total-(+r.inpatient||0)):0)); a.inpat+=+r.inpatient||0; a.surg+=+r.surgery_cnt; a.cash+=+r.pay_cash; a.free+=+(r.pay_free||0);
     a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt??r.extra?.emg??0);
     ptItemsOf(S.branch).forEach(k=>a.pt[k]=(a.pt[k]||0)+ptN(r,k));
+    a.ptAll ||= {}; Object.entries(r.pt||{}).forEach(([k,v])=>{ if(k!=="_m"&&isFinite(+v)) a.ptAll[k]=(a.ptAll[k]||0)+(+v||0); });
     (r.doctors||[]).forEach(d=>{ const k=d.name||"기타"; (a.docs[k] ||= {nw:0,re:0,amt:0}); a.docs[k].nw+= +d.new||0; a.docs[k].re+= +d.re||0; a.docs[k].amt+= +d.amt||0; a.docAmt=(a.docAmt||0)+(+d.amt||0); a.newP+= +d.new||0; a.reP+= +d.re||0; }); });
   a.visits=a.newP+a.reP; a.perVisit=a.visits?a.total/a.visits:0; a.outPerVisit=a.visits?a.out/a.visits:0;
   a.npRate=a.total?a.nonpay/a.total:0; a.keep=a.real?a.visit/a.real:0;
@@ -3581,7 +3582,7 @@ async function loadBranchSettings(branch=S.branch){
 function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); if(set.holidays.some(h=>h.d===iso)) return 0; return dow===0?+(set.sun??1):dow===6?+set.sat:1; }
 function monthWorkdays(ym,set,cut){ const R=monthRange(ym); let done=0,left=0,all=0; for(let i=1;i<=R.days;i++){ const d=`${ym}-${String(i).padStart(2,"0")}`; const w=dayWeight(d,set); all+=w; if(cut&&d<=cut) done+=w; else left+=w; } return {all,done,left}; }
 const ptKey=n=>String(n||"").replace(/충격파/g,"").replace(/\s+/g,"");
-function goalActual(A){ const pr0=(S.ptPrice||{})[S.branch]||{}; const prN=Object.fromEntries(Object.entries(pr0).map(([k,v])=>[ptKey(k),v])); const pr=new Proxy({},{get:(_,k)=>pr0[k]??prN[ptKey(k)]??0}); const amt=f=>Object.entries(A.pt||{}).filter(([k])=>f(k)).reduce((t,[k,n])=>t+(+n||0)*(pr[k]||0),0); const dosuAmt=amt(k=>/^도수/.test(k)), shockAmt=amt(k=>!/^도수/.test(k)&&k!=="도수상담"), ptAmt=dosuAmt+shockAmt;
+function goalActual(A){ const pr0=(S.ptPrice||{})[S.branch]||{}; const prN=Object.fromEntries(Object.entries(pr0).map(([k,v])=>[ptKey(k),v])); const pr=new Proxy({},{get:(_,k)=>pr0[k]??prN[ptKey(k)]??0}); const amt=f=>Object.entries(A.ptAll||A.pt||{}).filter(([k])=>f(k)).reduce((t,[k,n])=>t+(+n||0)*(pr[k]||0),0); const dosuAmt=amt(k=>/^도수/.test(k)&&!/상담/.test(k)), shockAmt=amt(k=>/충격파|^E\d|^ES\d|^F$/.test(k)), ptAmt=dosuAmt+shockAmt;
   return {total:A.total,out:A.out,inpat:A.inpat,newP:A.newP,visits:A.visits,dosu:A.dosu,shock:A.shock,pt:A.dosu+A.shock,ptAmt,dosuAmt,shockAmt,nonpay:A.nonpay,npRate:A.npRate*100}; }
 const fmtGoal=(m,v)=>m.money?won(Math.round(v))+"원":m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
 const goalSlot=()=>`<div id="projbox"></div><div id="goalbox"></div><div id="alertbox"></div>`;
