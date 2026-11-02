@@ -210,6 +210,12 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
   body.printing-report .shell{display:block} body.printing-report main{padding:0!important} body.printing-report .wrap{max-width:none;padding:0}
   body.printing-report .report{border:0;box-shadow:none;padding:0} body.printing-report table.rpt{page-break-inside:avoid} body.printing-report .report h2{page-break-after:avoid}
   @page{size:A4;margin:14mm} }
+@media print{ body.printing-staff .top, body.printing-staff nav.side, body.printing-staff #toast, body.printing-staff .sh-tools, body.printing-staff .brushes, body.printing-staff details.panel, body.printing-staff .page-h > div:last-child, body.printing-staff .shfloat, body.printing-staff .clipbar, body.printing-staff .nmbtn{display:none!important}
+  body.printing-staff .shell{display:block} body.printing-staff main{padding:0!important} body.printing-staff .wrap{max-width:none;padding:0}
+  body.printing-staff .sh-wrap{max-height:none!important;overflow:visible!important;border:0} body.printing-staff .sh-wrap th, body.printing-staff .sh-wrap td{position:static!important;transform:none!important;font-size:9px!important;padding:2px 3px!important;min-width:0!important}
+  body.printing-staff .gapnote{display:none!important} body.printing-staff, body.printing-staff main{background:#fff!important}
+  body.printing-staff .shtab thead th.gap{background:var(--sunk,#eef2f7)!important;color:inherit!important;box-shadow:none!important} body.printing-staff .shtab thead th.gap small{color:inherit!important}
+  body.printing-staff tr{page-break-inside:avoid} body.printing-staff *{-webkit-print-color-adjust:exact;print-color-adjust:exact} @page{size:A4 landscape;margin:8mm} }
 @media print{ body.printing-list .top, body.printing-list nav.side, body.printing-list #toast, body.printing-list .chips, body.printing-list .page-h > div:last-child, body.printing-list .brushes, body.printing-list .noprint, body.printing-list main button, body.printing-list .cmhelp, body.printing-list .chips{display:none!important}
   body.printing-list .shell{display:block} body.printing-list main{padding:0!important} body.printing-list .wrap{max-width:none;padding:0}
   body.printing-list .tbl-box{max-height:none!important;overflow:visible!important;border:0} body.printing-list thead th{position:static!important} body.printing-list .panel{border:0;box-shadow:none;padding:0}
@@ -456,6 +462,7 @@ pre.memo{white-space:pre-wrap;font:inherit;font-size:12.5px;color:var(--muted);m
 .vb.변경[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
 .vb.취소[aria-pressed="true"]{background:var(--bad);border-color:var(--bad);color:#fff}
 table.resv tr.v-ok td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+table.resv tr.v-ok td{background:color-mix(in srgb,var(--good) 8%,var(--surface));color:var(--muted)} table.resv tr.v-ok td b{color:var(--muted);font-weight:600}
 table.resv tr.v-x td{color:var(--muted)}
 table.resv tr.v-x td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
 table.resv tr.v-b td:first-child{box-shadow:inset 3px 0 0 var(--navy)}
@@ -815,19 +822,19 @@ function render(){
   const lv=S.me.level;
   const itemOk={dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
-    users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+    dpay:seeAll()||S.me.dept==="원무",users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
+  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id));
+  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg"))));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
-  const DEPT_FN={"원무":["entry","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
+  const DEPT_FN={"원무":["entry","dpay","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
   if(full) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
-  else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
+  else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept};
@@ -853,7 +860,7 @@ function render(){
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector("span").textContent=close?"▸":"▾"; });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -1809,6 +1816,7 @@ async function renderStaff(){
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
         <input type="date" id="hd" value="${st.date}" aria-label="날짜" style="height:30px;padding:0 6px">
         <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>
+        <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button>`:""}
       </div></div>
     <div class="sh-tools">
       <div class="chips">${["전체",...(leads.length?["팀장"]:[]),...deptsPresent].map(d=>`<button class="fchip${d==="팀장"?" leadchip":""}" data-dp="${esc(d)}" aria-pressed="${st.dept===d}">${d==="팀장"?"★ 팀장":esc(d)}</button>`).join("")}</div>
@@ -1835,6 +1843,9 @@ async function renderStaff(){
     </div></details>`:""}
   </div>`;
   stickHead(document.querySelector(".sh-wrap"),"thead th");
+  const shPrint=()=>{ document.body.classList.add("printing-staff"); const done=()=>{ document.body.classList.remove("printing-staff"); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); window.print(); setTimeout(done,1500); };
+  $("hprt").onclick=shPrint;
+  if($("hprd")) $("hprd").onclick=async()=>{ const prev=st.dept; st.dept="의료진"; await renderStaff(); shPrint(); st.dept=prev; setTimeout(()=>renderStaff(),1600); };
   $("hp").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),-1)+"-01" : addDays(st.date, st.mode==="week"?-7:-1); renderStaff(); };
   $("hn").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),1)+"-01" : addDays(st.date, st.mode==="week"?7:1); renderStaff(); };
   $("ht").onclick=()=>{ st.date=kstToday(); renderStaff(); };
@@ -2495,12 +2506,12 @@ const REG_DEPTS=["간호","병동","수술","원무","물리치료","영상의�
 function canRegWrite(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (dept==="공통"&&me.level<=3); }
 async function renderRegisters(opts={}){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const fixed=opts.dept||null; const key=fixed?"regInfo":"regV";
+  const fixed=opts.dept||null; const key=opts.key||(fixed?"regInfo":"regV");
   const st = S[key] ||= {dept: fixed || (REG_DEPTS.includes(S.me.dept)?S.me.dept:"간호"), id:null, q:"", month:null, limit:300};
-  if(fixed) st.dept=fixed; st.q ??= ""; st.limit ??= 300; if(st.month===undefined) st.month=null;
+  if(fixed) st.dept=fixed; st.q ??= ""; st.limit ??= 300; if(st.month===undefined) st.month=null; if(st.day===undefined) st.day=opts.dayDefault?kstToday():null; if(st.day) st.month=st.day.slice(0,7);
   const lr=await sb.from("registers").select("id,dept,name,columns,date_col,sort,memo").eq("branch_id",S.branch).eq("active",true).order("sort").order("id");
   if(lr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(lr.error))}</div></div>`; return; }
-  const regsAll=lr.data||[]; const regs=regsAll.filter(r=>r.dept===st.dept&&(!opts.filter||opts.filter(r)));
+  const regsAll=lr.data||[]; const regs=regsAll.filter(r=>r.dept===st.dept&&(opts.filter?opts.filter(r):!(r.dept==="원무"&&r.name==="일일수납")));
   const counts=Object.fromEntries(REG_DEPTS.map(d=>[d,regsAll.filter(r=>r.dept===d).length]));
   let cur=regs.find(r=>r.id===st.id)||regs[0]||null; st.id=cur?.id||null;
   const noMon=!!(cur?.columns||[]).find(c=>c.key===cur.date_col)?.nomonth; if(noMon) st.month="";
@@ -2508,7 +2519,7 @@ async function renderRegisters(opts={}){
     const mc={}; (md||[]).forEach(x=>{ const m=x.row_date.slice(0,7); mc[m]=(mc[m]||0)+1; }); const cm=kstToday().slice(0,7); if(!mc[cm]&&Object.keys(mc).some(m=>m>=shiftMonth(cm,-1))) mc[cm]=0; if(st.month&&mc[st.month]==null) mc[st.month]=0; months=Object.keys(mc).sort().reverse().map(m=>[m,mc[m]]);
     if(st.month===null) st.month=months[0]?.[0]||""; }
   let rows=[]; if(cur){ let qy=sb.from("register_rows").select("id,row_date,data,sort,updated_at").eq("register_id",cur.id).order("row_date",{ascending:false,nullsFirst:false}).order("sort").limit(5000);
-    if(st.month&&cur.date_col){ const R=monthRange(st.month); qy=qy.gte("row_date",R.start).lte("row_date",R.end); }
+    if(st.day&&cur.date_col&&!noMon) qy=qy.eq("row_date",st.day); else if(st.month&&cur.date_col){ const R=monthRange(st.month); qy=qy.gte("row_date",R.start).lte("row_date",R.end); }
     const rr=await qy; rows=rr.data||[]; if(!cur.date_col) rows.sort((a,b)=>a.sort-b.sort||a.id-b.id); }
   const cols=cur?.columns||[]; const q=st.q.toLowerCase();
   const shownAll=q?rows.filter(r=>Object.values(r.data||{}).join(" ").toLowerCase().includes(q)):rows; const shown=shownAll.slice(0,st.limit);
@@ -2518,11 +2529,11 @@ async function renderRegisters(opts={}){
           const num=v=>{ const n=+String(v??"").replace(/[,\s원]/g,""); return isFinite(n)?n:0; };
           shownAll.forEach(r=>{ const k=String(r.data?.[g.key]??"").trim(); if(!k) return; const o=by[k] ||= {n:0,s:sc.map(()=>0)}; o.n++; sc.forEach((c,i)=>o.s[i]+=num(r.data?.[c.key])); });
           const L=Object.entries(by).sort((a,b)=>a[0].localeCompare(b[0],"ko")); const T={n:L.reduce((a,x)=>a+x[1].n,0),s:sc.map((c,i)=>L.reduce((a,x)=>a+x[1].s[i],0))};
-          return `<div class="regsum"><div class="meta" style="margin-bottom:4px">${st.month?`${+st.month.slice(5)}월`:"전체"} ${esc(g.label)}별 합계 <small>(자동)</small></div><table class="fin"><thead><tr><th>${esc(g.label)}</th><th class="num">${sc.length?"건수":"합계(건)"}</th>${sc.map(c=>`<th class="num">${esc(c.label)} 합계</th>`).join("")}</tr></thead><tbody>
+          return `<div class="regsum"><div class="meta" style="margin-bottom:4px">${st.day?`${+st.day.slice(5,7)}/${+st.day.slice(8)} 하루`:st.month?`${+st.month.slice(5)}월`:"전체"} ${esc(g.label)}별 합계 <small>(자동)</small></div><table class="fin"><thead><tr><th>${esc(g.label)}</th><th class="num">${sc.length?"건수":"합계(건)"}</th>${sc.map(c=>`<th class="num">${esc(c.label)} 합계</th>`).join("")}</tr></thead><tbody>
             ${L.map(([k,o])=>`<tr><td>${esc(k)}</td><td class="num">${o.n}</td>${o.s.map(v=>`<td class="num">${v.toLocaleString("ko-KR")}</td>`).join("")}</tr>`).join("")||`<tr><td colspan="9" class="meta">자료 없음</td></tr>`}
             </tbody><tfoot><tr><th>합계</th><th class="num">${T.n}</th>${T.s.map(v=>`<th class="num">${v.toLocaleString("ko-KR")}</th>`).join("")}</tr></tfoot></table></div>`; };
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>${fixed?"기본정보·연락망":"업무 기록부"}</h2><div class="meta">${fixed?(opts.title||"공통 자료"):"부서별로 구글시트처럼 쓰는 목록 · 칸을 누르면 바로 고칩니다"}${cur?` · ${esc(cur.name)} ${shownAll.length}행`:""}</div></div>
+    <div class="page-h"><div><h2>${opts.pageTitle||(fixed?"기본정보·연락망":"업무 기록부")}</h2><div class="meta">${fixed?(opts.title||"공통 자료"):"부서별로 구글시트처럼 쓰는 목록 · 칸을 누르면 바로 고칩니다"}${cur?` · ${esc(cur.name)} ${shownAll.length}행`:""}</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="rq" placeholder="이 목록에서 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:170px">
         ${cur?`<button class="btn ghost sm" id="rcsv">CSV 받기</button>`:""}${ed?`<button class="btn sm" id="radd">+ 행 추가</button>`:""}</div></div>
@@ -2533,7 +2544,7 @@ async function renderRegisters(opts={}){
       <section class="panel" style="min-width:0">${cur?`
         <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(cur.name)}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
-        ${cur.date_col&&!noMon&&(months.length||ed)?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month}">전체</button>${ed?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="month" id="rmnew" value="${shiftMonth(months[0]?.[0]||kstToday().slice(0,7),1)}" aria-label="추가할 년·월" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rmgo">+ 년·월 추가</button></span>`:""}</div>`:""}
+        ${cur.date_col&&!noMon&&(months.length||ed)?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${!st.day&&st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month&&!st.day}">전체</button><span class="rdaybox" style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><b class="meta">하루 보기</b><button class="btn ghost sm" id="rdp" aria-label="전날" ${st.day?"":"hidden"}>◀</button><input type="date" id="rday" value="${st.day||""}" aria-label="날짜 고르기" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rdn" aria-label="다음날" ${st.day?"":"hidden"}>▶</button><button class="btn ghost sm" id="rdt">오늘</button></span>${ed?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="month" id="rmnew" value="${shiftMonth(months[0]?.[0]||kstToday().slice(0,7),1)}" aria-label="추가할 년·월" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rmgo">+ 년·월 추가</button></span>`:""}</div>`:""}
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
         ${regSum()}
         <div class="tbl-box reg-box"><table class="reg"><thead><tr>${cols.map(c=>`<th>${esc(c.label)}</th>`).join("")}${ed?"<th></th>":""}</tr></thead><tbody>
@@ -2546,8 +2557,11 @@ async function renderRegisters(opts={}){
   document.querySelectorAll("[data-rd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.rd; st.id=null; st.q=""; st.month=null; renderRegisters(opts); });
   document.querySelectorAll("[data-rg]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.rg; st.q=""; st.limit=300; st.month=null; renderRegisters(opts); });
   bindSearch("rq",v=>{ st.q=v; return renderRegisters(opts); });
-  document.querySelectorAll("[data-rmo]").forEach(b=>b.onclick=()=>{ st.month=b.dataset.rmo; st.limit=300; renderRegisters(opts); });
-  if($("rmgo")) $("rmgo").onclick=()=>{ const v=$("rmnew").value; if(!/^\d{4}-\d{2}$/.test(v)) return toast("년·월을 고르세요"); st.month=v; st.limit=300; renderRegisters(opts); toast(`${v.slice(0,4)}년 ${+v.slice(5)}월 — [+ 행 추가]로 적으면 이 달에 저장됩니다`); };
+  document.querySelectorAll("[data-rmo]").forEach(b=>b.onclick=()=>{ st.month=b.dataset.rmo; st.day=null; st.limit=300; renderRegisters(opts); });
+  const goDay=d=>{ st.day=d||null; if(d) st.month=d.slice(0,7); st.limit=300; renderRegisters(opts); };
+  if($("rday")) $("rday").onchange=()=>goDay($("rday").value); if($("rdt")) $("rdt").onclick=()=>goDay(kstToday());
+  if($("rdp")) $("rdp").onclick=()=>goDay(addDays(st.day,-1)); if($("rdn")) $("rdn").onclick=()=>goDay(addDays(st.day,1));
+  if($("rmgo")) $("rmgo").onclick=()=>{ const v=$("rmnew").value; if(!/^\d{4}-\d{2}$/.test(v)) return toast("년·월을 고르세요"); st.month=v; st.day=null; st.limit=300; renderRegisters(opts); toast(`${v.slice(0,4)}년 ${+v.slice(5)}월 — [+ 행 추가]로 적으면 이 달에 저장됩니다`); };
   if($("rmore")) $("rmore").onclick=()=>{ st.limit+=500; renderRegisters(opts); };
   if($("rcsv")) $("rcsv").onclick=()=>downloadCSV(`${cur.name}.csv`,[cols.map(c=>c.label),...shownAll.map(r=>cols.map(c=>r.data?.[c.key]??""))]);
   if($("rnew")) $("rnew").onclick=async()=>{ const name=prompt("새 목록 이름"); if(!name) return; const lab=(prompt("열 이름을 쉼표로 적으세요 (예: 날짜, 이름, 내용, 비고)","날짜, 내용, 비고")||"").split(",").map(s=>s.trim()).filter(Boolean); if(!lab.length) return;
@@ -2556,10 +2570,14 @@ async function renderRegisters(opts={}){
   if(!cur) return;
   const dateOf=data=>{ if(!cur.date_col) return null; const v=String(data[cur.date_col]||"").trim(); return parseDateCell(v,(st.month||kstToday()).slice(0,4)); };
   if($("radd")) $("radd").onclick=async()=>{ const data={}; if(cur.date_col){ const cm=kstToday().slice(0,7), m=st.month||cm; const lab=(cols.find(c=>c.key===cur.date_col)||{}).label||"";
-    data[cur.date_col]= /^월$/.test(lab.trim()) ? m.replace("-",".") : (m===cm ? kstToday() : `${+m.slice(5)}/1`); } const {data:row,error}=await sb.from("register_rows").insert({register_id:cur.id,branch_id:S.branch,data,row_date:dateOf(data),sort:-1}).select("id").single(); if(error) return toast(errMsg(error)); st.q=""; await renderRegisters(opts); const td=document.querySelector(`tr[data-r="${row.id}"] td[data-k]`); if(td) td.click(); };
+    data[cur.date_col]= /^월$/.test(lab.trim()) ? m.replace("-",".") : st.day ? st.day : (m===cm ? kstToday() : `${+m.slice(5)}/1`); } const {data:row,error}=await sb.from("register_rows").insert({register_id:cur.id,branch_id:S.branch,data,row_date:dateOf(data),sort:-1}).select("id").single(); if(error) return toast(errMsg(error)); st.q=""; await renderRegisters(opts); const td=document.querySelector(`tr[data-r="${row.id}"] td[data-k]`); if(td) td.click(); };
   if(ed){ const byId=Object.fromEntries(rows.map(r=>[r.id,r]));
     document.querySelectorAll("table.reg td[data-k]").forEach(td=>{ const open=()=>{ if(td.querySelector("textarea")) return; const tr=td.parentElement, rid=+tr.dataset.r, k=td.dataset.k, row=byId[rid]; const old=row.data?.[k]??"";
-        const ta=document.createElement("textarea"); ta.className="regin"; ta.value=old; ta.rows=Math.min(6,Math.max(1,String(old).split("\n").length)); td.textContent=""; td.appendChild(ta); ta.focus(); ta.select();
+        const col=cols.find(c=>c.key===k)||{}; const isOpt=Array.isArray(col.opts)&&col.opts.length, isDate=!isOpt&&k===cur.date_col&&(!String(old).trim()||/^\d{4}-\d{2}-\d{2}$/.test(String(old).trim()));
+        let ta; if(isOpt){ ta=document.createElement("select"); ta.className="regin"; const o=[...new Set(["",...col.opts,...(String(old).trim()&&!col.opts.includes(String(old).trim())?[old]:[])])]; ta.innerHTML=o.map(v=>`<option value="${esc(v)}" ${v===old||v===String(old).trim()?"selected":""}>${v?esc(v):"(비우기)"}</option>`).join(""); }
+        else if(isDate){ ta=document.createElement("input"); ta.type="date"; ta.className="regin"; ta.value=String(old).trim(); }
+        else { ta=document.createElement("textarea"); ta.className="regin"; ta.value=old; ta.rows=Math.min(6,Math.max(1,String(old).split("\n").length)); }
+        td.textContent=""; td.appendChild(ta); ta.focus(); if(ta.select&&!isDate) try{ ta.select(); }catch(_){} if(isOpt){ ta.onchange=()=>ta.blur(); try{ ta.showPicker&&ta.showPicker(); }catch(_){} }
         let done=false; const fin=async save=>{ if(done) return; done=true; const v=ta.value; td.textContent=save?v:old; if(!save||v===old) return; const data={...(row.data||{}),[k]:v}; if(!v) delete data[k];
           const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; const rs=document.querySelector(".regsum"); if(rs&&(cols.find(c=>c.key===k)?.group||cols.find(c=>c.key===k)?.sum)) rs.outerHTML=regSum(); };
         ta.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); fin(true).then(()=>{ const nx=tr.nextElementSibling?.querySelector(`td[data-k="${k}"]`); if(nx) nx.click(); }); } else if(e.key==="Escape"){ fin(false); } else if(e.key==="Tab"){ e.preventDefault(); fin(true).then(()=>{ const n=e.shiftKey?td.previousElementSibling:td.nextElementSibling; if(n&&n.dataset.k) n.click(); }); } };
@@ -2572,7 +2590,7 @@ async function renderRegisters(opts={}){
   if($("rcol")) $("rcol").onclick=()=>{ const dlg=$("dlg");
     dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${esc(cur.name)} · 열 편집</h3>
       <div class="field"><label for="cn">목록 이름</label><input id="cn" value="${esc(cur.name)}"></div>
-      <div id="clist">${cols.map((c,i)=>`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="${esc(c.label)}" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${esc(c.key)}" ${cur.date_col===c.key?"checked":""}>날짜열</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이 열의 이름별로 건수를 자동으로 셉니다"><input type="radio" name="cgrp" value="${esc(c.key)}" ${c.group?"checked":""}>이름별 집계</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이름별로 이 열의 숫자를 더합니다"><input type="checkbox" data-csum value="${esc(c.key)}" ${c.sum?"checked":""}>합계</label><button type="button" class="btn ghost sm" data-cup="${i}" aria-label="위로">↑</button></div>`).join("")}</div>
+      <div id="clist">${cols.map((c,i)=>`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="${esc(c.label)}" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${esc(c.key)}" ${cur.date_col===c.key?"checked":""}>날짜열</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이 열의 이름별로 건수를 자동으로 셉니다"><input type="radio" name="cgrp" value="${esc(c.key)}" ${c.group?"checked":""}>이름별 집계</label><label class="meta" style="display:flex;gap:4px;align-items:center" title="이름별로 이 열의 숫자를 더합니다"><input type="checkbox" data-csum value="${esc(c.key)}" ${c.sum?"checked":""}>합계</label><input data-copt value="${esc((c.opts||[]).join(", "))}" placeholder="고르기 칸 (예: 현금, 계좌)" title="쉼표로 적으면 이 열은 목록에서 골라서 입력합니다" style="height:30px;width:150px;padding:0 6px"><button type="button" class="btn ghost sm" data-cup="${i}" aria-label="위로">↑</button></div>`).join("")}</div>
       <button type="button" class="btn ghost sm" id="cadd">+ 열 추가</button>
       <label class="meta" style="display:flex;gap:6px;align-items:center;margin:8px 0"><input type="checkbox" id="cmon" ${noMon?"":"checked"}>날짜열 기준으로 월별로 나누어 보기 (끄면 전체를 한 번에 봅니다)</label>
       <p class="meta">열 이름을 비우고 저장하면 그 열은 화면에서 빠집니다(자료는 남음). 날짜열을 고르면 월별로 볼 수 있습니다. 이름별 집계를 고르면 그 열(예: 직원명)의 이름별 건수가 오른쪽에 자동으로 나오고, 합계를 체크한 열은 숫자를 더해 보여줍니다.</p><button type="button" class="btn ghost sm" id="cnogrp" style="margin-bottom:8px">이름별 집계 끄기</button>
@@ -2581,7 +2599,7 @@ async function renderRegisters(opts={}){
     $("cadd").onclick=()=>{ let k; do{ k="c"+(nc++); }while(keys.includes(k)); keys.push(k); const i=keys.length-1; order.push(i); $("clist").insertAdjacentHTML("beforeend",`<div class="inline-form" style="margin-bottom:6px" data-ci="${i}"><input data-cl="${i}" value="" placeholder="새 열 이름" style="height:30px;flex:1;padding:0 8px"><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cdate" value="${k}">날짜열</label><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="radio" name="cgrp" value="${k}">이름별 집계</label><label class="meta" style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-csum value="${k}">합계</label></div>`); };
     $("cnogrp").onclick=()=>dlg.querySelectorAll('input[name="cgrp"]').forEach(x=>x.checked=false);
     dlg.querySelectorAll("[data-cup]").forEach(b=>b.onclick=()=>{ const el=b.closest("[data-ci]"); const prev=el.previousElementSibling; if(prev) el.parentNode.insertBefore(el,prev); });
-    $("csave").onclick=async()=>{ const columns=[...dlg.querySelectorAll("#clist [data-ci]")].map(el=>{ const i=+el.dataset.ci; const k=keys[i], o={key:k,label:el.querySelector("[data-cl]").value.trim()}; if(dlg.querySelector('input[name="cgrp"]:checked')?.value===k) o.group=true; if(el.querySelector("[data-csum]")?.checked) o.sum=true; return o; }).filter(c=>c.label);
+    $("csave").onclick=async()=>{ const columns=[...dlg.querySelectorAll("#clist [data-ci]")].map(el=>{ const i=+el.dataset.ci; const k=keys[i], o={key:k,label:el.querySelector("[data-cl]").value.trim()}; if(dlg.querySelector('input[name="cgrp"]:checked')?.value===k) o.group=true; if(el.querySelector("[data-csum]")?.checked) o.sum=true; const op=(el.querySelector("[data-copt]")?.value||"").split(",").map(x=>x.trim()).filter(Boolean); if(op.length) o.opts=op; return o; }).filter(c=>c.label);
       const dc=dlg.querySelector('input[name="cdate"]:checked')?.value||null; if(dc&&!$("cmon").checked){ const dcol=columns.find(c=>c.key===dc); if(dcol) dcol.nomonth=true; }
       const {error}=await sb.from("registers").update({name:$("cn").value.trim()||cur.name,columns,date_col:dc}).eq("id",cur.id); if(error) return toast(errMsg(error)); dlg.close(); renderRegisters(opts); };
   };
@@ -2606,7 +2624,7 @@ async function renderResv(keep){
           <div class="seg" role="group" aria-label="보기"><button data-rvm="day" aria-pressed="true">일별</button><button data-rvm="month" aria-pressed="false">월별 통계</button></div>
           <div class="monthnav"><button class="btn ghost sm" id="vp" aria-label="전날">◀</button><button class="btn ghost sm" id="vt">오늘</button><button class="btn ghost sm" id="vn" aria-label="다음날">▶</button></div>
           <input type="date" id="vd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜">
-          <button class="btn sm" id="vup">EMR 엑셀 올리기</button><input type="file" id="vf" accept=".xlsx,.xls,.csv" hidden></div></div>
+          <button class="btn sm" id="vup">EMR 엑셀 올리기</button><input type="file" id="vf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="vrf" title="다른 분이 체크한 내원 여부를 바로 불러옵니다 (화면 위치 그대로)">↻ 새로고침</button></div></div>
       <section class="kpis">
         <div class="kpi lead"><span class="k">예약율</span><span class="v num">${real?(c("내원")/real*100).toFixed(1):"–"}<small>%</small></span><span class="d">내원 ${c("내원")} / 실예약 ${real}</span></div>
         <div class="kpi"><span class="k">전체 예약</span><span class="v num">${all.length}</span><span class="d">확인 전 ${none}</span></div>
@@ -2635,6 +2653,7 @@ async function renderResv(keep){
       const {error}=await sb.from("reservations").delete().eq("id",+b.dataset.vx); if(error) return toast(errMsg(error)); toast("예약을 삭제했습니다"); renderResv(true); });
     document.querySelectorAll("[data-ve]").forEach(b=>b.onclick=()=>resvDialog(all.find(x=>x.id===+b.dataset.ve),st.date,()=>renderResv(true)));
     if(kp){ window.scrollTo(0,kp.y); main.querySelectorAll(".tbl-box").forEach((x,i)=>{ if(kp.b[i]!=null) x.scrollTop=kp.b[i]; }); }
+    $("vrf").onclick=()=>{ $("vrf").disabled=true; renderResv(true).then(()=>toast("최신 예약으로 새로고침했습니다")); };
     $("vup").onclick=()=>$("vf").click(); $("vf").onchange=()=>resvUpload($("vf").files[0],st);
   } else {
     const R=monthRange(st.month);
