@@ -251,7 +251,9 @@ table.trendtbl tr.cur td{font-weight:600;background:var(--navy-soft)}
 .dghint{position:fixed;z-index:60;background:var(--ink);color:var(--surface);font-size:12px;padding:3px 8px;border-radius:5px;pointer-events:none}
 .ap em{font-style:normal;font-size:10px;margin-right:3px;padding:0 3px;border-radius:3px}
 .ap em.nth,.nth{font-style:normal;font-weight:700;padding:0 4px;border-radius:3px;font-size:10.5px}
-.nth.n1{background:#e3efff;color:#1a5fd0}.nth.n2{background:#e2f6e7;color:#1f7a3a}.nth.n3{background:#fff0d9;color:#b86200}
+.nth.n1{background:#e3efff;color:#1a5fd0}.nth.n2{background:#e2f6e7;color:#1f7a3a}.nth.n3{background:#fff0d9;color:#b86200}.nth.n4{background:#f3e5f5;color:#7b1fa2}
+.ap.nth4{border-color:#8e44ad;background:#f8eefb}
+.insb{font-style:normal;font-weight:700;padding:0 4px;border-radius:3px;font-size:10.5px;margin-right:3px;border:1px solid}.insb.ig{color:#5d6d7e;border-color:#c5ccd3;background:#fff}.insb.ib{color:#c0392b;border-color:#e8a59d;background:#fdecea}.insb.it{color:#0f7c7c;border-color:#8fcfcf;background:#e6f6f6}
 .ap.nth1{border-color:#1a5fd0;background:#eef5ff}.ap.nth2{border-color:#2f8f4e;background:#eaf7ee}.ap.nth3{border-color:#d17a12;background:#fff5e6}
 .ap em.cti.o{background:#e2f6e7;color:#1f7a3a}.ap em.cti.x{background:#fde7e7;color:#c0392b}
 .ckb{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border:1px solid var(--line);border-radius:6px;font-weight:700;cursor:pointer;color:var(--muted)}
@@ -1412,7 +1414,7 @@ async function renderSched(kind,keep){
     const n=Math.max(1,tracks.length); c._n=n;
     const cards=list.map(a=>{ const top=(a.start_min-cfg.from)/10*SLOT_H+1, h=Math.max(SLOT_H-2,a.minutes/10*SLOT_H-2);
       const laneName = "";
-      const ct=a.contact||{}; const inpB=a.inpatient?`<em class="inp" title="입원">입</em>`:""; const nthB=kind==="emg"&&a._k?`<em class="nth n${a._k}" title="${a.exam_no?"직접 지정":"자동 계산 ("+a._n+"번째 검사)"}">${a._k}차</em>`:""; const badges=kind==="emg"?`${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
+      const ct=a.contact||{}; const inpB=a.inpatient?`<em class="inp" title="입원">입</em>`:""; const nthB=(kind==="emg"&&a._k?`<em class="nth n${a._k}" title="${a.exam_no?"직접 지정":"자동 계산 ("+a._n+"번째 검사)"}">${a._k}차</em>`:"")+(kind==="emg"&&a.ins?`<em class="insb i${a.ins==="건보"?"g":a.ins==="보호"?"b":"t"}" title="보험 구분">${a.ins}</em>`:""); const badges=kind==="emg"?`${ct.sms?`<em class="cti ${ct.sms==="O"?"o":"x"}" title="문자-전날 ${ct.sms}">✉</em>`:""}${ct.call?`<em class="cti ${ct.call==="O"?"o":"x"}" title="전화-당일 ${ct.call}">☎</em>`:""}${ct.ok?`<em class="cti ${ct.ok==="O"?"o":"x"}" title="내원가능 ${ct.ok}">${ct.ok}</em>`:""}`:"";
       const icx=kind==="pt"&&!LOST_ST.has(a.status);
       return `<button class="ap ${ST_CLASS[a.status]||""}${icx?" icol":""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="${icx?`--ic:${icOf(a.item)};`:""}top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
         <b>${icx&&a.status==="완료"?'<em class="okm" title="완료">✓</em>':""}${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item].filter(Boolean).map(esc).join(" / "):`${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.needle_doctor?"니들링 "+esc(a.needle_doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span></button>`; }).join("");
@@ -1526,7 +1528,7 @@ async function renderSched(kind,keep){
   saveLast();
   if($("srf")) $("srf").onclick=()=>{ $("srf").disabled=true; renderSched(kind,true).then(()=>toast("최신 예약으로 새로고침했습니다")); };
   // 자동 새로고침: 30초마다 바뀐 예약이 있는지 보고, 입력 중이 아니면 화면 위치 그대로 다시 그림
-  if(grid){ const sig=(A,B)=>JSON.stringify([(A||[]).map(a=>[a.id,a.appt_date,a.start_min,a.minutes,a.lane_id,a.status,a.chart_no,a.patient_name,a.item,a.staff,a.doctor,a.needle_doctor,a.is_new,a.inpatient,a.phone,a.exam_no,a.contact]).sort((x,y)=>x[0]-y[0]),(B||[]).map(b=>[b.id,b.bdate,b.dows,b.start_min,b.end_min,b.lane_id,b.note]).sort((x,y)=>x[0]-y[0])]);
+  if(grid){ const sig=(A,B)=>JSON.stringify([(A||[]).map(a=>[a.id,a.appt_date,a.start_min,a.minutes,a.lane_id,a.status,a.chart_no,a.patient_name,a.item,a.staff,a.doctor,a.needle_doctor,a.is_new,a.inpatient,a.phone,a.exam_no,a.ins,a.contact]).sort((x,y)=>x[0]-y[0]),(B||[]).map(b=>[b.id,b.bdate,b.dows,b.start_min,b.end_min,b.lane_id,b.note]).sort((x,y)=>x[0]-y[0])]);
     const base=sig(appts,dbBlocks); const myView=S.view; let busy=false;
     const idle=()=>!document.hidden&&!$("dlg")?.open&&!document.querySelector(".stmenu,.dragging")&&!(document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)&&main.contains(document.activeElement));
     S.schedPoll=setInterval(async()=>{ if(busy||S.view!==myView) return; busy=true;
@@ -1573,7 +1575,8 @@ function apptDialog(ctx, a, preset){
       <div class="field"><label for="a_s">담당자 ${kind==="emg"?"":"(치료사)"}</label><select id="a_s" ${ro}><option value="">-</option>${staffNames.map(n=>`<option ${n===v.staff?"selected":""}>${esc(n)}</option>`).join("")}${v.staff&&!staffNames.includes(v.staff)?`<option value="${esc(v.staff)}" selected>${esc(v.staff)} (퇴사)</option>`:""}</select></div>
       ${kind==="emg"?`<div class="field"><label for="a_dr">담당 원장</label><select id="a_dr" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>`:`<div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="${v.minutes}" inputmode="numeric" ${ro}></div>`}
       ${kind==="emg"?`<div class="field"><label for="a_nd">니들링 원장</label><select id="a_nd" ${ro}><option value="">-</option>${docNames.map(n=>`<option ${n===v.needle_doctor?"selected":""}>${esc(n)}</option>`).join("")}</select></div><div class="field"><label for="a_m">소요(분)</label><input id="a_m" value="30" readonly title="근전도는 30분 고정" style="background:var(--sunk)"></div>
-        <div class="field"><label for="a_no">검사 회차</label><select id="a_no" ${ro}><option value="">자동${v._n?` (지금 ${((v._n-1)%2)+1}차)`:""}</option><option value="1" ${+v.exam_no===1?"selected":""}>1차</option><option value="2" ${+v.exam_no===2?"selected":""}>2차</option></select></div>
+        <div class="field"><label for="a_no">검사 회차</label><select id="a_no" ${ro}><option value="">자동${v._n?` (지금 ${((v._n-1)%2)+1}차)`:""}</option><option value="1" ${+v.exam_no===1?"selected":""}>1차</option><option value="2" ${+v.exam_no===2?"selected":""}>2차</option><option value="3" ${+v.exam_no===3?"selected":""}>3차</option><option value="4" ${+v.exam_no===4?"selected":""}>4차</option></select></div>
+        <div class="field"><label for="a_ins">보험 구분</label><select id="a_ins" ${ro}><option value="">-</option>${["건보","보호","TA"].map(k=>`<option value="${k}" ${v.ins===k?"selected":""}>${k==="보호"?"보호 (의료급여)":k==="TA"?"TA (자동차보험)":"건보 (건강보험)"}</option>`).join("")}</select></div>
         <div class="field"><label for="a_ph">전화번호</label><input id="a_ph" value="${esc(v.phone||"")}" inputmode="tel" placeholder="010-0000-0000" ${ro}></div>
         <div class="field"><label>연락 체크</label><div style="display:flex;gap:6px;flex-wrap:wrap">${CT_KEYS.map(([k,l])=>`<label class="ctsel">${l}<select data-ctk="${k}" ${ro}><option value="">-</option><option ${ct[k]==="O"?"selected":""}>O</option><option ${ct[k]==="X"?"selected":""}>X</option></select></label>`).join("")}</div></div>`:""}
       <div class="field"><label for="a_st">상태</label><select id="a_st" ${ro}>${["예약","완료","변경","취소","노쇼"].map(s=>`<option ${s===v.status?"selected":""}>${s}</option>`).join("")}</select></div>
@@ -1598,7 +1601,7 @@ function apptDialog(ctx, a, preset){
     const row={branch_id:S.branch,kind,appt_date:$("a_d").value,start_min:start,minutes,lane_id:+$("a_l").value||null,item:$("a_i").value,
       chart_no:$("a_c").value.trim()||null,patient_name:$("a_n").value.trim()||null,staff:$("a_s").value.trim()||null,
       doctor:$("a_dr")?($("a_dr").value||null):null, needle_doctor:$("a_nd")?($("a_nd").value||null):null,status:$("a_st").value,is_new:$("a_new").checked,inpatient:$("a_in").checked,note:$("a_note").value.trim()||null};
-    if(kind==="emg"){ row.exam_no=$("a_no").value?+$("a_no").value:null; row.phone=$("a_ph").value.trim()||null; const c={}; document.querySelectorAll("[data-ctk]").forEach(x=>{ if(x.value) c[x.dataset.ctk]=x.value; }); row.contact=c; }
+    if(kind==="emg"){ row.exam_no=$("a_no").value?+$("a_no").value:null; row.ins=$("a_ins").value||null; row.phone=$("a_ph").value.trim()||null; const c={}; document.querySelectorAll("[data-ctk]").forEach(x=>{ if(x.value) c[x.dataset.ctk]=x.value; }); row.contact=c; }
     if(!$("a_ok").dataset.force && !LOST_ST.has(row.status)){
       $("a_ok").disabled=true; const w=[...blockHit(ctx.blocks||[],row).map(b=>"예약 불가 시간: "+blkLabel(b)), ...await apptConflicts(row, a?.id, lanes)]; $("a_ok").disabled=false;
       if(w.length){ $("a_err").innerHTML=`<b>⚠ 확인해 주세요</b><br>${w.map(x=>"· "+esc(x)).join("<br>")}<br><span class="meta">확인했으면 [그래도 저장]을 누르세요.</span>`; const b=$("a_ok"); b.dataset.force=1; b.textContent="그래도 저장"; b.classList.add("warnbtn"); return; } }
@@ -3822,7 +3825,7 @@ function bindContact(appts){
 
 // ── 예약 복사·붙여넣기: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 빈 칸 위에서 Ctrl+V) · Ctrl 누르고 끌면 복사 ──
 S.apptClip ||= {};
-const CLIP_F=["chart_no","patient_name","item","minutes","staff","doctor","needle_doctor","inpatient","note","phone","exam_no"];
+const CLIP_F=["chart_no","patient_name","item","minutes","staff","doctor","needle_doctor","inpatient","note","phone","exam_no","ins"];
 function apptCopy(kind,a){ const c={}; CLIP_F.forEach(k=>{ if(a[k]!==undefined) c[k]=a[k]; }); S.apptClip[kind]=c; clipBar(kind); toast(`복사했습니다: ${[a.chart_no,a.patient_name,a.item].filter(Boolean).join(" ")} — 빈 칸 오른쪽 클릭 또는 Ctrl+V`); }
 function clipBar(kind){ document.querySelector(".clipbar")?.remove(); const c=S.apptClip[kind]; if(!c||!document.querySelector(".sc-grid")) return;
   const b=document.createElement("div"); b.className="clipbar"; b.innerHTML=`📋 <b>${esc([c.chart_no,c.patient_name].filter(Boolean).join(" ")||"(이름 없음)")}</b> ${esc(c.item||"")} 복사됨 · 붙여넣을 빈 칸에서 <b>오른쪽 클릭</b> 또는 <b>Ctrl+V</b> <button type="button" class="btn ghost sm" id="clipx">복사 취소 (Esc)</button>`;
