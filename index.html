@@ -660,11 +660,11 @@ const MENU_DEFAULT={
   "수술":["inv",...MENU_BASE],
   "경영지원":[...MENU_BASE],
   "의료진":[...MENU_BASE,"std"]};
-MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
-const MENU_DEPTS=["원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
-const menuDept=()=>S.me.level===5?"의사":S.me.dept;
+MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK.map(([k])=>k); // 3등급 팀장: 처음엔 전부 // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
+const MENU_DEPTS=["팀장","원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
+const menuDept=()=>S.me.level===5?"의사":S.me.level===3?"팀장":S.me.dept;
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
-function fullMenu(){ return (seeAll()&&S.me.level!==5) || S.me.dept==="총괄"; }
+function fullMenu(){ return (seeAll()&&S.me.level!==5&&S.me.level!==3) || S.me.dept==="총괄"; }
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
 const MTX_SLOT = ["gt-os","gt-cs"]; // 수기치료 시간표를 쓰는 지점 (운정·철산)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
@@ -826,8 +826,8 @@ function render(){
   const lv=S.me.level;
   const itemOk={dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
-    dpay:seeAll()||S.me.dept==="원무",users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+    dpay:seeAll()||S.me.dept==="원무",sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
+  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(deptMenus(menuDept()));
   const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg"))));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
@@ -837,9 +837,10 @@ function render(){
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
-  if(full) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
+  if(full||S.me.level===3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
   else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
+  grp("🔒 보안",g=>add("sec",{grp:g}));
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept};
   const baseV=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view;
@@ -864,7 +865,7 @@ function render(){
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector("span").textContent=close?"▸":"▾"; });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2) renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 보안 자료",title:"2등급 이상만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다"}); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -1282,9 +1283,9 @@ async function renderUsers(){
       ${list.map((u,ui)=>`<tr${ui>=5?` class="accmore"${S.accOpen?"":" hidden"}`:""}><td>${esc(u.name)}</td><td class="num">${esc(u.login_id)}</td><td>${lvName(u.level)}</td><td>${u.level===1?"전 지점":esc(brName(u.branch_id))}</td><td>${esc(u.dept||"-")}</td><td>${esc(u.title||"-")}</td>${lv===1?`<td class="num">${u.pw_changed_at?esc(new Date(u.pw_changed_at).toLocaleDateString("ko-KR")):`<span class="pill wait">초기 비밀번호</span>`}</td>`:""}<td><span class="pill ${u.active?"ok":"off"}">${u.active?"사용":"중지"}</span></td>
         <td>${(lv===1||u.level>=3)?`<button class="btn ghost sm" data-edit="${u.user_id}">수정</button> <button class="btn ghost sm" data-pw="${u.user_id}">비밀번호 재설정</button>`:""}</td></tr>`).join("")}
     </tbody></table></div>${list.length>5?`<button type="button" class="btn ghost sm" id="accTog" style="margin-top:8px">${S.accOpen?"▴ 접기":`▾ 나머지 ${list.length-5}명 펼치기`}</button>`:""}</section>
-    ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 4등급 직원과 의사(5등급)에게 보이는 메뉴 · 1·2·3등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
+    ${lv===1?`<section class="panel"><h3>부서별 메뉴 <span>${esc(brName(S.branch))} · 팀장(3등급)·4등급 직원·의사(5등급)에게 보이는 메뉴 · 1·2등급과 총괄 부서는 전부 보입니다 · 마이페이지는 항상 보입니다</span></h3>
       <div class="tbl-box"><table class="menutab"><thead><tr><th>부서</th>${MENU_PICK.map(([,t])=>`<th>${t}</th>`).join("")}</tr></thead><tbody>
-      ${MENU_DEPTS.map(d=>{ const m=deptMenus(d,bset?.raw?.menus); return `<tr><td><b>${d}</b>${d==="의사"?' <small class="meta">5등급</small>':""}</td>${MENU_PICK.map(([k,t])=>`<td><input type="checkbox" data-mn="${d}|${k}" ${m.includes(k)?"checked":""} aria-label="${d} ${t}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
+      ${MENU_DEPTS.map(d=>{ const m=deptMenus(d,bset?.raw?.menus); return `<tr><td><b>${d}</b>${d==="의사"?' <small class="meta">5등급</small>':d==="팀장"?' <small class="meta">3등급</small>':""}</td>${MENU_PICK.map(([k,t])=>`<td><input type="checkbox" data-mn="${d}|${k}" ${m.includes(k)?"checked":""} aria-label="${d} ${t}"></td>`).join("")}</tr>`; }).join("")}</tbody></table></div>
       <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap"><button class="btn sm" id="mn_save">메뉴 저장</button><button class="btn ghost sm" id="mn_reset">기본값으로</button><span class="meta">메뉴만 숨깁니다. 실제 자료 권한(보기·고치기)은 등급·부서 기준 그대로입니다.</span></div></section>`:""}
     <section class="panel"><h3>원장 목록 <span>마감일지의 원장별 칸에 나옵니다</span></h3>
       <form class="inline-form" id="df"><div class="field"><label for="d_name">원장 이름</label><input id="d_name" placeholder="예: 홍길동 원장" required></div><button class="btn" type="submit">원장 추가</button></form>
