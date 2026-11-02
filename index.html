@@ -3547,9 +3547,9 @@ const ALERT_DEFS=[
 async function loadBranchSettings(branch=S.branch){
   const {data}=await sb.from("branch_settings").select("data").eq("branch_id",branch).maybeSingle();
   const d=data?.data||{}; const alerts={}; ALERT_DEFS.forEach(a=>{ const s=(d.alerts||{})[a.k]||{}; alerts[a.k]={on:s.on!==false, th:s.th??a.th}; });
-  return {alerts, sat:d.sat??0.5, holidays:Array.isArray(d.holidays)?d.holidays:[], raw:d};
+  return {alerts, sat:d.sat??1, sun:d.sun??1, holidays:Array.isArray(d.holidays)?d.holidays:[], raw:d};
 }
-function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); if(dow===0) return 0; if(set.holidays.some(h=>h.d===iso)) return 0; return dow===6?+set.sat:1; }
+function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); if(set.holidays.some(h=>h.d===iso)) return 0; return dow===0?+(set.sun??1):dow===6?+set.sat:1; }
 function monthWorkdays(ym,set,cut){ const R=monthRange(ym); let done=0,left=0,all=0; for(let i=1;i<=R.days;i++){ const d=`${ym}-${String(i).padStart(2,"0")}`; const w=dayWeight(d,set); all+=w; if(cut&&d<=cut) done+=w; else left+=w; } return {all,done,left}; }
 function goalActual(A){ return {total:A.total,newP:A.newP,visits:A.visits,pt:A.dosu+A.shock,nonpay:A.nonpay,npRate:A.npRate*100}; }
 const fmtGoal=(m,v)=>m.money?wonMan(Math.round(v)):m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
@@ -3643,6 +3643,7 @@ async function renderGoals(){
     <div class="grid2" style="align-items:start">
       <section class="panel"><h3>영업일 <span>${R.m}월 ${fmtN(W.all)}일 · 일요일 휴무 · 월말 예상 계산에 씁니다</span></h3>
         <div class="field" style="max-width:260px"><label for="gsat">토요일은</label><select id="gsat" ${ed1?"":"disabled"}>${[[0,"휴무 (0일)"],[0.5,"반일 (0.5일)"],[1,"종일 (1일)"]].map(([v,l])=>`<option value="${v}" ${+set.sat===v?"selected":""}>${l}</option>`).join("")}</select></div>
+        <div class="field" style="max-width:260px"><label for="gsun">일요일은</label><select id="gsun" ${ed1?"":"disabled"}>${[[0,"휴무 (0일)"],[0.5,"반일 (0.5일)"],[1,"종일 (1일)"]].map(([v,l])=>`<option value="${v}" ${+set.sun===v?"selected":""}>${l}</option>`).join("")}</select></div>
         <h4 style="font-size:13px;margin:12px 0 6px">${st.ym.slice(0,4)}년 공휴일·휴진일 <span class="meta">직접 넣습니다</span></h4>
         <div class="tbl-box" style="max-height:260px"><table><tbody>${hol.map(h=>`<tr><td class="num">${h.d.slice(5).replace("-","/")} (${WD[new Date(h.d+"T00:00:00Z").getUTCDay()]})</td><td>${esc(h.n||"")}</td><td>${ed1?`<button class="btn ghost sm" data-hdel="${h.d}">빼기</button>`:""}</td></tr>`).join("")||`<tr><td class="meta">아직 없습니다</td></tr>`}</tbody></table></div>
         ${ed1?`<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><input type="date" id="hd" style="height:32px"><input id="hn" placeholder="이름 (예: 성탄절)" style="height:32px;padding:0 8px;width:150px"><button class="btn sm" id="hadd">추가</button></div>`:""}</section>
@@ -3660,6 +3661,7 @@ async function renderGoals(){
   const saveSet=async(mut)=>{ const d=JSON.parse(JSON.stringify(set.raw||{})); mut(d); const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); if(error) return toast(errMsg(error)); toast("저장됨"); keep(); };
   if(ed1){
     $("gsat").onchange=()=>saveSet(d=>{ d.sat=+$("gsat").value; });
+    if($("gsun")) $("gsun").onchange=()=>saveSet(d=>{ d.sun=+$("gsun").value; });
     $("hadd").onclick=()=>{ const dd=$("hd").value; if(!dd) return toast("날짜를 고르세요"); saveSet(d=>{ d.holidays=(d.holidays||[]).filter(h=>h.d!==dd).concat([{d:dd,n:$("hn").value.trim()}]); }); };
     main.querySelectorAll("[data-hdel]").forEach(b=>b.onclick=()=>saveSet(d=>{ d.holidays=(d.holidays||[]).filter(h=>h.d!==b.dataset.hdel); }));
     main.querySelectorAll("[data-aon]").forEach(el=>el.onchange=()=>saveSet(d=>{ d.alerts ||= {}; (d.alerts[el.dataset.aon] ||= {}).on=el.checked; }));
