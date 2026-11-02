@@ -233,6 +233,7 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .gbar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
 .gbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
 .goal .gd{font-size:12px;color:var(--muted)}
+.projwrap{margin-bottom:12px}.projwrap .projline{margin-bottom:8px}.projgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.projgrid>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}.projgrid .k{font-size:12.5px;color:var(--muted);font-weight:600}.projgrid b{font-size:19px;color:var(--navy)}.projgrid small{font-size:11.5px;color:var(--muted)}@media (max-width:900px){.projgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
 table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
@@ -3579,12 +3580,14 @@ async function loadBranchSettings(branch=S.branch){
 }
 function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); if(set.holidays.some(h=>h.d===iso)) return 0; return dow===0?+(set.sun??1):dow===6?+set.sat:1; }
 function monthWorkdays(ym,set,cut){ const R=monthRange(ym); let done=0,left=0,all=0; for(let i=1;i<=R.days;i++){ const d=`${ym}-${String(i).padStart(2,"0")}`; const w=dayWeight(d,set); all+=w; if(cut&&d<=cut) done+=w; else left+=w; } return {all,done,left}; }
-function goalActual(A){ const pr=(S.ptPrice||{})[S.branch]||{}; const ptAmt=Object.entries(A.pt||{}).reduce((t,[k,n])=>t+(+n||0)*(pr[k]||0),0);
-  return {total:A.total,out:A.out,inpat:A.inpat,newP:A.newP,visits:A.visits,dosu:A.dosu,shock:A.shock,pt:A.dosu+A.shock,ptAmt,nonpay:A.nonpay,npRate:A.npRate*100}; }
+function goalActual(A){ const pr=(S.ptPrice||{})[S.branch]||{}; const amt=f=>Object.entries(A.pt||{}).filter(([k])=>f(k)).reduce((t,[k,n])=>t+(+n||0)*(pr[k]||0),0); const dosuAmt=amt(k=>/^도수/.test(k)), shockAmt=amt(k=>!/^도수/.test(k)&&k!=="도수상담"), ptAmt=dosuAmt+shockAmt;
+  return {total:A.total,out:A.out,inpat:A.inpat,newP:A.newP,visits:A.visits,dosu:A.dosu,shock:A.shock,pt:A.dosu+A.shock,ptAmt,dosuAmt,shockAmt,nonpay:A.nonpay,npRate:A.npRate*100}; }
 const fmtGoal=(m,v)=>m.money?won(Math.round(v))+"원":m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
 const goalSlot=()=>`<div id="projbox"></div><div id="goalbox"></div><div id="alertbox"></div>`;
-function drawProj(G){ const el=$("projbox"); if(!el||!G) return; const t=G.items.find(i=>i.m.k==="total"); const m=+G.ym.slice(5);
-  el.innerHTML=`<div class="projline"><span class="pk">${m}월 예상 매출</span><b class="num">${t&&t.proj!=null?won(Math.round(t.proj))+"원":"마감일지가 들어오면 계산됩니다"}</b>${t&&t.proj!=null?`<small>지금까지 ${won(Math.round(t.actual))}원 · 남은 영업일 ${fmtN(G.W.left)}일 반영</small>`:""}</div>`; }
+function drawProj(G){ const el=$("projbox"); if(!el||!G) return; const m=+G.ym.slice(5); const P=k=>G.projOf?G.projOf(k):null; const tp=P("total");
+  const sub=[["nonpay","비급여"],["out","외래 진료비"],["inpat","입원 진료비"],["dosuAmt","도수치료 예상매출"],["shockAmt","충격파 예상매출"]];
+  el.innerHTML=`<section class="projwrap"><div class="projline"><span class="pk">${m}월 예상 매출 (총진료비)</span><b class="num">${tp!=null?won(Math.round(tp))+"원":"마감일지가 들어오면 계산됩니다"}</b>${tp!=null?`<small>지금까지 ${won(Math.round(G.act.total||0))}원 · 남은 영업일 ${fmtN(G.W.left)}일 반영</small>`:""}</div>
+    ${tp!=null?`<div class="projgrid">${sub.map(([k,l])=>`<div><span class="k">${l}</span><b class="num">${won(Math.round(P(k)||0))}원</b><small>지금까지 ${won(Math.round(G.act[k]||0))}원</small></div>`).join("")}</div><p class="meta" style="margin:6px 2px 0">예상 = 지금까지 금액 ÷ 지난 영업일 × 이번 달 전체 영업일 · 도수·충격파는 마감일지 치료별 건수 × 치료 단가</p>`:""}</section>`; }
 
 async function computeAlerts(set, opt={}){
   const today=kstToday(), out=[], lv=S.me.level, A=set.alerts;
@@ -3633,7 +3636,8 @@ async function computeGoal(set){
   const W=monthWorkdays(ym,set,cut);
   const items=GOAL_METRICS.map(m=>{ const target=T[m.k]||0, a=act[m.k]||0; const dn=W.done>0?W.done:closed.length; const proj=m.ratio?null:(dn?a+a/dn*W.left:null); const need=m.ratio?null:(W.left?Math.max(0,(target-a)/W.left):null);
     return {m,target,actual:a,proj,need,pct:target?(m.ratio?a/target:a/target)*100:null}; });
-  return {ym,items,W,cut,has:items.some(i=>i.target>0)};
+  const dn=W.done>0?W.done:closed.length; const projOf=k=>dn?(act[k]||0)+(act[k]||0)/dn*W.left:null;
+  return {ym,items,W,cut,act,projOf,has:items.some(i=>i.target>0)};
 }
 function drawGoal(G,id="goalbox"){
   const el=$(id); if(!el) return; const lv=S.me.level;
