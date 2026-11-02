@@ -233,6 +233,7 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .gbar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
 .gbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.45}
 .goal .gd{font-size:12px;color:var(--muted)}
+.projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
 .tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
@@ -977,7 +978,6 @@ async function renderDash(){
   const projM=cD?Math.round(T.total/cD*R.days):0;
   const kpis=[
     {k:"총진료비",v:won(T.total),u:"원",d:isCurMonth?`마감 ${cD}일 · 하루 평균 ${won(Math.round(cD?T.total/cD:0))}원`:`${per}평균 ${won(Math.round(T.total/B.length))}원`,lead:true},
-    ...(isCurMonth?[{k:`${R.m}월 예상 매출`,v:cD?wonMan(projM):"–",u:"",d:cD?`하루 평균 × ${R.days}일 · ${+lastC.slice(5,7)}/${+lastC.slice(8)}까지 마감 ${cD}일 기준${cD<5?" (초반이라 변동 큼)":""}`:"이번 달 마감일지가 아직 없습니다"}]:[]),
     {k:"비급여 비중",v:(T.npRate*100).toFixed(1)+"%",u:"",d:`비급여 ${won(T.nonpay)}원`},
     {k:"건당진료비",v:won(Math.round(T.perVisit)),u:"원",d:`외래 건당 ${won(Math.round(T.outPerVisit))}원`},
     {k:"총 진료 인원",v:won(T.visits),u:"명",d:`신환 ${won(T.newP)} · 재진 ${won(T.reP)}`+chg(a=>a.visits)},
@@ -1036,14 +1036,11 @@ async function renderDashOne(seg){
   const nav=`<div class="monthnav"><button class="btn ghost sm" id="op" aria-label="전날">◀</button><b class="num" style="min-width:130px">${d.slice(0,4)}. ${+d.slice(5,7)}. ${+d.slice(8)} (${WD[dd.getUTCDay()]})</b><button class="btn ghost sm" id="on" aria-label="다음날" ${d>=today?"disabled":""}>▶</button></div><input type="date" id="od" value="${d}" max="${today}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`;
   const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
   const bind=()=>{ if(!$("op")) return; bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
-  const pjM=(()=>{ const ym=d.slice(0,7), MR=monthRange(ym); const M=rows.filter(x=>x.close_date.startsWith(ym)&&+x.total>0); const sum=M.reduce((t,x)=>t+(+x.total),0), n=M.length; return n?`<section class="kpis"><div class="kpi lead"><span class="k">${MR.m}월 예상 매출</span><span class="v num">${wonMan(Math.round(sum/n*MR.days))}</span><span class="d">${MR.m}월 누적 ${wonMan(sum)} · 마감 ${n}일 하루 평균 ${wonMan(Math.round(sum/n))} × ${MR.days}일</span></div></section>`:""; })();
-  if(!r){ main.innerHTML=`<div class="wrap">${head}${pjM}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
+  if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
   const A=aggRows([r]), P=prevR?aggRows([prevR]):null, W=wkR?aggRows([wkR]):null;
   const cmp=(f,fmt=won)=>{ const c=f(A); const parts=[]; [[P,prevR&&(prevR.close_date===addDays(d,-1)?"전일":`직전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)})`)],[W,"지난주 같은 요일"]].forEach(([X,lab])=>{ if(!X) return; const p=f(X); if(!p) return; const x=(c-p)/p; parts.push(`${lab} <span class="${x>=0?"up":"down"}">${x>=0?"▲":"▼"}${Math.abs(x*100).toFixed(1)}%</span>`); }); return parts.join(" · "); };
   const kpis=[
     {k:"총진료비",v:won(A.total),u:"원",d:cmp(a=>a.total)||`외래 ${won(A.out)} · 입원 ${won(A.inpat)}`,lead:true},
-    (()=>{ const ym=d.slice(0,7), MR=monthRange(ym); const M=rows.filter(x=>x.close_date.startsWith(ym)&&x.close_date<=d&&+x.total>0); const sum=M.reduce((t,x)=>t+(+x.total),0), n=M.length; const done=ym<today.slice(0,7)&&d===MR.end;
-      return {k:`${MR.m}월 예상 매출`,v:n?wonMan(done?sum:Math.round(sum/n*MR.days)):"–",u:"",d:n?`${MR.m}월 누적 ${wonMan(sum)} · 마감 ${n}일 하루 평균 ${wonMan(Math.round(sum/n))} × ${MR.days}일${n<5?" (초반이라 변동 큼)":""}`:`${MR.m}월 마감일지가 아직 없습니다`}; })(),
     {k:"비급여 비중",v:(A.npRate*100).toFixed(1)+"%",u:"",d:`비급여 ${won(A.nonpay)}원`},
     {k:"건당진료비",v:won(Math.round(A.perVisit)),u:"원",d:`외래 건당 ${won(Math.round(A.outPerVisit))}원`},
     {k:"총 진료 인원",v:won(A.visits),u:"명",d:`신환 ${won(A.newP)} · 재진 ${won(A.reP)}`+(cmp(a=>a.visits)?" · "+cmp(a=>a.visits):"")},
@@ -3556,7 +3553,9 @@ function dayWeight(iso,set){ const dow=new Date(iso+"T00:00:00Z").getUTCDay(); i
 function monthWorkdays(ym,set,cut){ const R=monthRange(ym); let done=0,left=0,all=0; for(let i=1;i<=R.days;i++){ const d=`${ym}-${String(i).padStart(2,"0")}`; const w=dayWeight(d,set); all+=w; if(cut&&d<=cut) done+=w; else left+=w; } return {all,done,left}; }
 function goalActual(A){ return {total:A.total,newP:A.newP,visits:A.visits,pt:A.dosu+A.shock,nonpay:A.nonpay,npRate:A.npRate*100}; }
 const fmtGoal=(m,v)=>m.money?wonMan(Math.round(v)):m.ratio?(+v).toFixed(1)+"%":won(Math.round(v))+(m.u||"");
-const goalSlot=()=>`<div id="goalbox"></div><div id="alertbox"></div>`;
+const goalSlot=()=>`<div id="projbox"></div><div id="goalbox"></div><div id="alertbox"></div>`;
+function drawProj(G){ const el=$("projbox"); if(!el||!G) return; const t=G.items.find(i=>i.m.k==="total"); const m=+G.ym.slice(5);
+  el.innerHTML=`<div class="projline"><span class="pk">${m}월 예상 매출</span><b class="num">${t&&t.proj!=null?won(Math.round(t.proj))+"원":"마감일지가 들어오면 계산됩니다"}</b>${t&&t.proj!=null?`<small>지금까지 ${won(Math.round(t.actual))}원 · 남은 영업일 ${fmtN(G.W.left)}일 반영</small>`:""}</div>`; }
 
 async function computeAlerts(set, opt={}){
   const today=kstToday(), out=[], lv=S.me.level, A=set.alerts;
@@ -3621,7 +3620,7 @@ function drawGoal(G,id="goalbox"){
 const fmtN=n=>Number.isInteger(n)?String(n):(+n).toFixed(1);
 async function fillGoalsAlerts(){
   if(!S.branch||S.branch==="__hq"||!$("alertbox")) return;
-  try{ const set=await loadBranchSettings(); const G=canDash()&&$("goalbox")?await computeGoal(set):null; if(G) drawGoal(G); const L=await computeAlerts(set,{goal:G}); drawAlerts(L); }catch(e){ console.warn("alerts",e); }
+  try{ const set=await loadBranchSettings(); const G=canDash()&&$("goalbox")?await computeGoal(set):null; if(G){ drawProj(G); drawGoal(G); } const L=await computeAlerts(set,{goal:G}); drawAlerts(L); }catch(e){ console.warn("alerts",e); }
 }
 
 // ── 목표·알림 설정 ──
