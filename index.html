@@ -245,7 +245,8 @@ table.ampm td.in input{width:100%;height:32px;border:1px dashed var(--line);bord
 .projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
 table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
 [data-cq].saved,[data-co].saved{background:color-mix(in srgb,var(--good) 14%,var(--surface))}[data-cq].err,[data-co].err{background:color-mix(in srgb,var(--bad) 14%,var(--surface))}
-.md td.mdoff,td.mdoff{background:#f6d5d1;color:#9b2c22;font-weight:600}.md th.wk-sun,th.wk-sun{color:#d93025}.md th.wk-sat,th.wk-sat{color:#1a73e8}th small.mdwd{display:block;font-size:11px;font-weight:500;opacity:.8}
+.md td.mdoff,td.mdoff{background:#f6d5d1;color:#9b2c22;font-weight:600}td.mdoffr{background:#fde4ef;color:#a3245c;font-weight:600}td.mdlv{background:#fff0d9;color:#a35b00;font-weight:600}td.mdD{background:#e3efff;color:#1a4fa0}td.mdE{background:#efe7fb;color:#5b3d99}td.mdN{background:#e2e8f0;color:#334155}
+.mdbrush .brush.mdD{--sc:#1a5fd0}.mdbrush .brush.mdE{--sc:#7656b8}.mdbrush .brush.mdN{--sc:#475569}.mdbrush .brush.mdoff{--sc:#c0392b}.mdbrush .brush.mdlv{--sc:#d17a12}.mdbrush .brush.mdoffr{--sc:#e0609a}.mdpaint td[data-mm]{cursor:crosshair}.md th.wk-sun,th.wk-sun{color:#d93025}.md th.wk-sat,th.wk-sat{color:#1a73e8}th small.mdwd{display:block;font-size:11px;font-weight:500;opacity:.8}
 .mdcal{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:4px 0 10px}.mdcal-h,.mdcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.mdcal-h div{padding:6px;text-align:center;font-weight:700;font-size:13px;background:var(--sunk)}.mdcal-h .sat,.mdcal-c .dn.sat{color:#1a73e8}.mdcal-h .sun,.mdcal-c .dn.sun{color:#d93025}
 .mdcal-c{min-height:96px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:4px 5px;font-size:12px;line-height:1.35}.mdcal-c:nth-child(7n+1){border-left:none}.mdcal-c.out{background:var(--sunk)}.mdcal-c.today{background:color-mix(in srgb,var(--navy) 7%,var(--surface))}.mdcal-c .dn{font-weight:700;font-size:13px;margin-bottom:2px}
 .mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
@@ -2090,7 +2091,7 @@ function mdRender(src,opt={}){
   const E=!!opt.edit; const L=i=>E?` data-ln="${i}"`:"";
   const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
   const lines=String(src||"").split(/\r?\n/); let out="", list=null, tbl=null;
-  const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); if(!m&&/^off\b/i.test(c)) return `<td data-ci="${ci}" class="mdoff">${inl(c)}</td>`; return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
+  const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); if(!m&&mdCls(c)) return `<td data-ci="${ci}" class="${mdCls(c)}">${inl(c)}</td>`; return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
   const DT=/^(\d{1,2})\/(\d{1,2})$/;
   const mdDay=c=>{ const [m,d]=c.split("/").map(Number); const cm=+kstToday().slice(5,7); let y=+kstToday().slice(0,4); if(m-cm>6) y--; else if(cm-m>6) y++; return new Date(Date.UTC(y,m-1,d)).getUTCDay(); };
   const mdWd=c=>WD[mdDay(c)]; const mdWk=c=>{ const w=mdDay(c); return w===0?' class="wk-sun"':w===6?' class="wk-sat"':""; };
@@ -2143,6 +2144,9 @@ function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, 
       bar.querySelector("[data-mcal]").onclick=()=>{ cal=!cal; CAL[k]=cal; if(cal&&!sel){ sel=ms.includes(cur)?cur:ms[ms.length-1]; M[k]=sel; } draw(); }; };
     tb.before(bar); tb.after(cbox); draw(); }); }
 // 업무게시판: 보기 화면에서 바로 고치기 (표 칸·글 줄)
+// 근무 코드처럼 칸 색 (업무게시판 날짜표)
+const mdCls=c=>{ const t=String(c||"").trim(); return /^off/i.test(t)?(/신청/.test(t)?"mdoffr":"mdoff"):/연차|반차/.test(t)?"mdlv":/^D(\b|\/|\s|$)/.test(t)?"mdD":/^E(\b|\/|\s|$)/.test(t)?"mdE":/^N(\b|\/|\s|$)/.test(t)?"mdN":""; };
+const MD_BRUSH=["D","E","N","off","연차","off/신청"];
 function bindMdEdit(box,doc,rerender){
   if(!box) return; let lines=String(doc.body||"").split(/\r?\n/); let timer=null, busy=false, dirty=false;
   const status=$("mdst"); const show=t=>{ if(status) status.textContent=t; };
@@ -2167,7 +2171,20 @@ function bindMdEdit(box,doc,rerender){
       const vis=x=>x&&x.style.display!=="none"; if(dir==="down") n=tr.nextElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="up") n=tr.previousElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="right"){ n=td.nextElementSibling; while(n&&!vis(n)) n=n.nextElementSibling; } else { n=td.previousElementSibling; while(n&&!vis(n)) n=n.previousElementSibling; }
       if(n&&(n.tagName==="TH"||n.classList.contains("mdck")||n.classList.contains("mdx"))) n=null;
       if(n&&n.dataset.ci!=null) setTimeout(()=>cellEdit(n),0); }); };
-  box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
+  // 근무표처럼 코드 골라 칸 누르기 (끌면 여러 칸)
+  const BR=window.__mdBrush ||= {v:null}; let painting=false;
+  const paint=td=>{ if(!td||td.dataset.mm==null||td.tagName!=="TD") return false; const ln=+td.parentElement.dataset.ln, ci=+td.dataset.ci; const v=BR.v==="__clear"?"":BR.v; setCell(ln,ci,v); td.textContent=v; td.className=mdCls(v); queue(); return true; };
+  box.querySelectorAll('[data-mdates]').forEach(tb=>{ if(tb.previousElementSibling?.classList?.contains("mdbrush")) return; const bar=document.createElement("div"); bar.className="brushes mdbrush";
+    const draw=()=>{ bar.innerHTML=`<span class="meta">근무 코드</span>${MD_BRUSH.map(v=>`<button type="button" class="brush ${mdCls(v)}" data-mbr="${esc(v)}" aria-pressed="${BR.v===v}">${esc(v)}</button>`).join("")}<input data-mbc placeholder="직접 입력 (예: D 어시)" value="${BR.v&&!MD_BRUSH.includes(BR.v)&&BR.v!=="__clear"?esc(BR.v):""}" style="height:30px;padding:0 8px;width:150px"><button type="button" class="brush clear" data-mbr="__clear" aria-pressed="${BR.v==="__clear"}">지우기</button>${BR.v!=null?`<button type="button" class="btn ghost sm" data-mbx>선택 해제</button><span class="meta">칸을 누르거나 끌면 "${esc(BR.v==="__clear"?"지우기":BR.v)}"로 채워집니다</span>`:`<span class="meta">코드를 고른 뒤 날짜 칸을 누르거나 끌어서 채우세요</span>`}`;
+      bar.querySelectorAll("[data-mbr]").forEach(b=>b.onclick=()=>{ BR.v=BR.v===b.dataset.mbr?null:b.dataset.mbr; redrawAll(); });
+      const ci=bar.querySelector("[data-mbc]"); ci.onchange=()=>{ const v=ci.value.trim(); BR.v=v||null; redrawAll(); }; ci.onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); ci.onchange(); } };
+      const bx=bar.querySelector("[data-mbx]"); if(bx) bx.onclick=()=>{ BR.v=null; redrawAll(); }; box.classList.toggle("mdpaint",BR.v!=null); };
+    bar._draw=draw; tb.before(bar); draw(); });
+  const redrawAll=()=>box.querySelectorAll(".mdbrush").forEach(b=>b._draw&&b._draw());
+  box.addEventListener("mousedown",e=>{ if(BR.v==null) return; const td=e.target.closest("td[data-mm]"); if(!td||!box.contains(td)) return; e.preventDefault(); painting=true; paint(td); });
+  box.addEventListener("mouseover",e=>{ if(!painting) return; const td=e.target.closest("td[data-mm]"); if(td) paint(td); });
+  document.addEventListener("mouseup",()=>{ painting=false; });
+  box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; if(BR.v!=null&&td.dataset.mm!=null&&td.tagName==="TD") return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
   box.querySelectorAll(".mdt[data-ln]").forEach(el=>{ el.tabIndex=0; const ln=+el.dataset.ln; const go=()=>edit(el,()=>lines[ln].slice(preOf(lines[ln]).length),v=>{ lines[ln]=preOf(lines[ln])+v.replace(/\s*\n\s*/g," "); });
     el.addEventListener("click",e=>{ if(e.target.closest("a,.mdin,input")) return; e.stopPropagation(); go(); }); el.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===el){ e.preventDefault(); go(); } }); });
   box.querySelectorAll("[data-mck]").forEach(cb=>cb.onchange=()=>{ const ln=+cb.dataset.mck; lines[ln]=lines[ln].replace(/\[( |x|X)\]/,cb.checked?"[x]":"[ ]"); queue(); });
