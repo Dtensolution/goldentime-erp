@@ -773,7 +773,7 @@ addEventListener("beforeunload",saveLast);
 function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(seeAll()) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
 function canDash(){ return seeAll(); }
 const ENTRY_ALL=["gt-cs"];
-const AMPM_BR=["gt-cs"];
+const AMPM_BR=["gt-cs"]; const AMPM_CUT="13:30"; // 이 시각까지 입력된 숫자 = 오전
 const AMPM_F=[["am_total","오전 총원 (원무)"],["am_new","오전 신환 (원무)"],["am_carm","오전 C-arm 건수 (영상의학)"],["am_carm_new","오전 신환 C-arm (영상의학)"],["carm_new","하루 신환 C-arm 건수 (영상의학)"]]; // 오전·오후 보고 (총원·신환·C-arm) 쓰는 지점 (철산) // 마감일지를 전 직원이 입력하는 지점 (철산)
 function canEntry(){ return S.me.level<=3 || S.me.dept==="원무" || (ENTRY_ALL.includes(S.branch)&&S.me.level===4); }
 
@@ -3907,11 +3907,14 @@ async function renderAmpm(keep){
   const [{data:r,error},{data:dc},{data:cc}]=await Promise.all([ sb.from("daily_ampm").select("*").eq("branch_id",S.branch).eq("rdate",st.date).maybeSingle(),
     sb.from("daily_close").select("total,doctors,extra").eq("branch_id",S.branch).eq("close_date",st.date).maybeSingle(),
     sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",st.date) ]);
+  const {data:hist}=await sb.from("ampm_hist").select("metric,val,at").eq("branch_id",S.branch).eq("rdate",st.date).order("at");
+  const cutAt=new Date(`${st.date}T${AMPM_CUT}:00+09:00`); const HAS=new Set((hist||[]).map(h=>h.metric));
+  const atCut=m=>{ if(!HAS.has(m)) return null; const L=(hist||[]).filter(h=>h.metric===m&&new Date(h.at)<=cutAt); return L.length?+L[L.length-1].val:0; }; // 13:30까지 마지막 값 (그 전에 입력 없으면 0)
   // 자동 값: 오전 = 마감일지 중간 보고, 하루 = 마감일지 원장별 환자 수 · C-arm 카운트, 오후 = 하루 − 오전
   const E=dc?.extra?.ampm||{}; const docs=dc?.doctors||[]; const dN=docs.reduce((t,d)=>t+(+d.new||0),0), dT=dN+docs.reduce((t,d)=>t+(+d.re||0),0);
   const cs=k=>(cc||[]).filter(x=>x.kind===k||x.kind===k+"_s").reduce((t,x)=>t+(+x.cnt||0),0); const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
   const nn=x=>x==null||isNaN(x)?null:x; const sub=(a,b)=>a==null||b==null?null:Math.max(0,a-b);
-  const AUTO={am_total:nn(E.am_total),am_new:nn(E.am_new),am_carm:nn(E.am_carm),am_carm_new:nn(E.am_carm_new),
+  const AUTO={am_total:nn(E.am_total)??atCut("total"),am_new:nn(E.am_new)??atCut("new"),am_carm:nn(E.am_carm)??atCut("carm"),am_carm_new:nn(E.am_carm_new)??atCut("carm_new"),
     pm_total:sub(dT||null,E.am_total),pm_new:sub(dT?dN:null,E.am_new),pm_carm:sub(dC,E.am_carm),pm_carm_new:sub(nn(E.carm_new),E.am_carm_new)};
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const lv=S.me.level, dp=S.me.dept; const canF=lv<=3||dp==="원무", canR=lv<=3||dp==="영상의학"; const d0=new Date(st.date+"T00:00:00Z");
@@ -3925,7 +3928,7 @@ async function renderAmpm(keep){
   const H=(lab,h,X)=>`<tr class="hd"><th class="lab" rowspan="2">${lab}</th><th>총원</th><th>신환</th><th>재진</th><th>C-arm 건수</th><th>C-arm 처방률</th><th>신환 C-arm 건수</th><th>신환 C-arm 처방률</th></tr>
     <tr>${inp(h+"_total",canF)}${inp(h+"_new",canF)}<td class="num auto">${nv(X.re)||"0"}</td>${inp(h+"_carm",canR)}<td class="num auto">${pct(X.c,X.t)}</td>${inp(h+"_carm_new",canR)}<td class="num auto">${pct(X.cn,X.n)}</td></tr>`;
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>오전·오후 보고</h2><div class="meta">자동: 오전 = 마감일지 "오전 중간 보고" · 하루 = 마감일지 원장별 환자 수 + C-arm 카운트 · 오후 = 하루 − 오전 · 칸을 직접 고치면 그 값으로 고정 (주황 테두리, 지우면 자동으로)</div></div>
+    <div class="page-h"><div><h2>오전·오후 보고</h2><div class="meta">자동: 오전 = ${AMPM_CUT}까지 입력된 숫자 (마감일지 "오전 중간 보고"를 적으면 그 값) · 하루 = 마감일지 원장별 환자 수 + C-arm 카운트 · 오후 = 하루 − 오전 · 칸을 직접 고치면 그 값으로 고정 (주황 테두리, 지우면 자동으로)</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="monthnav"><button class="btn ghost sm" id="amp" aria-label="전날">◀</button><button class="btn ghost sm" id="amt">오늘</button><button class="btn ghost sm" id="amn" aria-label="다음날">▶</button></div>
         <input type="date" id="amd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜"><button class="btn ghost sm" id="amr">↻ 새로고침</button>${canR&&dC?`<button class="btn ghost sm" id="amsnap" title="C-arm 카운트에 지금까지 적힌 ${dC}건을 오전 C-arm 건수로 저장">⏱ 지금 C-arm ${dC}건 → 오전</button>`:""}<button class="btn ${st.cap?"":"ghost"} sm" id="amc">${st.cap?"✏️ 입력 화면":"📷 캡처용 보기"}</button></div></div>
     <section class="panel ampm-card"><table class="ampm"><caption><b>${st.date}</b> <span>${WD[d0.getUTCDay()]}</span> <small>${esc((S.branches||[]).find(b=>b.id===S.branch)?.name||"")}</small></caption><tbody>
@@ -3936,6 +3939,8 @@ async function renderAmpm(keep){
     <p class="meta">${dT?"":"하루 마감일지(원장별 환자 수)가 아직 없어 오후 총원·신환은 비어 있습니다 · "}${dC?"":"C-arm 카운트가 아직 없습니다 · "}${dC&&V("am_carm")==null?`오전 C-arm이 아직 없어 오후 C-arm은 비어 있습니다 (TOTAL은 C-arm 카운트 ${dC}건) · `:""}재진 = 총원 − 신환 · C-arm 처방률 = C-arm 건수 ÷ 총원 · 신환 C-arm 처방률 = 신환 C-arm 건수 ÷ 신환 · [📷 캡처용 보기]를 누르면 입력칸 없이 표만 나옵니다</p></div>`;
   const go=d=>{ st.date=d; renderAmpm(); };
   $("amp").onclick=()=>go(addDays(st.date,-1)); $("amn").onclick=()=>go(addDays(st.date,1)); $("amt").onclick=()=>go(kstToday()); $("amd").onchange=()=>{ if($("amd").value) go($("amd").value); };
+  if(S.schedPoll){ clearInterval(S.schedPoll); S.schedPoll=null; } const myV=S.view;
+  S.schedPoll=setInterval(()=>{ if(S.view!==myV||document.hidden||document.activeElement?.dataset?.am) return; renderAmpm(true); },30000);
   if($("amsnap")) $("amsnap").onclick=async()=>{ const {error}=await sb.from("daily_ampm").upsert({branch_id:S.branch,rdate:st.date,am_carm:dC},{onConflict:"branch_id,rdate"}); if(error) return toast(errMsg(error)); toast(`오전 C-arm ${dC}건으로 저장했습니다`); renderAmpm(true); };
   $("amr").onclick=()=>renderAmpm(true).then(()=>toast("최신 값으로 새로고침했습니다")); $("amc").onclick=()=>{ st.cap=!st.cap; renderAmpm(true); };
   const ins=[...main.querySelectorAll("[data-am]")];
