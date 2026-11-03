@@ -251,7 +251,8 @@ table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:
 .mdcal-c{min-height:96px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:4px 5px;font-size:12px;line-height:1.35}.mdcal-c:nth-child(7n+1){border-left:none}.mdcal-c.out{background:var(--sunk)}.mdcal-c.today{background:color-mix(in srgb,var(--navy) 7%,var(--surface))}.mdcal-c .dn{font-weight:700;font-size:13px;margin-bottom:2px}
 .mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
 small.ord.zero{color:var(--good)!important;font-weight:700}
-.mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}.mdtabs .mdtabadd{background:none;border-style:dashed;color:var(--accent)}
+.mdmv{float:right;height:26px;font-size:12px;padding:0 6px;margin:2px 0 0 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);max-width:130px}.mdmv:hover{color:var(--ink);border-color:var(--accent)}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
 .tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
@@ -2108,7 +2109,7 @@ function mdRender(src,opt={}){
     let m;
     if(/^-{3,}$/.test(l.trim())){ close(); out+="<hr>"; return; }
     if((m=l.match(/^#\s*탭\s*[:：]\s*(.+)$/))){ close(); out+=`${inTab?"</div>":""}<div class="mdtab" data-tab="${esc(m[1].trim())}"><h2${L(ln)} class="mdt mdtabh">${inl(m[1].trim())}</h2>`; inTab=true; return; }
-    if((m=l.match(/^(#{1,3})\s+(.*)$/))){ close(); out+=`<h${m[1].length+2}${L(ln)} class="mdt">${inl(m[2])}</h${m[1].length+2}>`; return; }
+    if((m=l.match(/^(#{1,3})\s+(.*)$/))||(m=l.match(/^(#{2,3})([^#\s].*)$/))){ close(); out+=`<h${m[1].length+2}${L(ln)} class="mdt">${inl(m[2])}</h${m[1].length+2}>`; return; }
     if((m=l.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*)$/))){ if(list!=="ul"){ close(); out+='<ul class="chk">'; list="ul"; } out+=`<li${L(ln)}><input type="checkbox" ${E?`data-mck="${ln}"`:"disabled"} ${m[1].trim()?"checked":""}> <span class="mdt"${L(ln)}>${inl(m[2])}</span></li>`; return; }
     if((m=l.match(/^\s*[-*•]\s+(.*)$/))){ if(list!=="ul"){ close(); out+="<ul>"; list="ul"; } out+=`<li${L(ln)} class="mdt">${inl(m[1])}</li>`; return; }
     if((m=l.match(/^\s*\d+[.)]\s+(.*)$/))){ if(list!=="ol"){ close(); out+="<ol>"; list="ol"; } out+=`<li${L(ln)} class="mdt">${inl(m[1])}</li>`; return; }
@@ -2118,13 +2119,37 @@ function mdRender(src,opt={}){
 }
 // 날짜 칸(M/D) 표: 월별로 나눠 보기
 // 업무게시판 글 안의 탭 ("# 탭: 이름" 줄로 나눔)
-function bindMdTabs(box,key){ if(!box) return; const T=[...box.querySelectorAll(".mdtab")]; if(T.length<2) return; const TS=window.__mdTab ||= {};
+const MD_TAB_RE=/^#\s*탭\s*[:：]\s*(.+)$/, MD_EMPTY="- (아직 내용이 없습니다)";
+const mdTabParts=body=>{ const P=[{name:null,lines:[]}]; String(body||"").split(/\r?\n/).forEach(l=>{ const m=l.trimEnd().match(MD_TAB_RE); if(m) P.push({name:m[1].trim(),lines:[]}); else P[P.length-1].lines.push(l); }); return P; };
+const mdTabJoin=P=>{ const o=[]; P.forEach(p=>{ if(p.name!=null) o.push("# 탭: "+p.name); o.push(...p.lines); }); return o.join("\n"); };
+const mdTrim=L=>{ L=L.slice(); while(L.length&&!L[L.length-1].trim()) L.pop(); while(L.length&&!L[0].trim()) L.shift(); return L; };
+function bindMdTabs(box,key,opt={}){ if(!box) return; const T=[...box.querySelectorAll(".mdtab")]; if(T.length<2) return; const TS=window.__mdTab ||= {};
   const names=T.map(t=>t.dataset.tab); let sel=TS[key]&&(names.includes(TS[key])||TS[key]==="__all")?TS[key]:names[0];
   const bar=document.createElement("div"); bar.className="mdtabs"; const host=box.closest("section")||box.parentElement; host.querySelector(":scope > .mdtabs")?.remove(); host.prepend(bar); host.classList.add("hastabs");
-  const draw=()=>{ bar.innerHTML=names.map(n=>`<button type="button" data-mtab="${esc(n)}" aria-pressed="${sel===n}">${esc(n)}</button>`).join("")+`<button type="button" data-mtab="__all" aria-pressed="${sel==="__all"}">전체</button>`;
+  const draw=()=>{ bar.innerHTML=names.map(n=>`<button type="button" data-mtab="${esc(n)}" aria-pressed="${sel===n}">${esc(n)}</button>`).join("")+`<button type="button" data-mtab="__all" aria-pressed="${sel==="__all"}">전체</button>`+(opt.onAdd?`<button type="button" class="mdtabadd" data-mtadd title="새 탭 만들기">+ 탭</button>`:"");
     T.forEach(t=>t.hidden=sel!=="__all"&&t.dataset.tab!==sel); T.forEach(t=>{ const h=t.querySelector(".mdtabh"); if(h) h.hidden=sel!=="__all"; });
-    bar.querySelectorAll("[data-mtab]").forEach(b=>b.onclick=()=>{ sel=b.dataset.mtab; TS[key]=sel; draw(); }); };
+    bar.querySelectorAll("[data-mtab]").forEach(b=>b.onclick=()=>{ sel=b.dataset.mtab; TS[key]=sel; draw(); });
+    const ad=bar.querySelector("[data-mtadd]"); if(ad) ad.onclick=()=>opt.onAdd(names); opt.onChange&&opt.onChange(sel); };
   draw(); }
+// 업무게시판 탭: 항목(### 제목)을 다른 탭으로 옮기기 · 탭 하나만 고치기 · 새 탭
+async function mdDocFresh(id){ const {data,error}=await sb.from("dept_docs").select("body").eq("id",id).single(); if(error) throw error; return String(data.body||""); }
+async function mdDocPut(doc,body){ const {error}=await sb.from("dept_docs").update({body}).eq("id",doc.id); if(error) throw error; doc.body=body; }
+function mdMoveSec(body,from,ln0,to){ // ln0 = 전체 글에서 ### 줄 번호
+  const L=String(body).split(/\r?\n/); const isH=l=>/^#{2,3}\s*[^#\s]/.test(l.trim())||MD_TAB_RE.test(l.trim()); if(!/^#{2,3}/.test((L[ln0]||"").trim())) return null;
+  let end=ln0+1; while(end<L.length&&!isH(L[end])) end++; const sec=mdTrim(L.slice(ln0,end)); L.splice(ln0,end-ln0);
+  const P=mdTabParts(L.join("\n")); const src=P.find(p=>p.name===from), dst=P.find(p=>p.name===to); if(!dst) return null;
+  if(src&&!mdTrim(src.lines).length) src.lines=[MD_EMPTY,""];
+  let D=mdTrim(dst.lines).filter(l=>l.trim()!==MD_EMPTY); D=[...D,...(D.length?[""]:[]),...sec,""]; dst.lines=D; return mdTabJoin(P); }
+function bindMdMove(box,doc,rerender){ if(!box) return; const T=[...box.querySelectorAll(".mdtab")]; if(T.length<2) return; const names=T.map(t=>t.dataset.tab);
+  T.forEach(t=>t.querySelectorAll(".mdt[data-ln]").forEach(h=>{ if(!/^H[45]$/.test(h.tagName)) return; const from=t.dataset.tab, ln=+h.dataset.ln;
+    const sel=document.createElement("select"); sel.className="mdmv"; sel.title="이 항목을 다른 탭으로 옮깁니다"; sel.innerHTML=`<option value="">↪ 탭 옮기기</option>`+names.filter(n=>n!==from).map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+    sel.onclick=e=>e.stopPropagation(); sel.onchange=async()=>{ const to=sel.value; if(!to) return; sel.disabled=true;
+      try{ if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
+        const fresh=await mdDocFresh(doc.id); const line=String(doc.body||"").split(/\r?\n/)[ln]; const FL=fresh.split(/\r?\n/); let at=FL[ln]===line?ln:FL.indexOf(line);
+        if(at<0) throw new Error("다른 분이 이 항목을 먼저 고쳤습니다. 새로 불러온 뒤 다시 해주세요");
+        const nb=mdMoveSec(fresh,from,at,to); if(nb==null) throw new Error("옮길 수 없습니다"); await mdDocPut(doc,nb); toast(`"${h.textContent.trim()}" → ${to} 탭으로 옮겼습니다`); }
+      catch(e){ toast(errMsg(e)); } rerender(); };
+    h.before(sel); })); }
 function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, CAL=window.__mdCal ||= {};
   box.querySelectorAll('[data-mrows]').forEach((tb,ti)=>{ const trs=[...tb.querySelectorAll("tr[data-rm]")]; const ms=[...new Set(trs.map(x=>+x.dataset.rm))]; if(!ms.length) return; const cur=+kstToday().slice(5,7);
     const ord=m=>(m-cur+12+6)%12; ms.sort((a,b)=>ord(a)-ord(b)); const k=key+":r"+ti; let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]); if(sel&&!ms.includes(sel)) sel=ms[ms.length-1];
@@ -2158,11 +2183,12 @@ function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, 
 const mdCls=c=>{ const t=String(c||"").trim(); return /^off/i.test(t)?(/신청/.test(t)?"mdoffr":"mdoff"):/연차|반차/.test(t)?"mdlv":/^D(\b|\/|\s|$)/.test(t)?"mdD":/^E(\b|\/|\s|$)/.test(t)?"mdE":/^N(\b|\/|\s|$)/.test(t)?"mdN":""; };
 const MD_BRUSH=["D","E","N","off","연차","off/신청"];
 function bindMdEdit(box,doc,rerender){
-  if(!box) return; let lines=String(doc.body||"").split(/\r?\n/); let timer=null, busy=false, dirty=false;
+  if(!box) return; let lines=String(doc.body||"").split(/\r?\n/); let timer=null, busy=false, dirty=false; let base=String(doc.body||"");
   const status=$("mdst"); const show=t=>{ if(status) status.textContent=t; };
   const save=async()=>{ clearTimeout(timer); if(!dirty||busy) return; busy=true; dirty=false; const body=lines.join("\n"); show("저장 중…");
+    try{ const fresh=await mdDocFresh(doc.id); if(fresh!==base){ busy=false; dirty=false; window.__mdFlush=null; toast("다른 분이 먼저 고친 내용이 있어 새로 불러왔습니다. 방금 고친 칸은 다시 고쳐주세요."); rerender(); return; } }catch(e){}
     const {error}=await sb.from("dept_docs").update({body}).eq("id",doc.id); busy=false;
-    if(error){ dirty=true; show("저장 실패 — "+errMsg(error)); toast(errMsg(error)); return; } doc.body=body; doc.updated_at=new Date().toISOString(); show("저장됨 ✓"); if(dirty) save(); };
+    if(error){ dirty=true; show("저장 실패 — "+errMsg(error)); toast(errMsg(error)); return; } doc.body=body; base=body; doc.updated_at=new Date().toISOString(); show("저장됨 ✓"); if(dirty) save(); };
   const queue=()=>{ dirty=true; show("저장 대기…"); clearTimeout(timer); timer=setTimeout(save,600); };
   window.__mdFlush=save;
   const cellsOf=ln=>lines[ln].trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(c=>c.trim());
@@ -2256,22 +2282,26 @@ async function renderDocs(){
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
   if(cur&&canEditDoc(cur.dept)) bindMdEdit($("mdv"),cur,()=>renderDocs());
-  if(cur) bindMdMonths($("mdv"),cur.id); if(cur) bindMdTabs($("mdv"),cur.id);
+  const tabEd=cur&&canEditDoc(cur.dept); let curTab="__all";
+  if(cur) bindMdMonths($("mdv"),cur.id); if(cur) bindMdTabs($("mdv"),cur.id,{ onChange:t=>{ curTab=t; if($("dedit")) $("dedit").textContent=t==="__all"?"수정":`'${t}' 탭 수정`; },
+    onAdd:tabEd?async names=>{ const n=(prompt("새 탭 이름")||"").trim(); if(!n) return; if(names.includes(n)) return toast("같은 이름의 탭이 있습니다");
+      try{ if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); } const fresh=await mdDocFresh(cur.id); await mdDocPut(cur,mdTrim(fresh.split(/\r?\n/)).join("\n")+`\n\n# 탭: ${n}\n${MD_EMPTY}\n`); (window.__mdTab ||= {})[cur.id]=n; toast(`'${n}' 탭을 만들었습니다`); }catch(e){ toast(errMsg(e)); } renderDocs(); }:null });
+  if(tabEd) bindMdMove($("mdv"),cur,()=>renderDocs());
   document.querySelectorAll("[data-doc]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.doc; renderDocs(); });
   bindSearch("dq",v=>{ st.q=v; return renderDocs(); });
   if($("dnew")) $("dnew").onclick=()=>docEditor(null, st.dept, ()=>renderDocs(), st);
-  if($("dedit")) $("dedit").onclick=async()=>{ if(window.__mdFlush){ await window.__mdFlush(); window.__mdFlush=null; } docEditor(cur, cur.dept, ()=>renderDocs(), st); };
+  if($("dedit")) $("dedit").onclick=async()=>{ if(window.__mdFlush){ await window.__mdFlush(); window.__mdFlush=null; } docEditor(cur, cur.dept, ()=>renderDocs(), st, null, curTab!=="__all"?curTab:null); };
   if($("dhist")) $("dhist").onclick=async()=>{
     const {data,error}=await sb.from("dept_doc_revs").select("*").eq("doc_id",cur.id).order("saved_at",{ascending:false}).limit(30);
     if(error) return toast(errMsg(error)); const dlg=$("dlg");
     dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${esc(cur.title)} · 이전 기록</h3>${(data||[]).length?`<div class="tbl-box" style="max-height:50vh"><table><thead><tr><th>저장 시각</th><th>저장한 사람</th><th></th></tr></thead><tbody>${data.map(r=>`<tr><td class="num">${esc(new Date(r.saved_at).toLocaleString("ko-KR"))}</td><td>${esc(nm(r.saved_by))}</td><td><button type="button" class="btn ghost sm" data-rev="${r.id}">이 내용으로 되돌리기</button></td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">아직 이전 기록이 없습니다.</p>`}
       <div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn ghost" value="cancel">닫기</button></div></form>`;
     dlg.showModal();
-    dlg.querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>{ const r=data.find(x=>x.id==b.dataset.rev); dlg.close(); docEditor({...cur,title:r.title,body:r.body}, cur.dept, ()=>renderDocs(), st, "이전 기록을 불러왔습니다. 저장하면 이 내용으로 바뀝니다."); });
+    dlg.querySelectorAll("[data-rev]").forEach(b=>b.onclick=()=>{ const r=data.find(x=>x.id==b.dataset.rev); dlg.close(); docEditor({...cur,title:r.title,body:r.body,_base:cur.body}, cur.dept, ()=>renderDocs(), st, "이전 기록을 불러왔습니다. 저장하면 이 내용으로 바뀝니다."); });
   };
 }
-function docEditor(doc, dept, reload, st, notice){
-  const v=$("dv");
+function docEditor(doc, dept, reload, st, notice, tab){
+  const v=$("dv"); if(tab) return docTabEditor(doc,reload,tab);
   v.innerHTML=`<div class="field"><label for="dt">제목</label><input id="dt" value="${esc(doc?.title||"")}" placeholder="예: 입원 시 체크리스트"></div>
     ${notice?`<p class="meta" style="color:var(--warn)">${esc(notice)}</p>`:""}
     <div class="doc-edit"><div class="field" style="margin:0"><label for="db">내용</label><textarea id="db" rows="18" placeholder="# 제목&#10;- 항목&#10;- [ ] 체크할 일&#10;1. 순서 있는 단계&#10;**굵게**&#10;| 항목 | 내용 |&#10;| --- | --- |&#10;| 예시 | 값 |">${esc(doc?.body||"")}</textarea></div>
@@ -2283,12 +2313,33 @@ function docEditor(doc, dept, reload, st, notice){
   $("dcancel").onclick=reload;
   $("dsave").onclick=async()=>{ const title=$("dt").value.trim(); if(!title){ $("derr").textContent="제목을 적어주세요."; return; }
     const row={title,body:$("db").value,pinned:$("dpin").checked,notice:$("dnot").checked};
+    if(doc?.id&&!$("dsave").dataset.force){ try{ const fresh=await mdDocFresh(doc.id); if(fresh!==String(doc._base??doc.body??"")){ $("dsave").dataset.force=1; $("dsave").textContent="그래도 덮어쓰기"; $("derr").textContent="이 글을 여는 사이에 다른 분이 내용을 고쳤습니다. 지금 저장하면 그 내용이 없어집니다 — [취소]를 눌러 새로 불러오거나, 정말 덮어쓰려면 한 번 더 누르세요."; return; } }catch(e){} }
     const res = doc?.id ? await sb.from("dept_docs").update(row).eq("id",doc.id).select("id").single() : await sb.from("dept_docs").insert({...row,branch_id:S.branch,dept}).select("id").single();
     if(res.error){ $("derr").textContent=errMsg(res.error); return; } st.id=res.data.id; toast("저장됨"); reload(); };
   if($("ddel")) $("ddel").onclick=async()=>{ const b=$("ddel"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; }
     const {error}=await sb.from("dept_docs").delete().eq("id",doc.id); if(error){ $("derr").textContent=errMsg(error); return; } st.id=null; toast("삭제됨"); reload(); };
 }
 
+function docTabEditor(doc,reload,tab){ const v=$("dv"); const P=mdTabParts(doc.body); const part=P.find(p=>p.name===tab); if(!part){ toast("탭을 찾을 수 없습니다"); return reload(); }
+  const orig=mdTrim(part.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n");
+  v.innerHTML=`<p class="meta" style="margin:0 0 8px">${esc(doc.title)} › <b>${esc(tab)}</b> 탭만 고칩니다 · 다른 탭 내용은 그대로 둡니다</p>
+    <div class="field"><label for="dtn">탭 이름</label><input id="dtn" value="${esc(tab)}" style="max-width:260px"></div>
+    <div class="doc-edit"><div class="field" style="margin:0"><label for="db">'${esc(tab)}' 탭 내용 <span class="meta" style="font-weight:400">· 항목 제목은 ### 로 시작 (예: ### 씨암 기본세팅)</span></label><textarea id="db" rows="20">${esc(orig)}</textarea></div>
+      <div><span class="meta" style="font-size:12px">미리보기</span><div class="md preview" id="dpv">${mdRender(orig)}</div></div></div>
+    <p class="err" id="derr"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button><button class="btn ghost" id="dtdel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">이 탭 없애기</button></div>`;
+  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; $("dcancel").onclick=reload;
+  const apply=async fn=>{ try{ const fresh=await mdDocFresh(doc.id); const FP=mdTabParts(fresh); const fp=FP.find(p=>p.name===tab); if(!fp) throw new Error("그 사이에 이 탭이 없어졌습니다");
+      const now=mdTrim(fp.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n"); if(now!==orig&&!$("dsave").dataset.force){ $("dsave").dataset.force=1; $("dsave").textContent="그래도 덮어쓰기"; throw new Error("이 탭을 여는 사이에 다른 분이 이 탭을 고쳤습니다. [취소]로 새로 불러오거나, 정말 덮어쓰려면 한 번 더 누르세요."); }
+      fn(FP,fp); await mdDocPut(doc,mdTabJoin(FP)); return true; }catch(e){ $("derr").textContent=errMsg(e); return false; } };
+  $("dsave").onclick=async()=>{ const nn=$("dtn").value.trim().replace(/[\r\n]/g,""); if(!nn){ $("derr").textContent="탭 이름을 적어주세요."; return; }
+    if(nn!==tab&&P.some(p=>p.name===nn)){ $("derr").textContent="같은 이름의 탭이 있습니다."; return; }
+    const ok=await apply((FP,fp)=>{ const L=mdTrim($("db").value.split(/\r?\n/)); fp.lines=[...(L.length?L:[MD_EMPTY]),""]; fp.name=nn; });
+    if(ok){ (window.__mdTab ||= {})[doc.id]=nn; toast("저장됨"); reload(); } };
+  $("dtdel").onclick=async()=>{ const b=$("dtdel"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent=mdTrim(part.lines).filter(l=>l.trim()!==MD_EMPTY).length?"내용은 바로 앞 탭으로 옮기고 없앱니다 — 한 번 더":"한 번 더 누르면 없앱니다"; return; }
+    const ok=await apply((FP,fp)=>{ const i=FP.indexOf(fp); const keep=mdTrim(fp.lines).filter(l=>l.trim()!==MD_EMPTY); FP.splice(i,1); if(keep.length){ const pv=FP[i-1]; pv.lines=[...mdTrim(pv.lines).filter(l=>l.trim()!==MD_EMPTY),"",...keep,""]; } });
+    if(ok){ (window.__mdTab ||= {})[doc.id]=null; toast(`'${tab}' 탭을 없앴습니다`); reload(); } };
+}
 // ── 연장·야간 근무 기록 ──
 const OT_KINDS=["연장","점심","저녁","공휴일","야간"];
 const OT_LUNCH=[780,840]; // 점심 13:00~14:00 — 이 시간을 통째로 지나는 근무는 1시간을 뺀다 (구분 "점심"은 빼지 않음)
