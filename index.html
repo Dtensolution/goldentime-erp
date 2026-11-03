@@ -3292,14 +3292,14 @@ async function apptConflicts(row, selfId, lanes){
 async function apptHistory(chart, selfId){
   const el=$("a_hist"); if(!el) return; if(!chart){ el.innerHTML=""; return; }
   el.innerHTML=`<span class="meta">차트 ${esc(chart)} 이력 찾는 중…</span>`;
-  const [ar,rr]=await Promise.all([ sb.from("appointments").select("id,kind,appt_date,start_min,item,staff,status").eq("branch_id",S.branch).eq("chart_no",chart).order("appt_date",{ascending:false}).limit(40),
+  const [ar,rr]=await Promise.all([ sb.from("appointments").select("id,kind,appt_date,start_min,item,staff,status,note,exam_no").eq("branch_id",S.branch).eq("chart_no",chart).order("appt_date",{ascending:false}).limit(40),
     sb.from("reservations").select("resv_date,resv_time,subject,visit").eq("branch_id",S.branch).eq("chart_no",chart).order("resv_date",{ascending:false}).limit(20) ]);
   if(!$("a_hist")) return;
   const A=(ar.data||[]).filter(a=>a.id!==selfId), V=rr.error?[]:(rr.data||[]);
   if(!A.length&&!V.length){ el.innerHTML=`<span class="meta">차트 ${esc(chart)} · 지난 예약 이력이 없습니다 (첫 예약)</span>`; return; }
   const c=s=>A.filter(a=>a.status===s).length; const ns=c("노쇼");
   el.innerHTML=`<details ${ns>=2?"open":""}><summary>차트 ${esc(chart)} · 스케줄 이력 ${A.length}건 (완료 ${c("완료")}${ns?` · <span style="color:var(--bad)">노쇼 ${ns}</span>`:""}${c("취소")?` · 취소 ${c("취소")}`:""})${V.length?` · EMR 예약 ${V.length}건`:""}</summary>
-    ${A.length?`<table><thead><tr><th>날짜</th><th>시간</th><th>구분</th><th>치료</th><th>담당</th><th>상태</th></tr></thead><tbody>${A.slice(0,15).map(a=>`<tr><td class="num">${a.appt_date.slice(2).replace(/-/g,".")}</td><td class="num">${hhmm(a.start_min)}</td><td>${a.kind==="pt"?"도수·충격파":"근전도"}</td><td>${esc(a.item)}</td><td>${esc(a.staff||"")}</td><td>${esc(a.status)}</td></tr>`).join("")}</tbody></table>`:""}
+    ${A.length?`<table><thead><tr><th>날짜</th><th>시간</th><th>구분</th><th>치료</th><th>회차</th><th>담당</th><th>상태</th></tr></thead><tbody>${A.slice(0,15).map(a=>`<tr><td class="num">${a.appt_date.slice(2).replace(/-/g,".")}</td><td class="num">${hhmm(a.start_min)}</td><td>${a.kind==="pt"?"도수·충격파":"근전도"}</td><td>${esc(a.item)}</td><td>${(()=>{ const m=String(a.note||"").match(/(\d{1,2})\s*회(차)?/); return a.kind==="emg"?(a.exam_no?a.exam_no+"차":(m?+m[1]+"회차":"")):(m?+m[1]+"회차":""); })()}</td><td>${esc(a.staff||"")}</td><td>${esc(a.status)}</td></tr>`).join("")}</tbody></table>`:""}
     ${V.length?`<table style="margin-top:6px"><thead><tr><th>EMR 예약일</th><th>시간</th><th>내용</th><th>내원</th></tr></thead><tbody>${V.slice(0,10).map(v=>`<tr><td class="num">${v.resv_date.slice(2).replace(/-/g,".")}</td><td>${esc(v.resv_time||"")}</td><td>${esc(v.subject||"")}</td><td>${esc(v.visit||"확인 전")}</td></tr>`).join("")}</tbody></table>`:""}</details>`;
 }
 
