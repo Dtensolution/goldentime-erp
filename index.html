@@ -774,7 +774,7 @@ function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(seeAll()) return "
 function canDash(){ return seeAll(); }
 const ENTRY_ALL=["gt-cs"];
 const AMPM_BR=["gt-cs"]; const AMPM_CUT="13:30"; // 이 시각까지 입력된 숫자 = 오전
-const AMPM_F=[["am_total","오전 총원 (원무)"],["am_new","오전 신환 (원무)"],["am_carm","오전 C-arm 건수 (영상의학)"],["am_carm_new","오전 신환 C-arm (영상의학)"],["carm_new","하루 신환 C-arm 건수 (영상의학)"]]; // 오전·오후 보고 (총원·신환·C-arm) 쓰는 지점 (철산) // 마감일지를 전 직원이 입력하는 지점 (철산)
+const AMPM_F=[["am_total","오전 총원 (원무)"],["am_new","오전 신환 (원무)"],["am_carm","오전 C-arm 건수 (영상의학)"],["am_carm_new","오전 신환 C-arm (영상의학)"]]; // 하루 신환 C-arm은 C-arm 카운트 "신환 C-arm" 칸 // 오전·오후 보고 (총원·신환·C-arm) 쓰는 지점 (철산) // 마감일지를 전 직원이 입력하는 지점 (철산)
 function canEntry(){ return S.me.level<=3 || S.me.dept==="원무" || (ENTRY_ALL.includes(S.branch)&&S.me.level===4); }
 
 function renderLogin(){
@@ -3912,7 +3912,7 @@ async function renderAmpm(keep){
   const atCut=m=>{ if(!HAS.has(m)) return null; const L=(hist||[]).filter(h=>h.metric===m&&new Date(h.at)<=cutAt); return L.length?+L[L.length-1].val:0; }; // 13:30까지 마지막 값 (그 전에 입력 없으면 0)
   // 자동 값: 오전 = 마감일지 중간 보고, 하루 = 마감일지 원장별 환자 수 · C-arm 카운트, 오후 = 하루 − 오전
   const E=dc?.extra?.ampm||{}; const docs=dc?.doctors||[]; const dN=docs.reduce((t,d)=>t+(+d.new||0),0), dT=dN+docs.reduce((t,d)=>t+(+d.re||0),0);
-  const cs=k=>(cc||[]).filter(x=>x.kind===k||x.kind===k+"_s").reduce((t,x)=>t+(+x.cnt||0),0); const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
+  const cs=k=>(cc||[]).filter(x=>x.kind===k||x.kind===k+"_s").reduce((t,x)=>t+(+x.cnt||0),0); const cNew=(cc||[]).filter(x=>x.kind==="carm_new").reduce((t,x)=>t+(+x.cnt||0),0); if(cNew) E.carm_new=cNew; const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
   const nn=x=>x==null||isNaN(x)?null:x; const sub=(a,b)=>a==null||b==null?null:Math.max(0,a-b);
   const AUTO={am_total:nn(E.am_total)??atCut("total"),am_new:nn(E.am_new)??atCut("new"),am_carm:nn(E.am_carm)??atCut("carm"),am_carm_new:nn(E.am_carm_new)??atCut("carm_new"),
     pm_total:sub(dT||null,E.am_total),pm_new:sub(dT?dN:null,E.am_new),pm_carm:sub(dC,E.am_carm),pm_carm_new:sub(nn(E.carm_new),E.am_carm_new)};
@@ -4087,8 +4087,8 @@ async function renderCarm(){
   const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
   const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0), techS:days.reduce((s,d)=>s+sum("tech_s",techs,d),0), docS:days.reduce((s,d)=>s+sum("doc_s",docs,d),0)};
   // 소관절 칸 사용(지점 설정 carm_small): 사람마다 소관절·C-arm 두 칸
-  const small=!!(set&&set.raw&&set.raw.carm_small);
-  const headS=(list,tot,extra)=>`<thead><tr><th class="cmd" rowspan="2">${R.m}월</th>${list.map(c=>`<th colspan="2">${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot" colspan="3">합계</th>${extra?`<th class="cfh" rowspan="2">${extra}</th>`:""}</tr><tr>${list.map(()=>`<th class="sub">소관절</th><th class="sub">C-arm</th>`).join("")}<th class="sub">소관절</th><th class="sub">C-arm</th><th class="tot">ALL</th></tr></thead>`;
+  const small=!!(set&&set.raw&&set.raw.carm_small); const CNEW=AMPM_BR.includes(S.branch); // 신환 C-arm 칸 (그날 C-arm 중 신환 건수)
+  const headS=(list,tot,extra)=>`<thead><tr><th class="cmd" rowspan="2">${R.m}월</th>${list.map(c=>`<th colspan="2">${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기">×</button>`:""}</th>`).join("")}<th class="tot" colspan="3">합계</th>${extra?(Array.isArray(extra)?extra:[extra]).map(x=>`<th class="cfh" rowspan="2">${x}</th>`).join(""):""}</tr><tr>${list.map(()=>`<th class="sub">소관절</th><th class="sub">C-arm</th>`).join("")}<th class="sub">소관절</th><th class="sub">C-arm</th><th class="tot">ALL</th></tr></thead>`;
   const rowS=(k,list,d)=>list.map(c=>cell(d,k+"_s",c.name)+cell(d,k,c.name)).join("")+`<td class="tot num">${sum(k+"_s",list,d)}</td><td class="tot num">${sum(k,list,d)}</td><td class="tot num"><b>${sum(k+"_s",list,d)+sum(k,list,d)}</b></td>`;
   const sumS=(k,list)=>list.map(c=>`<td class="num">${colSum(k+"_s",c.name)}</td><td class="num">${colSum(k,c.name)}</td>`).join("")+`<td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k,list,d),0)}</td><td class="tot num">${days.reduce((s,d)=>s+sum(k+"_s",list,d)+sum(k,list,d),0)}</td>`;
   const head=(list)=>list.map(c=>`<th>${esc(c.name)}${ed?` <button class="cmx" data-cmdel="${c.id}" title="${esc(c.name)} 열을 ${R.m}월에서만 빼기" aria-label="${esc(c.name)} 열을 이 달에서 빼기">×</button>`:""}</th>`).join("");
@@ -4107,16 +4107,16 @@ async function renderCarm(){
         ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("tech",techs,d):`${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}`}</tr>`).join("")}
         <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("tech",techs):`${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td>`}</tr></tbody></table></div>
         ${ed?`<div class="cmadd"><input id="cmt" placeholder="방사선사 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmta">+ 방사선사 열</button></div>`:""}</section>
-      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="doc">${small?headS(docs,0,"확정"):`<thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th><th class="cfh">확정</th></tr></thead>`}<tbody>
-        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("doc",docs,d):`${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td>`}${cfCell(d)}</tr>`).join("")}
-        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("doc",docs):`${docs.map(c=>`<td class="num">${colSum("doc",c.name)}</td>`).join("")}<td class="tot num">${T.doc}</td>`}<td class="num">${nCf}일</td></tr></tbody></table></div>
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="doc">${small?headS(docs,0,CNEW?["신환 C-arm","확정"]:"확정"):`<thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th>${CNEW?`<th class="cfh">신환 C-arm</th>`:""}<th class="cfh">확정</th></tr></thead>`}<tbody>
+        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("doc",docs,d):`${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td>`}${CNEW?cell(d,"carm_new",""):""}${cfCell(d)}</tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("doc",docs):`${docs.map(c=>`<td class="num">${colSum("doc",c.name)}</td>`).join("")}<td class="tot num">${T.doc}</td>`}${CNEW?`<td class="num">${days.reduce((s,d)=>s+g(d,"carm_new",""),0)}</td>`:""}<td class="num">${nCf}일</td></tr></tbody></table></div>
         ${ed?`<div class="cmadd"><input id="cmdn" placeholder="원장 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmda">+ 원장 열</button></div>`:""}</section>
     </div></div>`;
   if(keepY!=null) window.scrollTo(0,keepY);
   const again=()=>{ S.cmKeepY=window.scrollY; return renderCarm(); };
   $("cmp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderCarm(); }; $("cmn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderCarm(); };
   $("cmym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("cmym").value)){ st.ym=$("cmym").value; renderCarm(); } };
-  $("cmcsv").onclick=()=>downloadCSV(`C-arm카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정"],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):""]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
+  $("cmcsv").onclick=()=>downloadCSV(`C-arm카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정",...(CNEW?["신환 C-arm"]:[])],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):"",...(CNEW?[g(d,"carm_new","")]:[])]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
   // 확정·해제
   main.querySelectorAll("[data-cf]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cf; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="확정할까요?"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="확정"; b.classList.remove("sure"); } },4000); return; }
     const {error}=await sb.from("carm_confirm").insert({branch_id:S.branch,cdate:d,confirmed_name:S.me.name}); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정 · 이제 팀장(3등급) 이상만 고칠 수 있습니다`); again(); });
@@ -4131,6 +4131,7 @@ async function renderCarm(){
     const res=await Promise.all(jobs); const er=res.find(r=>r&&r.error); if(er){ toast(errMsg(er.error)); return false; } list.forEach(x=>V[`${x.d}|${x.k}|${x.n}`]=x.v>0?x.v:0); return true; };
   const keyOf=el=>{ const [d,k,n]=el.dataset.cm.split("|"); return {d,k,n}; };
   const updTotals=(el)=>{ const {d,k,n}=keyOf(el);
+    if(k==="carm_new"){ const tb=el.closest("table"), tr=el.closest("tr"); const idx=[...tr.children].indexOf(el.closest("td")); const sr=tb.querySelector("tr.sumrow"); if(sr&&sr.children[idx]) sr.children[idx].textContent=days.reduce((s,dd)=>s+g(dd,"carm_new",""),0); return; }
     const tr=el.closest("tr"); const tot=tr.querySelector("td.tot"); if(tot){ const L=k==="doc"?docs:techs; tot.textContent=sum(k==="reduction"?"tech":k,L,d); }
     const tb=el.closest("table"); const idx=[...tr.children].indexOf(el.closest("td")); const sr=tb.querySelector("tr.sumrow"); if(sr&&sr.children[idx]) sr.children[idx].textContent=k==="reduction"?days.reduce((s,dd)=>s+g(dd,"reduction",""),0):colSum(k,n);
     const L=k==="doc"?docs:techs; if(k!=="reduction"){ const tt=sr.querySelector("td.tot"); if(tt) tt.textContent=days.reduce((s,dd)=>s+sum(k,L,dd),0); }
