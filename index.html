@@ -435,6 +435,11 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .md{line-height:1.7;font-size:14px;overflow-wrap:anywhere}
 .md h3,.md h4,.md h5{margin:16px 0 6px;color:var(--navy)}
 .md p{margin:4px 0}
+.mcR{color:#d92d20;font-weight:700}.mcB{color:#1d5fd6;font-weight:700}.mcG{color:#15803d;font-weight:700}.mcO{color:#c2410c;font-weight:700}.mcP{color:#7c3aed;font-weight:700}.md mark{background:#fff3a3;color:inherit;padding:0 2px;border-radius:3px}
+.mdpal{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:4px 0 6px}.mdpal .meta{font-size:12px;margin-right:2px}
+.mdpal-b{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:3px 9px;font-size:12.5px;cursor:pointer;font-weight:700}.mdpal-b:hover{border-color:var(--accent)}
+.mdpal-mk{background:#fff3a3;color:#5a4a00}.mdpal-b.mcR,.mdpal-b.mcB,.mdpal-b.mcG,.mdpal-b.mcO,.mdpal-b.mcP{background:var(--panel)}.mdpal-cl{color:var(--muted);font-weight:500}
+.mdfloat{position:absolute;z-index:60;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px 6px;box-shadow:0 6px 20px rgba(0,0,0,.15);margin:0}
 .md ul,.md ol{margin:4px 0;padding-left:22px}
 .md ul.chk{list-style:none;padding-left:4px}
 .md table{margin:8px 0}
@@ -1164,6 +1169,38 @@ async function renderCal(){
   document.querySelectorAll(".cal button.d").forEach(b=>b.onclick=()=>{ S.entryDate=b.dataset.date; S.view="entry"; render(); });
 }
 
+// ── EMR 마감파일 → 마감일지 칸 채우기 ──
+const EMR_F=[["f_total","총진료비",/^(총진료비|진료비총액|진료비합계|총진료비합계|총액|합계금액|총계)$/],["f_nonpay","비급여",/^(비급여|비급여합계|비급여금액|비급여총액)$/],["f_out","외래",/^(외래|외래진료비|외래합계|외래총액)$/],["f_inpat","입원비",/^(입원|입원비|입원진료비|입원합계|입원총액)$/],["f_surg","수술 건수",/^(수술|수술건수)$/],
+  ["f_card","카드",/^(카드|카드수납|신용카드|카드합계)$/],["f_cash","현금",/^(현금|현금수납|현금합계)$/],["f_acct","계좌이체",/^(계좌|계좌이체|이체|통장|무통장)$/],["f_unpaid","미수 발생",/^(미수|미수금|미수발생|당일미수)$/],["f_unpaidIn","미수 입금",/^(미수입금|미수회수|미수수납)$/]];
+const emrNum=v=>{ if(typeof v==="number") return isFinite(v)?v:null; const t=String(v??"").replace(/[,\s원₩]/g,""); return /^-?\d+(\.\d+)?$/.test(t)?+t:null; };
+const emrLab=v=>String(v??"").replace(/\s+/g,"").replace(/[:：()（）\[\]]/g,"");
+function bindEmrUpload(){ const b=$("emrup"), f=$("emrf"); if(!b||!f) return; b.onclick=()=>f.click();
+  f.onchange=async()=>{ const file=f.files[0]; f.value=""; if(!file) return; let X; try{ X=await loadXLSX(); }catch(e){ return toast(errMsg(e)); }
+    let wb; try{ wb=X.read(await file.arrayBuffer(),{type:"array"}); }catch(e){ return toast("파일을 읽지 못했습니다 — 엑셀(xlsx·xls) 또는 csv로 저장해 올려주세요"); }
+    const C=[]; wb.SheetNames.forEach(sn=>{ const g=X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""}); g.forEach((row,ri)=>row.forEach((cell,ci)=>{ const lab=emrLab(cell); if(!lab||emrNum(cell)!=null||lab.length>24) return;
+      let n=0; for(let k=ci+1;k<row.length&&k<=ci+10&&n<6;k++){ const x=emrNum(row[k]); if(x!=null){ n++; C.push({key:`${sn}|${lab}|R${n}`,lab,how:n===1?"오른쪽":`오른쪽 ${n}번째`,v:x,sn}); } else if(emrLab(row[k])&&n) break; }
+      for(let k=ri+1,m=0;k<g.length&&k<=ri+3&&m<1;k++){ const x=emrNum((g[k]||[])[ci]); if(x!=null){ m++; C.push({key:`${sn}|${lab}|D`,lab,how:"아래",v:x,sn}); } } })); });
+    if(!C.length) return toast("파일에서 '항목 이름 + 숫자'를 찾지 못했습니다. 샘플 파일을 보내주시면 맞춰 드릴게요");
+    const uniq=[]; const seen=new Set(); C.forEach(c=>{ if(!seen.has(c.key)){ seen.add(c.key); uniq.push(c); } });
+    let saved={}; try{ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); saved=data?.data?.emrMap||{}; }catch(e){} try{ saved={...saved,...JSON.parse(localStorage.getItem("gt-emrmap-"+S.branch)||"{}")}; }catch(e){}
+    const docs=[...document.querySelectorAll("[data-doc]")].map(r=>{ const i=r.dataset.doc, nm=r.dataset.name; return [["dn"+i,nm+" 신환"],["dr"+i,nm+" 재진"],["da"+i,nm+" 진료비"]]; }).flat();
+    const fields=[...EMR_F.map(([id,l,re])=>({id,l,re})),...docs.map(([id,l])=>({id,l,doc:true}))].filter(x=>$(x.id));
+    const multi=new Set(wb.SheetNames.length>1?[1]:[]); const nm=c=>`${multi.size?c.sn+" · ":""}${c.lab} (${c.how}) = ${won(c.v)}`;
+    const pickOf=x=>{ const sk=saved[x.l]; if(sk!=null){ const hit=uniq.find(c=>c.key===sk)||uniq.find(c=>c.key.split("|").slice(1).join("|")===String(sk).split("|").slice(1).join("|")); return hit?hit.key:""; }
+      if(x.re){ const hit=uniq.find(c=>x.re.test(c.lab)&&/R1$/.test(c.key))||uniq.find(c=>x.re.test(c.lab)); return hit?hit.key:""; } return ""; };
+    const dlg=$("dlg"); dlg.innerHTML=`<form method="dialog" style="min-width:min(720px,92vw)"><h3 style="margin:0 0 6px">EMR 마감파일 → 마감일지</h3><p class="meta" style="margin:0 0 10px">${esc(file.name)} · 각 칸에 들어갈 값을 확인하세요. 처음 한 번 골라 두면 다음부터 자동으로 골라집니다. 비워 두면 그 칸은 그대로 둡니다.</p>
+      <div class="tbl-box" style="max-height:58vh"><table><thead><tr><th>마감일지 칸</th><th>파일에서 가져올 값</th><th class="num">지금 적힌 값</th></tr></thead><tbody>
+      ${fields.map(x=>{ const pk=pickOf(x); return `<tr${x.doc?' class="emrdoc"':""}><td>${esc(x.l)}</td><td><select data-emr="${x.id}" data-lab="${esc(x.l)}" style="height:30px;max-width:420px"><option value="">— 가져오지 않음 —</option>${uniq.map(c=>`<option value="${esc(c.key)}" ${c.key===pk?"selected":""}>${esc(nm(c))}</option>`).join("")}</select></td><td class="num">${esc($(x.id).value||"")}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      <label style="display:flex;gap:6px;align-items:center;margin:10px 0 0;font-size:13px"><input type="checkbox" id="emrkeep" checked> 이렇게 고른 연결을 기억 (다음 파일부터 자동)</label>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" value="cancel">취소</button><button type="button" class="btn" id="emrgo">칸에 채우기</button></div></form>`;
+    dlg.showModal();
+    $("emrgo").onclick=async()=>{ const map={}; let n=0, last=null;
+      dlg.querySelectorAll("[data-emr]").forEach(sel=>{ map[sel.dataset.lab]=sel.value||null; if(!sel.value) return; const c=uniq.find(x=>x.key===sel.value); const el=$(sel.dataset.emr); if(!c||!el) return; el.value=won(Math.round(c.v)); el.dispatchEvent(new Event("input",{bubbles:true})); last=el; n++; });
+      if($("emrkeep").checked){ const m=Object.fromEntries(Object.entries(map).filter(([k,v])=>v)); try{ localStorage.setItem("gt-emrmap-"+S.branch,JSON.stringify(m)); }catch(e){}
+        if(S.me.level<=3){ try{ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); d.emrMap=m; await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); }catch(e){} } }
+      dlg.close(); if(last) last.dispatchEvent(new Event("change",{bubbles:true})); toast(n?`${n}칸을 채웠습니다 · 자동 저장됩니다`:"채운 칸이 없습니다"); }; };
+}
 // ── 마감일지 입력 ──
 function ptKeysEntry(){ return [...ptItemsOf(S.branch),"도수상담"]; }
 async function renderEntry(){
@@ -1186,7 +1223,7 @@ async function renderEntry(){
   main.innerHTML=`<div class="wrap"><form id="ef" novalidate>
     <div class="page-h" style="margin-bottom:16px"><div><h2>마감일지 입력</h2><div class="meta"><span id="asv">${row?`<span class="pill ok">저장됨</span> 마지막 저장 ${esc(new Date(r.updated_at).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}))}`:`<span class="pill wait">새로 입력</span>`}</span> · 칸에 숫자를 쓰면 <b>자동 저장</b>됩니다 · 틀리면 지우고 다시 쓰면 됩니다</div></div>
       <div class="field" style="margin:0;min-width:180px"><label for="edate">마감 날짜</label><input id="edate" type="date" value="${date}" min="${minDate}" max="${today}"></div></div>
-    <div class="upload" style="margin-bottom:20px"><span>EMR 마감파일을 올리면 진료비 칸이 자동으로 채워지게 할 예정입니다. 샘플 파일을 받으면 연결합니다.</span><button type="button" class="btn ghost sm" disabled>마감파일 업로드</button></div>
+    <div class="upload" style="margin-bottom:20px"><span>EMR 마감파일(엑셀·csv)을 올리면 진료비·수납 칸을 채워 줍니다 · 처음 한 번만 어느 값이 어느 칸인지 골라 두면 다음부터 자동</span><button type="button" class="btn ghost sm" id="emrup">마감파일 업로드</button><input type="file" id="emrf" accept=".xlsx,.xls,.csv" hidden></div>
     <div class="form-grid">
       <fieldset><legend>진료비</legend><p class="fs-note">단위 원 · EMR 마감 화면의 합계</p><div class="rows">
         ${num("f_total","총진료비",r.total)}${num("f_nonpay","비급여",r.nonpay)}${num("f_out","외래",r.outpatient)}${num("f_inpat","입원비",r.inpatient)}${num("f_surg","수술 건수",r.surgery_cnt)}
@@ -1218,6 +1255,7 @@ async function renderEntry(){
     </div>
     <div class="formbar" style="margin-top:20px"><span class="check" id="chk"></span><span style="display:flex;gap:8px">${canDash()?`<button type="button" class="btn ghost" id="gocal">마감 달력 보기</button>`:""}<button type="submit" class="btn" id="save">지금 저장</button></span></div>
   </form></div>`;
+  bindEmrUpload();
   const v=id=>{ const el=$(id); if(!el) return 0; const s=(el.value||"").replace(/[^\d]/g,""); return s?Number(s):0; };
   const fmt=el=>{ const s=el.value.replace(/[^\d]/g,""); el.value=s?Number(s).toLocaleString("ko-KR"):""; };
   // ── 자동 저장: 바뀐 칸만 저장 ──
@@ -2089,9 +2127,21 @@ function shiftDialog(td,map,codesL,staff,reload,save){
 // ── 부서별 업무게시판 ──
 const DOC_DEPTS=["공통","회의록","원무","간호","병동","수술","물리치료","영상의학","임상병리","청구","경영지원"];
 function canEditDoc(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (["공통","회의록","청구"].includes(dept) && me.level<=3); }
+// 글자 색·형광펜: {빨강:글자} {파랑:글자} {초록:글자} {주황:글자} {보라:글자} ==형광펜==
+const MD_COLORS={빨강:"mcR",파랑:"mcB",초록:"mcG",주황:"mcO",보라:"mcP"};
+const mdColor=h=>h.replace(/\{(빨강|파랑|초록|주황|보라):([^{}]+?)\}/g,(x,c,t)=>`<span class="${MD_COLORS[c]}">${t}</span>`).replace(/==([^=]+?)==/g,"<mark>$1</mark>");
+const mdStrip=t=>String(t).replace(/\{(?:빨강|파랑|초록|주황|보라):([^{}]+?)\}/g,"$1").replace(/==([^=]+?)==/g,"$1");
+const MD_PAL=[["mark","형광펜","==",'=='],["빨강","빨강"],["파랑","파랑"],["초록","초록"],["주황","주황"],["보라","보라"],["bold","굵게","**","**"],["clear","색 지우기"]];
+const mdWrap=(t,k)=>{ const P=MD_PAL.find(x=>x[0]===k); if(k==="clear") return mdStrip(t).replace(/\*\*(.+?)\*\*/g,"$1"); if(P[2]) return P[2]+t+P[3]; return `{${k}:${t}}`; };
+const mdPalHtml=()=>MD_PAL.map(([k,l])=>`<button type="button" class="mdpal-b ${k==="mark"?"mdpal-mk":k==="bold"?"mdpal-bd":k==="clear"?"mdpal-cl":MD_COLORS[k]}" data-mpal="${k}" title="${l}">${k==="clear"?"✕ 색 지우기":k==="bold"?"<b>굵게</b>":l}</button>`).join("");
+// 글쓰기 칸 위 색 도구: 글자를 고른 뒤 누르기
+function bindMdPalette(ta,bar,after){ if(!ta||!bar) return; bar.innerHTML=`<span class="meta">글자를 고른 뒤 →</span>`+mdPalHtml();
+  bar.querySelectorAll("[data-mpal]").forEach(b=>{ b.onmousedown=e=>e.preventDefault(); b.onclick=()=>{ const a=ta.selectionStart, z=ta.selectionEnd; if(a===z) return toast("먼저 색을 넣을 글자를 마우스로 고르세요"); const sel=ta.value.slice(a,z); const lead=sel.match(/^\s*/)[0], tail=sel.match(/\s*$/)[0]; const core=sel.slice(lead.length,sel.length-tail.length);
+    const w=core.split("\n").map(l=>{ const pre=(l.match(/^(\s*(?:#{1,3}\s*|[-*•]\s+(?:\[(?: |x|X)\]\s+)?|\d+[.)]\s+)?)/)||[""])[0]; const body=l.slice(pre.length); return body.trim()?pre+mdWrap(body,b.dataset.mpal):l; }).join("\n");
+    ta.setRangeText(lead+w+tail,a,z,"select"); ta.focus(); after&&after(); }; }); }
 function mdRender(src,opt={}){
   const E=!!opt.edit; const L=i=>E?` data-ln="${i}"`:"";
-  const inl=t=>esc(t).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
+  const inl=t=>mdColor(esc(t)).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g,"$1<i>$2</i>").replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>');
   const lines=String(src||"").split(/\r?\n/); let out="", list=null, tbl=null, inTab=false;
   const CK=/^\[( |x|X|v|V)?\]$/; const cellH=(c,ci,ln)=>{ const m=c.match(CK); if(!m&&mdCls(c)) return `<td data-ci="${ci}" class="${mdCls(c)}">${inl(c)}</td>`; return m?`<td data-ci="${ci}" class="mdck"><input type="checkbox" ${E?`data-tck="${ln}:${ci}"`:"disabled"} ${m[1]&&m[1].trim()?"checked":""} aria-label="체크"></td>`:`<td data-ci="${ci}">${inl(c)}</td>`; };
   const DT=/^(\d{1,2})\/(\d{1,2})$/;
@@ -2221,9 +2271,22 @@ function bindMdEdit(box,doc,rerender){
   box.addEventListener("mousedown",e=>{ if(BR.v==null) return; const td=e.target.closest("td[data-mm]"); if(!td||!box.contains(td)) return; e.preventDefault(); painting=true; paint(td); });
   box.addEventListener("mouseover",e=>{ if(!painting) return; const td=e.target.closest("td[data-mm]"); if(td) paint(td); });
   document.addEventListener("mouseup",()=>{ painting=false; });
-  box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; if(BR.v!=null&&td.dataset.mm!=null&&td.tagName==="TD") return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
+  box.querySelectorAll("tr[data-ln] [data-ci]:not(.mdck)").forEach(td=>{ td.tabIndex=0; td.addEventListener("click",e=>{ if(e.target.closest("a,.mdin")) return; if(String(window.getSelection()||"").trim()) return; if(BR.v!=null&&td.dataset.mm!=null&&td.tagName==="TD") return; cellEdit(td); }); td.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===td){ e.preventDefault(); cellEdit(td); } }); });
   box.querySelectorAll(".mdt[data-ln]").forEach(el=>{ el.tabIndex=0; const ln=+el.dataset.ln; const go=()=>edit(el,()=>lines[ln].slice(preOf(lines[ln]).length),v=>{ lines[ln]=preOf(lines[ln])+v.replace(/\s*\n\s*/g," "); });
-    el.addEventListener("click",e=>{ if(e.target.closest("a,.mdin,input")) return; e.stopPropagation(); go(); }); el.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===el){ e.preventDefault(); go(); } }); });
+    el.addEventListener("click",e=>{ if(e.target.closest("a,.mdin,input,select")) return; if(String(window.getSelection()||"").trim()) return; e.stopPropagation(); go(); }); el.addEventListener("keydown",e=>{ if(e.key==="Enter"&&e.target===el){ e.preventDefault(); go(); } }); });
+  // 보기 화면에서 글자를 드래그해 고르면 색 도구가 뜸
+  const pal=document.createElement("div"); pal.className="mdpal mdfloat"; pal.hidden=true; pal.innerHTML=mdPalHtml(); document.body.querySelector(":scope > .mdfloat")?.remove(); document.body.appendChild(pal); let pick=null;
+  const hidePal=()=>{ pal.hidden=true; pick=null; };
+  box.addEventListener("mouseup",()=>setTimeout(()=>{ const sl=window.getSelection(); const t=sl&&sl.toString(); if(!t||!t.trim()||sl.rangeCount<1) return hidePal();
+    const r=sl.getRangeAt(0); const el=(r.commonAncestorContainer.nodeType===1?r.commonAncestorContainer:r.commonAncestorContainer.parentElement).closest(".mdt[data-ln],tr[data-ln] [data-ci]");
+    if(!el||!box.contains(el)) return hidePal(); const td=el.matches("[data-ci]"); const ln=+(td?el.parentElement.dataset.ln:el.dataset.ln);
+    pick={ln,ci:td?+el.dataset.ci:null,text:t.trim()}; const b=r.getBoundingClientRect(); pal.hidden=false; pal.style.top=(window.scrollY+b.top-pal.offsetHeight-8)+"px"; pal.style.left=Math.max(8,Math.min(window.scrollX+b.left,window.scrollX+innerWidth-pal.offsetWidth-8))+"px"; },0));
+  window.__mdPalHide=hidePal; if(!window.__mdPalDoc){ window.__mdPalDoc=1; document.addEventListener("mousedown",e=>{ const f=document.querySelector(".mdfloat"); if(f&&!f.contains(e.target)&&window.__mdPalHide) window.__mdPalHide(); }); }
+  pal.querySelectorAll("[data-mpal]").forEach(b=>{ b.onmousedown=e=>e.preventDefault(); b.onclick=async()=>{ if(!pick) return; const {ln,ci,text}=pick; const k=b.dataset.mpal;
+    const raw=ci==null?lines[ln]:(cellsOf(ln)[ci]??""); const pre=ci==null?preOf(raw):""; const body=raw.slice(pre.length);
+    let nb=null; if(k==="clear"){ const st=mdStrip(body).replace(/\*\*(.+?)\*\*/g,"$1"); nb=st!==body?st:null; } else { const i=body.indexOf(text); if(i>=0) nb=body.slice(0,i)+mdWrap(text,k)+body.slice(i+text.length); }
+    if(nb==null){ hidePal(); return toast(k==="clear"?"이 줄에는 지울 색이 없습니다":"이미 색이 들어간 글자입니다 — 먼저 [색 지우기] 후 다시 고르세요"); }
+    if(ci==null) lines[ln]=pre+nb; else setCell(ln,ci,nb); window.getSelection().removeAllRanges(); hidePal(); dirty=true; await save(); rerender(); }; });
   box.querySelectorAll("[data-mck]").forEach(cb=>cb.onchange=()=>{ const ln=+cb.dataset.mck; lines[ln]=lines[ln].replace(/\[( |x|X)\]/,cb.checked?"[x]":"[ ]"); queue(); });
   box.querySelectorAll("[data-tck]").forEach(cb=>{ cb.closest("td").onclick=e=>{ if(e.target!==cb){ e.stopPropagation(); cb.click(); } else e.stopPropagation(); };
     cb.onchange=()=>{ const [ln,ci]=cb.dataset.tck.split(":").map(Number); setCell(ln,ci,cb.checked?"[x]":"[ ]"); queue(); }; });
@@ -2304,12 +2367,12 @@ function docEditor(doc, dept, reload, st, notice, tab){
   const v=$("dv"); if(tab) return docTabEditor(doc,reload,tab);
   v.innerHTML=`<div class="field"><label for="dt">제목</label><input id="dt" value="${esc(doc?.title||"")}" placeholder="예: 입원 시 체크리스트"></div>
     ${notice?`<p class="meta" style="color:var(--warn)">${esc(notice)}</p>`:""}
-    <div class="doc-edit"><div class="field" style="margin:0"><label for="db">내용</label><textarea id="db" rows="18" placeholder="# 제목&#10;- 항목&#10;- [ ] 체크할 일&#10;1. 순서 있는 단계&#10;**굵게**&#10;| 항목 | 내용 |&#10;| --- | --- |&#10;| 예시 | 값 |">${esc(doc?.body||"")}</textarea></div>
+    <div class="doc-edit"><div class="field" style="margin:0"><label for="db">내용</label><div class="mdpal" id="dpal"></div><textarea id="db" rows="18" placeholder="# 제목&#10;- 항목&#10;- [ ] 체크할 일&#10;1. 순서 있는 단계&#10;**굵게**&#10;| 항목 | 내용 |&#10;| --- | --- |&#10;| 예시 | 값 |">${esc(doc?.body||"")}</textarea></div>
       <div><span class="meta" style="font-size:12px">미리보기</span><div class="md preview" id="dpv">${mdRender(doc?.body||"")}</div></div></div>
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:13px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dpin" ${doc?.pinned?"checked":""}> 목록 맨 위에 고정</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dnot" ${doc?.notice?"checked":""}> 필독 공지 (직원이 [확인했습니다]를 눌러야 하고, 읽음 현황이 남습니다)</label></div>
     <p class="err" id="derr"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button>${doc?.id?`<button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">삭제</button>`:""}</div>`;
-  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); };
+  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; bindMdPalette($("db"),$("dpal"),()=>$("db").oninput());
   $("dcancel").onclick=reload;
   $("dsave").onclick=async()=>{ const title=$("dt").value.trim(); if(!title){ $("derr").textContent="제목을 적어주세요."; return; }
     const row={title,body:$("db").value,pinned:$("dpin").checked,notice:$("dnot").checked};
@@ -2324,11 +2387,11 @@ function docTabEditor(doc,reload,tab){ const v=$("dv"); const P=mdTabParts(doc.b
   const orig=mdTrim(part.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n");
   v.innerHTML=`<p class="meta" style="margin:0 0 8px">${esc(doc.title)} › <b>${esc(tab)}</b> 탭만 고칩니다 · 다른 탭 내용은 그대로 둡니다</p>
     <div class="field"><label for="dtn">탭 이름</label><input id="dtn" value="${esc(tab)}" style="max-width:260px"></div>
-    <div class="doc-edit"><div class="field" style="margin:0"><label for="db">'${esc(tab)}' 탭 내용 <span class="meta" style="font-weight:400">· 항목 제목은 ### 로 시작 (예: ### 씨암 기본세팅)</span></label><textarea id="db" rows="20">${esc(orig)}</textarea></div>
+    <div class="doc-edit"><div class="field" style="margin:0"><label for="db">'${esc(tab)}' 탭 내용 <span class="meta" style="font-weight:400">· 항목 제목은 ### 로 시작 (예: ### 씨암 기본세팅)</span></label><div class="mdpal" id="dpal"></div><textarea id="db" rows="20">${esc(orig)}</textarea></div>
       <div><span class="meta" style="font-size:12px">미리보기</span><div class="md preview" id="dpv">${mdRender(orig)}</div></div></div>
     <p class="err" id="derr"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button><button class="btn ghost" id="dtdel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">이 탭 없애기</button></div>`;
-  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; $("dcancel").onclick=reload;
+  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; bindMdPalette($("db"),$("dpal"),()=>$("db").oninput()); $("dcancel").onclick=reload;
   const apply=async fn=>{ try{ const fresh=await mdDocFresh(doc.id); const FP=mdTabParts(fresh); const fp=FP.find(p=>p.name===tab); if(!fp) throw new Error("그 사이에 이 탭이 없어졌습니다");
       const now=mdTrim(fp.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n"); if(now!==orig&&!$("dsave").dataset.force){ $("dsave").dataset.force=1; $("dsave").textContent="그래도 덮어쓰기"; throw new Error("이 탭을 여는 사이에 다른 분이 이 탭을 고쳤습니다. [취소]로 새로 불러오거나, 정말 덮어쓰려면 한 번 더 누르세요."); }
       fn(FP,fp); await mdDocPut(doc,mdTabJoin(FP)); return true; }catch(e){ $("derr").textContent=errMsg(e); return false; } };
@@ -2975,13 +3038,13 @@ async function renderLeave(){
     sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort") ]);
   if(gr.error||ur.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(gr.error||ur.error))}</div></div>`; return; }
   const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
-  const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name)])];
+  const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name),...staff.filter(s=>s.dept!=="의료진"&&!PLACEHOLDER.test(s.name)).map(s=>s.name)])]; /* 연차 기록이 아직 없는 직원(원무·임상병리 등)도 표에 나오게 */
   const asOf=kstToday();
   let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
     .sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return (a.g?.sort??1e6)-(b.g?.sort??1e6)||o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
   const allPeople=people.slice(); people.splice(0,people.length,...allPeople.filter(p=>st.dept==="전체"||p.dept===st.dept));
-  const depts=[...new Set(names.map(n=>(grants.find(x=>x.staff_name===n)||uses.find(x=>x.staff_name===n))?.dept||""))].filter(Boolean);
+  const depts=[...new Set(allPeople.map(p=>p.dept))].filter(Boolean).sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return o(a)-o(b); });
   const lq=(st.lq||"").trim(); const list=lq?uses.filter(u=>u.staff_name.includes(lq)).slice().reverse():st.who?uses.filter(u=>u.staff_name===st.who).slice().reverse():uses.slice(-40).reverse();
   const dOrder=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
   const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
