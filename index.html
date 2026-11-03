@@ -251,7 +251,7 @@ table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:
 .mdcal-c{min-height:96px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:4px 5px;font-size:12px;line-height:1.35}.mdcal-c:nth-child(7n+1){border-left:none}.mdcal-c.out{background:var(--sunk)}.mdcal-c.today{background:color-mix(in srgb,var(--navy) 7%,var(--surface))}.mdcal-c .dn{font-weight:700;font-size:13px;margin-bottom:2px}
 .mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
 small.ord.zero{color:var(--good)!important;font-weight:700}
-.mdtabs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;padding:6px;background:var(--sunk);border-radius:10px;position:sticky;top:var(--sticktop,0px);z-index:3}.mdtabs button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 14px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
 .tlines{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.8}
@@ -2120,7 +2120,7 @@ function mdRender(src,opt={}){
 // 업무게시판 글 안의 탭 ("# 탭: 이름" 줄로 나눔)
 function bindMdTabs(box,key){ if(!box) return; const T=[...box.querySelectorAll(".mdtab")]; if(T.length<2) return; const TS=window.__mdTab ||= {};
   const names=T.map(t=>t.dataset.tab); let sel=TS[key]&&(names.includes(TS[key])||TS[key]==="__all")?TS[key]:names[0];
-  const bar=document.createElement("div"); bar.className="mdtabs"; T[0].before(bar);
+  const bar=document.createElement("div"); bar.className="mdtabs"; const host=box.closest("section")||box.parentElement; host.querySelector(":scope > .mdtabs")?.remove(); host.prepend(bar); host.classList.add("hastabs");
   const draw=()=>{ bar.innerHTML=names.map(n=>`<button type="button" data-mtab="${esc(n)}" aria-pressed="${sel===n}">${esc(n)}</button>`).join("")+`<button type="button" data-mtab="__all" aria-pressed="${sel==="__all"}">전체</button>`;
     T.forEach(t=>t.hidden=sel!=="__all"&&t.dataset.tab!==sel); T.forEach(t=>{ const h=t.querySelector(".mdtabh"); if(h) h.hidden=sel!=="__all"; });
     bar.querySelectorAll("[data-mtab]").forEach(b=>b.onclick=()=>{ sel=b.dataset.mtab; TS[key]=sel; draw(); }); };
