@@ -3909,7 +3909,7 @@ async function renderAmpm(keep){
     sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",st.date) ]);
   // 자동 값: 오전 = 마감일지 중간 보고, 하루 = 마감일지 원장별 환자 수 · C-arm 카운트, 오후 = 하루 − 오전
   const E=dc?.extra?.ampm||{}; const docs=dc?.doctors||[]; const dN=docs.reduce((t,d)=>t+(+d.new||0),0), dT=dN+docs.reduce((t,d)=>t+(+d.re||0),0);
-  const cs=k=>(cc||[]).filter(x=>x.kind===k).reduce((t,x)=>t+(+x.cnt||0),0); const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
+  const cs=k=>(cc||[]).filter(x=>x.kind===k||x.kind===k+"_s").reduce((t,x)=>t+(+x.cnt||0),0); const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
   const nn=x=>x==null||isNaN(x)?null:x; const sub=(a,b)=>a==null||b==null?null:Math.max(0,a-b);
   const AUTO={am_total:nn(E.am_total),am_new:nn(E.am_new),am_carm:nn(E.am_carm),am_carm_new:nn(E.am_carm_new),
     pm_total:sub(dT||null,E.am_total),pm_new:sub(dT?dN:null,E.am_new),pm_carm:sub(dC,E.am_carm),pm_carm_new:sub(nn(E.carm_new),E.am_carm_new)};
@@ -3918,7 +3918,8 @@ async function renderAmpm(keep){
   const OV=k=>r?.[k]==null?null:+r[k]; const V=k=>OV(k)??AUTO[k]??null;
   { const amE=k=>OV(k)??AUTO[k]; AUTO.pm_total=sub(dT||null,amE("am_total")); AUTO.pm_new=sub(dT?dN:null,amE("am_new")); AUTO.pm_carm=sub(dC,amE("am_carm")); AUTO.pm_carm_new=sub(nn(E.carm_new),amE("am_carm_new")); } const half=h=>{ const t=V(h+"_total"), n=V(h+"_new"), c=V(h+"_carm"), cn=V(h+"_carm_new"); return {t,n,re:t!=null&&n!=null?t-n:null,c,cn}; };
   const A=half("am"), P=half("pm"); const sum=(a,b)=>a==null&&b==null?null:(a||0)+(b||0);
-  const T={t:sum(A.t,P.t),n:sum(A.n,P.n),re:sum(A.re,P.re),c:sum(A.c,P.c),cn:sum(A.cn,P.cn)};
+  const tot=(a,b,day)=>a!=null&&b!=null?a+b:(day!=null&&day>0?day:sum(a,b));
+  const T={t:tot(A.t,P.t,dT||null),n:tot(A.n,P.n,dT?dN:null),c:tot(A.c,P.c,dC),cn:tot(A.cn,P.cn,nn(E.carm_new))}; T.re=T.t!=null&&T.n!=null?T.t-T.n:sum(A.re,P.re);
   const pct=(a,b)=>b?((a||0)/b*100).toFixed(1)+"%":"-"; const nv=x=>x==null?"":won(x);
   const inp=(k,ok)=>st.cap||!ok?`<td class="num">${nv(V(k))||"0"}</td>`:`<td class="in${OV(k)!=null?" man":""}"><input data-am="${k}" value="${V(k)??""}" inputmode="numeric" aria-label="${k}" title="${OV(k)!=null?"직접 고친 값 (지우면 자동 값으로 돌아감)":"자동 값 (마감일지·C-arm 카운트) · 고치면 이 값으로 고정"}"></td>`;
   const H=(lab,h,X)=>`<tr class="hd"><th class="lab" rowspan="2">${lab}</th><th>총원</th><th>신환</th><th>재진</th><th>C-arm 건수</th><th>C-arm 처방률</th><th>신환 C-arm 건수</th><th>신환 C-arm 처방률</th></tr>
@@ -3926,15 +3927,16 @@ async function renderAmpm(keep){
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>오전·오후 보고</h2><div class="meta">자동: 오전 = 마감일지 "오전 중간 보고" · 하루 = 마감일지 원장별 환자 수 + C-arm 카운트 · 오후 = 하루 − 오전 · 칸을 직접 고치면 그 값으로 고정 (주황 테두리, 지우면 자동으로)</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="monthnav"><button class="btn ghost sm" id="amp" aria-label="전날">◀</button><button class="btn ghost sm" id="amt">오늘</button><button class="btn ghost sm" id="amn" aria-label="다음날">▶</button></div>
-        <input type="date" id="amd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜"><button class="btn ghost sm" id="amr">↻ 새로고침</button><button class="btn ${st.cap?"":"ghost"} sm" id="amc">${st.cap?"✏️ 입력 화면":"📷 캡처용 보기"}</button></div></div>
+        <input type="date" id="amd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜"><button class="btn ghost sm" id="amr">↻ 새로고침</button>${canR&&dC?`<button class="btn ghost sm" id="amsnap" title="C-arm 카운트에 지금까지 적힌 ${dC}건을 오전 C-arm 건수로 저장">⏱ 지금 C-arm ${dC}건 → 오전</button>`:""}<button class="btn ${st.cap?"":"ghost"} sm" id="amc">${st.cap?"✏️ 입력 화면":"📷 캡처용 보기"}</button></div></div>
     <section class="panel ampm-card"><table class="ampm"><caption><b>${st.date}</b> <span>${WD[d0.getUTCDay()]}</span> <small>${esc((S.branches||[]).find(b=>b.id===S.branch)?.name||"")}</small></caption><tbody>
       ${H("오전","am",A)}<tr class="gap"><td colspan="8"></td></tr>${H("오후","pm",P)}<tr class="gap"><td colspan="8"></td></tr>
       <tr class="hd tot"><th class="lab" rowspan="2">TOTAL</th><th>총원</th><th>신환</th><th>재진</th><th>C-arm 건수</th><th>C-arm 처방률</th><th>신환 C-arm 건수</th><th>신환 C-arm 처방률</th></tr>
       <tr class="tot"><td class="num">${nv(T.t)||"0"}</td><td class="num">${nv(T.n)||"0"}</td><td class="num">${nv(T.re)||"0"}</td><td class="num">${nv(T.c)||"0"}</td><td class="num">${pct(T.c,T.t)}</td><td class="num">${nv(T.cn)||"0"}</td><td class="num">${pct(T.cn,T.n)}</td></tr>
     </tbody></table>${!st.cap&&r?.updated_at?`<p class="meta" style="margin:8px 0 0">마지막 저장 ${new Date(r.updated_at).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}</p>`:""}</section>
-    <p class="meta">${dT?"":"하루 마감일지(원장별 환자 수)가 아직 없어 오후 총원·신환은 비어 있습니다 · "}${dC?"":"C-arm 카운트가 아직 없어 오후 C-arm은 비어 있습니다 · "}재진 = 총원 − 신환 · C-arm 처방률 = C-arm 건수 ÷ 총원 · 신환 C-arm 처방률 = 신환 C-arm 건수 ÷ 신환 · [📷 캡처용 보기]를 누르면 입력칸 없이 표만 나옵니다</p></div>`;
+    <p class="meta">${dT?"":"하루 마감일지(원장별 환자 수)가 아직 없어 오후 총원·신환은 비어 있습니다 · "}${dC?"":"C-arm 카운트가 아직 없습니다 · "}${dC&&V("am_carm")==null?`오전 C-arm이 아직 없어 오후 C-arm은 비어 있습니다 (TOTAL은 C-arm 카운트 ${dC}건) · `:""}재진 = 총원 − 신환 · C-arm 처방률 = C-arm 건수 ÷ 총원 · 신환 C-arm 처방률 = 신환 C-arm 건수 ÷ 신환 · [📷 캡처용 보기]를 누르면 입력칸 없이 표만 나옵니다</p></div>`;
   const go=d=>{ st.date=d; renderAmpm(); };
   $("amp").onclick=()=>go(addDays(st.date,-1)); $("amn").onclick=()=>go(addDays(st.date,1)); $("amt").onclick=()=>go(kstToday()); $("amd").onchange=()=>{ if($("amd").value) go($("amd").value); };
+  if($("amsnap")) $("amsnap").onclick=async()=>{ const {error}=await sb.from("daily_ampm").upsert({branch_id:S.branch,rdate:st.date,am_carm:dC},{onConflict:"branch_id,rdate"}); if(error) return toast(errMsg(error)); toast(`오전 C-arm ${dC}건으로 저장했습니다`); renderAmpm(true); };
   $("amr").onclick=()=>renderAmpm(true).then(()=>toast("최신 값으로 새로고침했습니다")); $("amc").onclick=()=>{ st.cap=!st.cap; renderAmpm(true); };
   const ins=[...main.querySelectorAll("[data-am]")];
   ins.forEach((el,i)=>{ el.addEventListener("keydown",e=>{ const mv={Enter:1,ArrowRight:1,ArrowLeft:-1,Tab:e.shiftKey?-1:1}[e.key]; if(mv&&(e.key!=="ArrowRight"||el.selectionStart===el.value.length)&&(e.key!=="ArrowLeft"||el.selectionStart===0)){ e.preventDefault(); el.blur(); const n=ins[i+mv]; if(n){ n.focus(); n.select(); } } });
