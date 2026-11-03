@@ -682,6 +682,8 @@ MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK
 // 메뉴 그룹 아이콘·색 (C안)
 const NAV_ST={"근무 · 인사 (공용)":["🗓️","#3a6ea5"],"공통":["📢","#64748b"],"원무":["🧾","#d17a12"],"물리치료":["💪","#2f8f4e"],"간호":["💉","#d0457a"],"병동":["🛏️","#7656b8"],"수술":["🩼","#1c8c8c"],"영상의학":["🩻","#5b6fd6"],"임상병리":["🧪","#a35b2a"],"청구":["💰","#b8860b"],"경영지원":["💼","#6b7785"],"의료진":["👨‍⚕️","#1858a8"],"보안":["🔒","#c0392b"],"경영 · 관리":["📊","#334155"]};
 const navSt=g=>NAV_ST[g]||["📁","#64748b"]; const NAV_TOP={me:"🏠",dash:"📈"};
+// 지점별로 업무게시판·업무 기록부·물품재고를 쓰는 부서 (없으면 전부) — 철산은 간호만
+const TOOL_DEPTS={"gt-cs":["간호"]}; const toolOk=d=>!TOOL_DEPTS[S.branch]||TOOL_DEPTS[S.branch].includes(d)||d==="공통"||d==="회의록";
 const SEC_TABS=["업체관련 일괄","직원인사명부","경리시트"];
 const MENU_DEPTS=["2등급","팀장","원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
 const umGroup=u=>+u.level===5?"의사":+u.level===3?"팀장":+u.level===2?"2등급":(u.dept||"");
@@ -858,14 +860,14 @@ function render(){
   const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
-  const deptTools=(d,g)=>{ if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
+  const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
   const DEPT_FN={"원무":["entry","dpay","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
   else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
-      ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
+      if(toolOk(md)) ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept,sec:()=>S.secSel};
@@ -2164,7 +2166,7 @@ function bindMdEdit(box,doc,rerender){
 async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false};
+  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; }
   const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
@@ -2178,7 +2180,7 @@ async function renderDocs(){
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>업무게시판</h2><div class="meta">부서별 업무 정리 · 고칠 때마다 이전 내용이 기록됩니다 · 비밀번호·환자 개인정보는 적지 마세요</div></div>
       <input id="dq" placeholder="전체 검색 (제목·내용)" value="${esc(st.q)}" style="height:34px;padding:0 10px;width:min(260px,100%)"></div>
-    <div class="chips">${DOC_DEPTS.map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
+    <div class="chips">${DOC_DEPTS.filter(toolOk).map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
     <div class="doc-shell">
       <aside class="panel doc-list">${q?`<p class="meta" style="margin:0 0 8px">"${esc(st.q)}" 검색 결과 ${list.length}건</p>`:""}
         ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))} ${esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
@@ -2324,7 +2326,7 @@ function canEditInv(dept){ const me=S.me; return me.level<=3 || me.dept===dept |
 async function renderInventory(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st = S.invV ||= {dept: INV_DEPTS.includes(S.me.dept)?S.me.dept:"간호", cat:"전체", q:"", count:false, cdate:kstToday(), low:false};
+  const st = S.invV ||= {dept: INV_DEPTS.includes(S.me.dept)?S.me.dept:"간호", cat:"전체", q:"", count:false, cdate:kstToday(), low:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||["간호"])[0]; st.cat="전체"; }
   const ir=await sb.from("inv_items").select("*").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",true).order("category").order("sort").order("id");
   if(ir.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ir.error))}</div></div>`; return; }
   const items=ir.data||[]; const ids=items.map(i=>i.id);
@@ -2356,7 +2358,7 @@ async function renderInventory(){
         <span style="display:inline-flex;align-items:center"><input id="iq" placeholder="품목·코드·업체 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:220px"></span>${st.q?`<button class="btn ghost sm" id="iqx">지우기</button>`:""}
         ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button><button class="btn ${st.edit?"":"ghost"} sm" id="iedit" title="기준 수량 고치기 · 쓰지 않는 물품 삭제">${st.edit?"편집 끝":"✏️ 기준·삭제 편집"}</button>`:""}
         <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button><button class="btn ghost sm" id="iprint" title="목록만 인쇄">🖨 인쇄</button></div></div>
-    <div class="chips">${INV_DEPTS.map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
+    <div class="chips">${INV_DEPTS.filter(toolOk).map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
     <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&st.cat===c}">${esc(c)}</button>`).join("")}
       ${leds.map(d=>`<button class="fchip ledchip" data-iled="${d.id}" aria-pressed="${led?.id===d.id}">📒 ${esc(d.title.slice(INV_LED.length))}</button>`).join("")}${canEditDoc(st.dept)?`<button class="fchip" id="iledadd" title="이 파트 물품·재고에 장부 추가">+ 장부</button>`:""}
       ${useLow&&!led?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
@@ -2573,7 +2575,7 @@ async function renderRegisters(opts={}){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const fixed=opts.dept||null; const key=opts.key||(fixed?"regInfo":"regV");
   const st = S[key] ||= {dept: fixed || (REG_DEPTS.includes(S.me.dept)?S.me.dept:"간호"), id:null, q:"", month:null, limit:300};
-  if(fixed) st.dept=fixed; st.q ??= ""; st.limit ??= 300; if(st.month===undefined) st.month=null; if(st.day===undefined) st.day=opts.dayDefault?kstToday():null; if(st.day) st.month=st.day.slice(0,7);
+  if(fixed) st.dept=fixed; else if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||["간호"])[0]; st.id=null; } st.q ??= ""; st.limit ??= 300; if(st.month===undefined) st.month=null; if(st.day===undefined) st.day=opts.dayDefault?kstToday():null; if(st.day) st.month=st.day.slice(0,7);
   const lr=await sb.from("registers").select("id,dept,name,columns,date_col,sort,memo").eq("branch_id",S.branch).eq("active",true).order("sort").order("id");
   if(lr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(lr.error))}</div></div>`; return; }
   const regsAll=lr.data||[]; const regs=regsAll.filter(r=>r.dept===st.dept&&(opts.filter?opts.filter(r):!(r.dept==="원무"&&r.name==="일일수납")));
@@ -2607,7 +2609,7 @@ async function renderRegisters(opts={}){
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="rq" placeholder="이 목록에서 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:170px">
         ${cur?`<button class="btn ghost sm" id="rcsv">CSV 받기</button>`:""}${ed?`<button class="btn sm" id="radd">+ 행 추가</button>`:""}</div></div>
-    ${opts.top||""}${fixed?"":`<div class="chips">${REG_DEPTS.map(d=>`<button class="fchip" data-rd="${d}" aria-pressed="${st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>`}
+    ${opts.top||""}${fixed?"":`<div class="chips">${REG_DEPTS.filter(toolOk).map(d=>`<button class="fchip" data-rd="${d}" aria-pressed="${st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>`}
     <div class="doc-shell${hideL?" nolist":""}">
       <aside class="panel doc-list" ${hideL?"hidden":""}>${regs.map(r=>`<button class="doc-item" data-rg="${r.id}" aria-current="${cur&&r.id===cur.id}"><b>${esc(shortN(r.name))}</b></button>`).join("")||`<p class="meta">목록이 없습니다.</p>`}
         ${(S.me.level<=3&&canRegWrite(st.dept))?`<button class="btn ghost block" id="rnew" style="margin-top:10px">+ 새 목록</button>${hidRegs.length?`<details style="margin-top:10px"><summary class="meta">숨긴 목록 ${hidRegs.length}개</summary>${hidRegs.map(r=>`<div style="display:flex;gap:6px;align-items:center;margin-top:6px"><span style="flex:1;font-size:13px">${esc(r.name)}</span><button class="btn ghost sm" data-rrs="${r.id}">되살리기</button></div>`).join("")}</details>`:""}`:""}</aside>
