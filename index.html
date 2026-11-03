@@ -244,6 +244,7 @@ table.ampm td.in input{width:100%;height:32px;border:1px dashed var(--line);bord
 .projwrap{margin-bottom:12px}.projwrap .projline{margin-bottom:8px}.projgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.projgrid>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}.projgrid .k{font-size:12.5px;color:var(--muted);font-weight:600}.projgrid b{font-size:19px;color:var(--navy)}.projgrid small{font-size:11.5px;color:var(--muted)}@media (max-width:900px){.projgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
 table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
+[data-cq].saved,[data-co].saved{background:color-mix(in srgb,var(--good) 14%,var(--surface))}[data-cq].err,[data-co].err{background:color-mix(in srgb,var(--bad) 14%,var(--surface))}
 small.ord.zero{color:var(--good)!important;font-weight:700}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
@@ -2383,7 +2384,7 @@ async function renderInventory(){
         <div class="tbl-box" style="max-height:560px"><table class="ordcmp"><thead><tr><th>발주일</th><th>품목</th><th>발주량</th><th>입고일 · 입고량</th><th>입고 합계</th><th>차이</th><th>메모</th>${ed?"<th>입고 입력</th>":""}</tr></thead><tbody>
         ${rows.map(({it,o,R})=>{ const rs=R.reduce((a,r)=>a+(+r.qty),0); const df=o?rs-(+o.qty):null;
           const dH=!o?`<span class="pill">발주 없음</span>`:!R.length?`<span class="pill wait">입고 대기</span>`:df===0?`<span style="color:var(--good);font-weight:700">일치</span>`:df<0?`<span style="color:var(--bad);font-weight:700">${fmtQ(df)} 덜 옴</span>`:`<span style="color:var(--warn);font-weight:700">+${fmtQ(df)} 더 옴</span>`;
-          return `<tr><td class="num">${o?md(o.log_date):"–"}</td><td><b>${esc(it.name)}</b>${it.spec&&it.spec!==it.name?` <small class="meta">${esc(it.spec)}</small>`:""}${it.vendor?` <small class="meta">${esc(it.vendor)}</small>`:""}</td><td class="num">${o?fmtQ(o.qty):""}</td>
+          return `<tr><td class="num">${o?(ed?`<input type="date" data-odt="${o.id}" value="${o.log_date}" title="발주일 고치기" style="height:28px;width:128px">`:md(o.log_date)):"–"}</td><td><b>${esc(it.name)}</b>${it.spec&&it.spec!==it.name?` <small class="meta">${esc(it.spec)}</small>`:""}${it.vendor?` <small class="meta">${esc(it.vendor)}</small>`:""}</td><td class="num">${o?(ed?`<span style="display:inline-flex;gap:4px;align-items:center"><input data-oqt="${o.id}" inputmode="decimal" value="${fmtQ(o.qty)}" title="발주량 고치기" style="height:28px;width:60px;padding:0 6px;text-align:right"><button class="nmbtn" data-oxd="${o.id}" title="이 발주 지우기" aria-label="발주 지우기">×</button></span>`:fmtQ(o.qty)):""}</td>
             <td>${R.map(r=>`<span class="rcvtag">${md(r.log_date)} · ${fmtQ(r.qty)}${ed?`<button class="nmbtn" data-rdel="${r.id}" title="이 입고 지우기" aria-label="입고 지우기">×</button>`:""}</span>`).join(" ")||'<span class="meta">–</span>'}</td>
             <td class="num">${R.length?fmtQ(rs):""}</td><td>${dH}</td>
             <td>${o?(ed?`<input data-onote="${o.id}" value="${esc(o.note||"")}" placeholder="메모" style="height:28px;width:160px;padding:0 6px">`:esc(o.note||"")):""}</td>
@@ -2410,11 +2411,24 @@ async function renderInventory(){
       if(e.key==="ArrowRight") c++; else if(e.key==="ArrowLeft") c--; else if(e.key==="ArrowDown"||e.key==="Enter") r++; else if(e.key==="ArrowUp") r--; else return;
       if(c>=row.length){ r++; c=0; } else if(c<0){ r--; c=(grid[r]||[]).length-1; }
       const t=grid[r]?.[Math.min(c,(grid[r]||[]).length-1)]; if(!t) return; e.preventDefault(); t.focus(); t.select(); }))); }
+  // 칸을 고치면 바로 저장 (비우거나 0이면 그 날 기록 지움)
+  document.querySelectorAll("[data-cq],[data-co]").forEach(el=>el.addEventListener("change",async()=>{ const d=st.cdate, k=el.dataset.cq?"재고":"발주", id=+(el.dataset.cq||el.dataset.co); const t=el.value.replace(/,/g,"").trim(); const v=t===""?null:parseFloat(t);
+    if(t!==""&&isNaN(v)){ el.classList.add("err"); return toast("숫자를 적어 주세요"); } el.classList.remove("err");
+    const x=(L[id]||[]).find(l=>l.log_date===d&&l.kind===k); let res;
+    if(v==null||(k==="발주"&&v===0)){ if(!x) return; res=await sb.from("inv_logs").delete().eq("id",x.id); if(!res.error) L[id]=(L[id]||[]).filter(l=>l!==x); }
+    else { res=await sb.from("inv_logs").upsert({item_id:id,branch_id:S.branch,log_date:d,kind:k,qty:v},{onConflict:"item_id,log_date,kind"}).select("id,item_id,log_date,kind,qty,note").single(); if(!res.error){ if(x) x.qty=v; else (L[id] ||= []).push(res.data||{item_id:id,log_date:d,kind:k,qty:v}); } }
+    if(res.error){ el.classList.add("err"); return toast(errMsg(res.error)); } el.classList.add("saved"); setTimeout(()=>el.classList.remove("saved"),900); }));
   if($("isave")) $("isave").onclick=async()=>{ const d=st.cdate; const up=[];
     document.querySelectorAll("[data-cq]").forEach(el=>{ const v=parseFloat(el.value.replace(/,/g,"")); if(!isNaN(v)) up.push({item_id:+el.dataset.cq,branch_id:S.branch,log_date:d,kind:"재고",qty:v}); });
     document.querySelectorAll("[data-co]").forEach(el=>{ const v=parseFloat(el.value.replace(/,/g,"")); if(!isNaN(v)&&v) up.push({item_id:+el.dataset.co,branch_id:S.branch,log_date:d,kind:"발주",qty:v}); });
-    if(!up.length) return toast("입력한 수량이 없습니다");
-    const {error}=await sb.from("inv_logs").upsert(up,{onConflict:"item_id,log_date,kind"}); if(error) return toast(errMsg(error)); toast(`${up.length}건 저장`); renderInventory(); };
+    // 이미 있던 값을 비우거나 0으로 바꾼 칸 = 지우기
+    const dels=[]; const had=(id,k)=>(L[id]||[]).find(l=>l.log_date===d&&l.kind===k);
+    document.querySelectorAll("[data-cq]").forEach(el=>{ const t=el.value.replace(/,/g,"").trim(); const x=had(+el.dataset.cq,"재고"); if(t===""&&x) dels.push(x.id); });
+    document.querySelectorAll("[data-co]").forEach(el=>{ const t=el.value.replace(/,/g,"").trim(); const x=had(+el.dataset.co,"발주"); if((t===""||parseFloat(t)===0)&&x) dels.push(x.id); });
+    if(!up.length&&!dels.length) return toast("입력한 수량이 없습니다");
+    if(up.length){ const {error}=await sb.from("inv_logs").upsert(up,{onConflict:"item_id,log_date,kind"}); if(error) return toast(errMsg(error)); }
+    if(dels.length){ const {error}=await sb.from("inv_logs").delete().in("id",dels); if(error) return toast(errMsg(error)); }
+    toast(`${up.length}건 저장${dels.length?` · ${dels.length}건 지움`:""}`); renderInventory(); };
   if($("iadd")) $("iadd").onclick=()=>invDialog(null,st.dept,cats,()=>renderInventory());
   document.querySelectorAll("[data-iedit]").forEach(b=>b.onclick=()=>invDialog(items.find(x=>x.id===+b.dataset.iedit),st.dept,cats,()=>renderInventory()));
   $("ileg").onclick=()=>{ st.ledger=!st.ledger; renderInventory(); };
@@ -2424,6 +2438,9 @@ async function renderInventory(){
     el.onkeydown=e=>{ if(e.key==="Enter"||e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const L=[...document.querySelectorAll("[data-istd]")]; const n=L[L.indexOf(el)+(e.key==="ArrowUp"?-1:1)]; el.dispatchEvent(new Event("change")); if(n){ n.focus(); n.select(); } } }; });
   document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="정말 삭제?"; b.style.color="var(--bad)"; b.style.borderColor="var(--bad)"; return; }
     const {error}=await sb.from("inv_items").update({active:false}).eq("id",+b.dataset.idel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); toast("삭제했습니다 (기록은 남아 있어 필요하면 되살릴 수 있습니다)"); });
+  document.querySelectorAll("[data-oqt]").forEach(el=>el.onchange=async()=>{ const v=parseFloat(el.value.replace(/,/g,"")); if(isNaN(v)||v<=0) return toast("발주량을 숫자로 적어 주세요 (지우려면 옆 ×)"); const {error}=await sb.from("inv_logs").update({qty:v}).eq("id",+el.dataset.oqt); if(error) return toast(errMsg(error)); toast("발주량을 고쳤습니다"); const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); });
+  document.querySelectorAll("[data-odt]").forEach(el=>el.onchange=async()=>{ if(!el.value) return; const {error}=await sb.from("inv_logs").update({log_date:el.value}).eq("id",+el.dataset.odt); if(error) return toast(/duplicate|unique/i.test(error.message||"")?"그 날짜에 이미 같은 품목 발주가 있습니다":errMsg(error)); toast("발주일을 고쳤습니다"); const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); });
+  document.querySelectorAll("[data-oxd]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.color="var(--bad)"; return; } const {error}=await sb.from("inv_logs").delete().eq("id",+b.dataset.oxd); if(error) return toast(errMsg(error)); toast("발주를 지웠습니다"); const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); });
   document.querySelectorAll("[data-onote]").forEach(el=>el.onchange=async()=>{ const {error}=await sb.from("inv_logs").update({note:el.value.trim()||null}).eq("id",+el.dataset.onote); toast(error?errMsg(error):"메모 저장"); });
   document.querySelectorAll("[data-radd]").forEach(b=>b.onclick=async()=>{ const oid=b.dataset.radd, itId=+b.dataset.it; const d=document.querySelector(`[data-rdt="${oid}"]`).value, q=parseFloat(document.querySelector(`[data-rqt="${oid}"]`).value.replace(/,/g,""));
     if(!d) return toast("입고일을 고르세요"); if(isNaN(q)||q<=0) return toast("입고 수량을 적으세요");
