@@ -85,8 +85,10 @@ nav.side button[aria-current="page"]{background:var(--navy-soft);color:var(--nav
 nav.side button:disabled{color:var(--muted);cursor:default;opacity:.6}
 nav.side .soon{font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
 nav.side .subnav{display:flex;flex-direction:column;gap:1px;margin:0 0 4px 12px;border-left:2px solid var(--line);padding-left:4px}nav.side .subnav button{padding:6px 10px;font-size:13px}
-nav.side button.sep{display:flex;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;text-align:left;border-radius:6px}nav.side button.sep:hover{background:var(--sunk)}
-nav.side .sep{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;padding:14px 12px 5px}
+nav.side button.sep{display:flex;justify-content:space-between;width:100%;border:none;cursor:pointer;text-align:left}nav.side button.sep:hover{filter:brightness(.97)}
+nav.side .sep{font-size:14px;font-weight:700;letter-spacing:.02em;padding:10px 12px;margin-top:6px;border-radius:8px;background:color-mix(in srgb,var(--c) 12%,var(--surface));color:color-mix(in srgb,var(--c) 68%,var(--ink))}
+nav.side .sep .t{display:flex;align-items:center;gap:8px}nav.side .ico{display:inline-block;width:1.3em;text-align:center;margin-right:6px}nav.side .sep .ico{margin-right:0}nav.side .sep .ar{font-size:10px;opacity:.7}
+nav.side button[data-grp]{border-left:3px solid color-mix(in srgb,var(--c) 45%,transparent);margin-left:12px;width:calc(100% - 12px);border-radius:0 6px 6px 0}
 main{min-width:0;padding-block:20px 64px}
 .wrap{max-width:min(1800px,100%);margin:0 auto;display:grid;gap:20px}
 .page-h{display:flex;align-items:flex-end;justify-content:flex-start;gap:12px 28px;flex-wrap:wrap}
@@ -677,6 +679,9 @@ const MENU_DEFAULT={
   "경영지원":[...MENU_BASE],
   "의료진":[...MENU_BASE,"std"]};
 MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK.map(([k])=>k).filter(k=>k!=="sec"); MENU_DEFAULT["2등급"]=MENU_PICK.map(([k])=>k); // 3등급 팀장: 처음엔 전부 // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
+// 메뉴 그룹 아이콘·색 (C안)
+const NAV_ST={"근무 · 인사 (공용)":["🗓️","#3a6ea5"],"공통":["📢","#64748b"],"원무":["🧾","#d17a12"],"물리치료":["💪","#2f8f4e"],"간호":["💉","#d0457a"],"병동":["🛏️","#7656b8"],"수술":["🩼","#1c8c8c"],"영상의학":["🩻","#5b6fd6"],"임상병리":["🧪","#a35b2a"],"청구":["💰","#b8860b"],"경영지원":["💼","#6b7785"],"의료진":["👨‍⚕️","#1858a8"],"보안":["🔒","#c0392b"],"경영 · 관리":["📊","#334155"]};
+const navSt=g=>NAV_ST[g]||["📁","#64748b"]; const NAV_TOP={me:"🏠",dash:"📈"};
 const SEC_TABS=["업체관련 일괄","직원인사명부","경리시트"];
 const MENU_DEPTS=["2등급","팀장","원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
 const umGroup=u=>+u.level===5?"의사":+u.level===3?"팀장":+u.level===2?"2등급":(u.dept||"");
@@ -861,7 +866,7 @@ function render(){
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
   else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
-  grp("🔒 보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
+  grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept,sec:()=>S.secSel};
   const baseV=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view;
@@ -870,8 +875,8 @@ function render(){
   let navClosed; try{ const raw=localStorage.getItem("gt-navclosed2"); navClosed=new Set(raw?JSON.parse(raw):items.filter(i=>i.sep&&!/공용|공통/.test(i.sep)).map(i=>i.sep)); }catch(_){ navClosed=new Set(); }
   if(lv>=2&&!fullMenu()&&S.menuFor!==S.branch){ S.menuFor=S.branch; loadBranchSettings().then(d=>{ const m=d.raw?.menus||null; if(JSON.stringify(m)!==JSON.stringify(S.menuCfg||null)){ S.menuCfg=m; render(); } }).catch(()=>{}); }
   { const ok=new Set(items.map(i=>i.id)); if(!ok.has(baseV)) S.view="me"; }
-  const curItem=items.find(i=>i.id&&isCur(i)); $("app").innerHTML = topbar()+`<div class="shell"><button type="button" class="navbtn" id="navbtn" aria-controls="sidenav" aria-expanded="false">☰ 메뉴${curItem?` · <b>${esc(curItem.label)}</b>`:""}</button><div class="navback" id="navback"></div><nav class="side" id="sidenav" aria-label="메뉴">${items.map(i=>i.sep?`<button type="button" class="sep" data-navg="${esc(i.sep)}" aria-expanded="${!navClosed.has(i.sep)||i.sep===curGrp}">${esc(i.sep)}<span aria-hidden="true">${navClosed.has(i.sep)&&i.sep!==curGrp?"▸":"▾"}</span></button>`:
-    `<button data-v="${i.id}" ${i.dept?`data-dept="${esc(i.dept)}"`:""} ${i.grp?`data-grp="${esc(i.grp)}" ${navClosed.has(i.grp)&&i.grp!==curGrp?"hidden":""}`:""} ${isCur(i)?'aria-current="page"':""}>${esc(i.label)}</button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
+  const curItem=items.find(i=>i.id&&isCur(i)); $("app").innerHTML = topbar()+`<div class="shell"><button type="button" class="navbtn" id="navbtn" aria-controls="sidenav" aria-expanded="false">☰ 메뉴${curItem?` · <b>${esc(curItem.label)}</b>`:""}</button><div class="navback" id="navback"></div><nav class="side" id="sidenav" aria-label="메뉴">${items.map(i=>i.sep?`<button type="button" class="sep" data-navg="${esc(i.sep)}" style="--c:${navSt(i.sep)[1]}" aria-expanded="${!navClosed.has(i.sep)||i.sep===curGrp}"><span class="t"><span class="ico" aria-hidden="true">${navSt(i.sep)[0]}</span>${esc(i.sep)}</span><span class="ar" aria-hidden="true">${navClosed.has(i.sep)&&i.sep!==curGrp?"▸":"▾"}</span></button>`:
+    `<button data-v="${i.id}" ${i.dept?`data-dept="${esc(i.dept)}"`:""} ${i.grp?`data-grp="${esc(i.grp)}" style="--c:${navSt(i.grp)[1]}" ${navClosed.has(i.grp)&&i.grp!==curGrp?"hidden":""}`:""} ${isCur(i)?'aria-current="page"':""}>${!i.grp&&NAV_TOP[i.id]?`<span><span class="ico" aria-hidden="true">${NAV_TOP[i.id]}</span>${esc(i.label)}</span>`:esc(i.label)}</button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
   document.body.classList.remove("navopen"); const setNav=o=>{ document.body.classList.toggle("navopen",o); $("navbtn").setAttribute("aria-expanded",o); }; $("navbtn").onclick=()=>setNav(!document.body.classList.contains("navopen")); $("navback").onclick=()=>setNav(false);
   $("logout").onclick=()=>doLogout(); if($("appInstall")) $("appInstall").onclick=installHelp;
   if(lv<=2) sb.from("signup_requests").select("id",{count:"exact",head:true}).eq("status","pending").then(({count})=>{ const b=document.querySelector('nav.side button[data-v="users"]'); if(b&&count) b.insertAdjacentHTML("beforeend",` <span class="pill wait" title="가입 요청">${count}</span>`); },()=>{});
@@ -886,7 +891,7 @@ function render(){
     if(d&&v==="inv"){ const st=S.invV ||= {dept:d,cat:"전체",q:"",count:false,cdate:kstToday(),low:false}; st.dept=d; st.cat="전체"; st.count=false; }
     S.view=v; render(); });
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
-    document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector("span").textContent=close?"▸":"▾"; });
+    document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
   const v=S.view;
   if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
@@ -2334,7 +2339,7 @@ async function renderInventory(){
   const q=st.q.toLowerCase();
   const isBrace=i=>(i.category||"").startsWith("보호대"); const useLow=!INV_NOLOW.includes(st.dept); if(!useLow) st.low=false;
   const diffOf=i=>{ const lt=last(i); return i.std_qty!=null&&lt?(+lt.qty)-(+i.std_qty):null; };
-  const diffH=i=>{ const d=diffOf(i); return d==null?"":`<span style="color:${d<0?"var(--bad)":d>0?"var(--good)":"var(--muted)"};font-weight:600">${d>0?"+":""}${fmtQ(d)}</span>`; };
+  const diffH=i=>{ const d=diffOf(i); return d==null?"":`<span style="color:${d<0?"var(--bad)":d>0?"#1a5fd0":"var(--muted)"};font-weight:600">${d>0?"+":""}${fmtQ(d)}</span>`; };
   const ko=(a,b)=>String(a||"").localeCompare(String(b||""),"ko",{numeric:true});
   const catOrder=[...new Set(items.map(i=>i.category||"기타"))];
   const shown=items.filter(i=>(q||st.cat==="전체"||(i.category||"기타").split(" · ")[0]===st.cat)&&(!q||[i.name,i.code,i.spec,i.vendor,i.category].join(" ").toLowerCase().includes(q))&&(!st.low||(i.std_qty!=null&&last(i)&&+last(i).qty<+i.std_qty)))
