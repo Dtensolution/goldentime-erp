@@ -1575,7 +1575,7 @@ async function renderSched(kind,keep){
   if(grid){ const sig=(A,B)=>JSON.stringify([(A||[]).map(a=>[a.id,a.appt_date,a.start_min,a.minutes,a.lane_id,a.status,a.chart_no,a.patient_name,a.item,a.staff,a.doctor,a.needle_doctor,a.is_new,a.inpatient,a.phone,a.exam_no,a.ins,a.review,a.contact]).sort((x,y)=>x[0]-y[0]),(B||[]).map(b=>[b.id,b.bdate,b.dows,b.start_min,b.end_min,b.lane_id,b.note]).sort((x,y)=>x[0]-y[0])]);
     const base=sig(appts,dbBlocks); const myView=S.view; let busy=false;
     const idle=()=>!document.hidden&&!$("dlg")?.open&&!document.querySelector(".stmenu,.dragging")&&!(document.activeElement&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)&&main.contains(document.activeElement));
-    S.schedPoll=setInterval(async()=>{ if(busy||S.view!==myView) return; busy=true;
+    S.schedPoll=setInterval(async()=>{ if(busy||S.view!==myView||document.hidden) return; busy=true;
       try{ const [a2,b2]=await Promise.all([allRows(()=>sb.from("appointments").select("*").eq("branch_id",S.branch).eq("kind",kind).gte("appt_date",start).lte("appt_date",end).order("id")), sb.from("sched_blocks").select("*").eq("branch_id",S.branch).eq("kind",kind).order("id")]);
         if(a2.error||S.view!==myView) return; if(sig(a2.data,b2.data||[])===base) return;
         if(idle()){ clearInterval(S.schedPoll); S.schedPoll=null; await renderSched(kind,true); toast("다른 분이 바꾼 예약을 반영했습니다"); }
