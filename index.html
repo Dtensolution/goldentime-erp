@@ -1362,7 +1362,7 @@ async function renderUsers(){
       <div class="form-2" style="border-top:1px dashed var(--line);padding-top:10px;margin-top:4px">
         ${["pt","emg"].map(k=>`<div class="field"><label for="e_p${k}">${k==="pt"?"도수·충격파 스케줄":"근전도 스케줄"}</label><select id="e_p${k}"><option value="default" ${!(u.perms||{})["sched_"+k]?"selected":""}>기본값</option>${[["none","볼 수 없음"],["view","보기만"],["edit","입력·수정"]].map(([o,l])=>`<option value="${o}" ${(u.perms||{})["sched_"+k]===o?"selected":""}>${l}</option>`).join("")}</select></div>`).join("")}
       </div>
-      <p class="meta" style="margin:-4px 0 10px;font-size:12px">기본값: 지점 전원 보기, 원장·물리치료·원무(도수) / 임상병리·원무(근전도)는 입력 가능</p>
+      <p class="meta" style="margin:-4px 0 10px;font-size:12px">기본값: 지점 전원 보기, 원장·물리치료·원무(도수) / 임상병리·원무·간호·병동(근전도)는 입력 가능</p>
       <p class="err" id="e_err"></p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button class="btn" id="e_ok" value="ok">저장</button></div></form>`;
     dlg.showModal();
     $("e_ok").onclick=async ev=>{ ev.preventDefault();
@@ -1402,7 +1402,7 @@ function schedPerm(kind){
   const p=me.perms&&me.perms["sched_"+kind]; if(p) return p;
   if(me.level<=3) return "edit";
   if(kind==="pt" && ["물리치료","원무"].includes(me.dept)) return "edit";
-  if(kind==="emg" && ["임상병리","원무","간호"].includes(me.dept)) return "edit";
+  if(kind==="emg" && ["임상병리","원무","간호","병동"].includes(me.dept)) return "edit";
   return "view";
 }
 const hhmm = m => `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
