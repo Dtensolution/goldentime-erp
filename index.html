@@ -2097,7 +2097,8 @@ function mdRender(src,opt={}){
   const flushT=t=>{ const w=Math.max(...t.map(r=>r.c.length)); const hasCk=t.some(r=>r.c.some(c=>CK.test(c)));
     const hd=t[0].c, isD=hd.filter(c=>DT.test(c)).length>=2; const mm=ci=>isD&&DT.test(hd[ci]||"")?` data-mm="${+hd[ci].match(DT)[1]}"`:"";
     const addMm=h=>h.replace(/<(td|th) data-ci="(\d+)"/g,(x,tg,ci)=>`<${tg} data-ci="${ci}"${mm(+ci)}`);
-    out+=`<div class="tbl-box"${isD?' data-mdates="1"':""}><table>${t.map((r,i)=>addMm(`<tr${L(r.ln)}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}"${isD&&DT.test(c)?mdWk(c):""}>${inl(c)}${isD&&DT.test(c)?`<small class="mdwd">${mdWd(c)}</small>`:""}</th>`:cellH(c,ci,r.ln)).join("")}`)+`${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk||isD?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}${isD?` <button type="button" class="btn ghost sm mdadd" data-mnext="${t.map(r=>r.ln).join(",")}">+ 다음 달 날짜 칸</button>`:""}`:""}`; };
+    const RM=/^(\d{1,2})월$/; const isM=!isD&&/^월$/.test((hd[0]||"").trim())&&t.slice(1).some(r=>RM.test((r.c[0]||"").trim()));
+    out+=`<div class="tbl-box"${isD?' data-mdates="1"':""}${isM?' data-mrows="1"':""}><table>${t.map((r,i)=>addMm(`<tr${L(r.ln)}${isM&&i&&RM.test((r.c[0]||"").trim())?` data-rm="${+r.c[0].trim().match(RM)[1]}"`:""}>${r.c.map((c,ci)=>i===0?`<th data-ci="${ci}"${isD&&DT.test(c)?mdWk(c):""}>${inl(c)}${isD&&DT.test(c)?`<small class="mdwd">${mdWd(c)}</small>`:""}</th>`:cellH(c,ci,r.ln)).join("")}`)+`${E?`<td class="mdx">${i?`<button type="button" class="nmbtn" data-mdel="${r.ln}" title="이 줄 삭제" aria-label="이 줄 삭제">×</button>`:""}</td>`:""}</tr>`).join("")}</table></div>${E?`<button type="button" class="btn ghost sm mdadd" data-madd="${t[t.length-1].ln}" data-mw="${w}" ${hasCk?"data-mk":""}>+ 줄 추가</button>${hasCk||isD?` <button type="button" class="btn ghost sm mdadd" data-mcol="${t.map(r=>r.ln).join(",")}">+ 오늘 날짜 열</button>`:""}${isD?` <button type="button" class="btn ghost sm mdadd" data-mnext="${t.map(r=>r.ln).join(",")}">+ 다음 달 날짜 칸</button>`:""}${isM?` <button type="button" class="btn ghost sm mdadd" data-mrnext="${t.map(r=>r.ln).join(",")}" data-mw="${w}">+ 다음 달 줄 만들기</button>`:""}`:""}`; };
   const close=()=>{ if(list){ out+=`</${list}>`; list=null; } if(tbl){ const t=tbl; tbl=null; flushT(t); } };
   lines.forEach((raw,ln)=>{ const l=raw.trimEnd();
     if(/^\s*\|.*\|\s*$/.test(l)){ if(list){ out+=`</${list}>`; list=null; } const cells=l.trim().slice(1,-1).split("|").map(c=>c.trim()); if(cells.every(c=>/^:?-{2,}:?$/.test(c))) return; (tbl ||= []).push({c:cells,ln}); return; }
@@ -2114,6 +2115,12 @@ function mdRender(src,opt={}){
 }
 // 날짜 칸(M/D) 표: 월별로 나눠 보기
 function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, CAL=window.__mdCal ||= {};
+  box.querySelectorAll('[data-mrows]').forEach((tb,ti)=>{ const trs=[...tb.querySelectorAll("tr[data-rm]")]; const ms=[...new Set(trs.map(x=>+x.dataset.rm))]; if(!ms.length) return; const cur=+kstToday().slice(5,7);
+    const ord=m=>(m-cur+12+6)%12; ms.sort((a,b)=>ord(a)-ord(b)); const k=key+":r"+ti; let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]); if(sel&&!ms.includes(sel)) sel=ms[ms.length-1];
+    const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px";
+    const draw=()=>{ bar.innerHTML=ms.map(m=>`<button type="button" class="fchip" data-rmb="${m}" aria-pressed="${sel===m}">${m}월</button>`).join("")+`<button type="button" class="fchip" data-rmb="0" aria-pressed="${sel===0}">전체</button>`;
+      trs.forEach(x=>x.style.display=sel&&+x.dataset.rm!==sel?"none":""); bar.querySelectorAll("[data-rmb]").forEach(b=>b.onclick=()=>{ sel=+b.dataset.rmb; M[k]=sel; draw(); }); };
+    tb.before(bar); draw(); });
   box.querySelectorAll('[data-mdates]').forEach((tb,ti)=>{ const ms=[...new Set([...tb.querySelectorAll("th[data-mm]")].map(x=>+x.dataset.mm))]; if(!ms.length) return;
     const k=key+":"+ti, cur=+kstToday().slice(5,7); let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]); let cal=!!CAL[k];
     const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px"; const cbox=document.createElement("div"); cbox.className="mdcal-wrap";
@@ -2166,6 +2173,13 @@ function bindMdEdit(box,doc,rerender){
   box.querySelectorAll("[data-mck]").forEach(cb=>cb.onchange=()=>{ const ln=+cb.dataset.mck; lines[ln]=lines[ln].replace(/\[( |x|X)\]/,cb.checked?"[x]":"[ ]"); queue(); });
   box.querySelectorAll("[data-tck]").forEach(cb=>{ cb.closest("td").onclick=e=>{ if(e.target!==cb){ e.stopPropagation(); cb.click(); } else e.stopPropagation(); };
     cb.onchange=()=>{ const [ln,ci]=cb.dataset.tck.split(":").map(Number); setCell(ln,ci,cb.checked?"[x]":"[ ]"); queue(); }; });
+  box.querySelectorAll("[data-mrnext]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mrnext.split(",").map(Number); const w=+b.dataset.mw||5; const hdc=cellsOf(lns[0]); const ni=Math.max(1,hdc.findIndex(c=>/이름/.test(c)));
+    const data=lns.slice(1).map(ln=>({ln,c:cellsOf(ln)})).filter(r=>/^\d{1,2}월$/.test((r.c[0]||"").trim())&&!/^:?-{2,}/.test(r.c[0])); if(!data.length) return;
+    const cur=+kstToday().slice(5,7); const ord=m=>(m-cur+12+6)%12; const last=data.map(r=>+r.c[0].trim().replace("월","")).sort((a,b)=>ord(a)-ord(b)).pop(); const nm=last%12+1;
+    if(data.some(r=>+r.c[0].trim().replace("월","")===nm)) return toast(`${nm}월 줄이 이미 있습니다`);
+    const names=data.filter(r=>+r.c[0].trim().replace("월","")===last).map(r=>r.c[ni]||"");
+    const add=names.map(n=>{ const c=Array(w).fill(""); c[0]=nm+"월"; c[ni]=n; return "| "+c.join(" | ")+" |"; });
+    lines.splice(lns[lns.length-1]+1,0,...add); dirty=true; await save(); (window.__mdMon ||= {}); Object.keys(window.__mdMon).filter(x=>x.includes(":r")).forEach(x=>window.__mdMon[x]=nm); toast(`${nm}월 줄 ${add.length}개를 만들었습니다`); rerender(); });
   box.querySelectorAll("[data-mcol]").forEach(b=>b.onclick=async()=>{ const lns=b.dataset.mcol.split(",").map(Number); const t=kstToday(); const lab=`${+t.slice(5,7)}/${+t.slice(8)}`;
     if(cellsOf(lns[0]).includes(lab)) return toast(`${lab} 열이 이미 있습니다`);
     const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
