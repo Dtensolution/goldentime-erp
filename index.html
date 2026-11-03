@@ -246,6 +246,9 @@ table.ampm td.in input{width:100%;height:32px;border:1px dashed var(--line);bord
 table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
 [data-cq].saved,[data-co].saved{background:color-mix(in srgb,var(--good) 14%,var(--surface))}[data-cq].err,[data-co].err{background:color-mix(in srgb,var(--bad) 14%,var(--surface))}
 .md td.mdoff,td.mdoff{background:#f6d5d1;color:#9b2c22;font-weight:600}.md th.wk-sun,th.wk-sun{color:#d93025}.md th.wk-sat,th.wk-sat{color:#1a73e8}th small.mdwd{display:block;font-size:11px;font-weight:500;opacity:.8}
+.mdcal{border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:4px 0 10px}.mdcal-h,.mdcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.mdcal-h div{padding:6px;text-align:center;font-weight:700;font-size:13px;background:var(--sunk)}.mdcal-h .sat,.mdcal-c .dn.sat{color:#1a73e8}.mdcal-h .sun,.mdcal-c .dn.sun{color:#d93025}
+.mdcal-c{min-height:96px;border-top:1px solid var(--line);border-left:1px solid var(--line);padding:4px 5px;font-size:12px;line-height:1.35}.mdcal-c:nth-child(7n+1){border-left:none}.mdcal-c.out{background:var(--sunk)}.mdcal-c.today{background:color-mix(in srgb,var(--navy) 7%,var(--surface))}.mdcal-c .dn{font-weight:700;font-size:13px;margin-bottom:2px}
+.mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
 small.ord.zero{color:var(--good)!important;font-weight:700}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
@@ -2110,14 +2113,28 @@ function mdRender(src,opt={}){
   close(); return out || `<p class="meta">내용이 없습니다.</p>`;
 }
 // 날짜 칸(M/D) 표: 월별로 나눠 보기
-function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {};
-  box.querySelectorAll('[data-mdates]').forEach((tb,ti)=>{ const ms=[...new Set([...tb.querySelectorAll("th[data-mm]")].map(x=>+x.dataset.mm))]; if(ms.length<2) return;
-    const k=key+":"+ti, cur=+kstToday().slice(5,7); let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]);
-    const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px";
-    const draw=()=>{ bar.innerHTML=ms.map(m=>`<button type="button" class="fchip" data-mmb="${m}" aria-pressed="${sel===m}">${m}월</button>`).join("")+`<button type="button" class="fchip" data-mmb="0" aria-pressed="${sel===0}">전체</button>`;
+function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, CAL=window.__mdCal ||= {};
+  box.querySelectorAll('[data-mdates]').forEach((tb,ti)=>{ const ms=[...new Set([...tb.querySelectorAll("th[data-mm]")].map(x=>+x.dataset.mm))]; if(!ms.length) return;
+    const k=key+":"+ti, cur=+kstToday().slice(5,7); let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]); let cal=!!CAL[k];
+    const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px"; const cbox=document.createElement("div"); cbox.className="mdcal-wrap";
+    const yOf=m=>{ let y=+kstToday().slice(0,4); if(m-cur>6) y--; else if(cur-m>6) y++; return y; };
+    const drawCal=m=>{ const ths=[...tb.querySelectorAll("tr:first-child th")]; const dcol={}; ths.forEach((th,i)=>{ const t=(th.firstChild?.textContent||th.textContent).trim().match(/^(\d{1,2})\/(\d{1,2})/); if(t&&+t[1]===m) dcol[+t[2]]=i; });
+      const rows=[...tb.querySelectorAll("tr")].slice(1).filter(tr=>tr.querySelector("td")); const labIdx=ths.map((th,i)=>i).filter(i=>!(th=>/^\d{1,2}\/\d{1,2}/.test(th.textContent.trim()))(ths[i])&&i<ths.length);
+      const lab=tr=>{ const c=[...tr.children]; const L=labIdx.map(i=>(c[i]?.textContent||"").trim()).filter(Boolean); return L.length>1?L[L.length-1]:L[0]||""; };
+      const y=yOf(m), days=new Date(Date.UTC(y,m,0)).getUTCDate(), first=(new Date(Date.UTC(y,m-1,1)).getUTCDay()+6)%7; const today=kstToday();
+      let h=`<div class="mdcal"><div class="mdcal-h">${["월","화","수","목","금","토","일"].map((w,i)=>`<div class="${i===5?"sat":i===6?"sun":""}">${w}</div>`).join("")}</div><div class="mdcal-g">`;
+      for(let i=0;i<first;i++) h+=`<div class="mdcal-c out"></div>`;
+      for(let d=1;d<=days;d++){ const w=(first+d-1)%7; const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`; const ci=dcol[d];
+        const E=ci==null?[]:rows.map(tr=>{ const v=(tr.children[ci]?.textContent||"").trim(); return v?{n:lab(tr),v}:null; }).filter(Boolean);
+        h+=`<div class="mdcal-c${iso===today?" today":""}"><div class="dn ${w===5?"sat":w===6?"sun":""}">${d}</div>${E.map(e=>`<div class="ent${/^off\b/i.test(e.v)?" off":""}"><b>${esc(e.n)}</b> ${esc(e.v)}</div>`).join("")}</div>`; }
+      h+=`</div></div>`; cbox.innerHTML=h; };
+    const draw=()=>{ const m=sel||ms[ms.length-1]; bar.innerHTML=(ms.length>1||cal?ms.map(mm=>`<button type="button" class="fchip" data-mmb="${mm}" aria-pressed="${(cal?m:sel)===mm}">${mm}월</button>`).join("")+(cal?"":`<button type="button" class="fchip" data-mmb="0" aria-pressed="${sel===0}">전체</button>`):"")+`<button type="button" class="fchip" data-mcal aria-pressed="${cal}" style="margin-left:8px">${cal?"📋 표로 보기":"📅 달력으로 보기"}</button>`;
       tb.querySelectorAll("[data-mm]").forEach(c=>c.style.display=sel&&+c.dataset.mm!==sel?"none":"");
-      bar.querySelectorAll("[data-mmb]").forEach(b=>b.onclick=()=>{ sel=+b.dataset.mmb; M[k]=sel; draw(); }); };
-    tb.before(bar); draw(); }); }
+      tb.style.display=cal?"none":""; cbox.style.display=cal?"":"none"; if(cal) drawCal(m);
+      const nx=cbox.nextElementSibling; [nx,nx?.nextElementSibling,nx?.nextElementSibling?.nextElementSibling].forEach(x=>{ if(x&&x.classList?.contains("mdadd")) x.style.display=cal?"none":""; });
+      bar.querySelectorAll("[data-mmb]").forEach(b=>b.onclick=()=>{ sel=+b.dataset.mmb; M[k]=sel; draw(); });
+      bar.querySelector("[data-mcal]").onclick=()=>{ cal=!cal; CAL[k]=cal; if(cal&&!sel){ sel=ms.includes(cur)?cur:ms[ms.length-1]; M[k]=sel; } draw(); }; };
+    tb.before(bar); tb.after(cbox); draw(); }); }
 // 업무게시판: 보기 화면에서 바로 고치기 (표 칸·글 줄)
 function bindMdEdit(box,doc,rerender){
   if(!box) return; let lines=String(doc.body||"").split(/\r?\n/); let timer=null, busy=false, dirty=false;
