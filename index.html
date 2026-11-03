@@ -238,7 +238,7 @@ table.rpt td{padding:6px 8px;border-bottom:1px solid var(--line)}table.rpt td.nu
 .ampm-card{overflow-x:auto}table.ampm{border-collapse:collapse;min-width:720px;width:100%;font-size:15px}table.ampm caption{caption-side:top;text-align:left;padding:0 0 10px;font-size:17px}table.ampm caption span{margin-left:8px;font-weight:700}table.ampm caption small{margin-left:10px;color:var(--muted);font-size:12px}
 table.ampm th,table.ampm td{border:1px solid #9aa9bd;padding:6px 8px;text-align:center}table.ampm tr.hd th{background:#cfe0f5;font-weight:700;font-size:13.5px}table.ampm th.lab{background:#9fc3ea;font-size:19px;width:90px}table.ampm td.auto{background:#f4f7fb;font-weight:600}
 table.ampm tr.tot td{background:#fff8d6;font-weight:700;font-size:16px}table.ampm tr.hd.tot th.lab{background:#9fc3ea}table.ampm tr.gap td{border:none;height:12px;padding:0}table.ampm td.in{padding:2px}
-table.ampm td.in input{width:100%;height:32px;border:1px dashed var(--line);border-radius:4px;text-align:center;font-size:15px;font-weight:600;background:#fff}table.ampm td.in input:focus{border:2px solid var(--navy);outline:none}table.ampm td.in input.err{border-color:var(--bad)}table.ampm td.in input.saving{opacity:.6}
+table.ampm td.in input{width:100%;height:32px;border:1px dashed var(--line);border-radius:4px;text-align:center;font-size:15px;font-weight:600;background:#fff}table.ampm td.in input:focus{border:2px solid var(--navy);outline:none}table.ampm td.in input.err{border-color:var(--bad)}table.ampm td.in input.saving{opacity:.6}table.ampm td.in.man input{border:2px solid #e8a13a}
 .projwrap{margin-bottom:12px}.projwrap .projline{margin-bottom:8px}.projgrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.projgrid>div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:2px}.projgrid .k{font-size:12.5px;color:var(--muted);font-weight:600}.projgrid b{font-size:19px;color:var(--navy)}.projgrid small{font-size:11.5px;color:var(--muted)}@media (max-width:900px){.projgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .projline{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;background:var(--surface);border:2px solid var(--navy);border-radius:12px;padding:14px 20px;margin-bottom:12px}.projline .pk{font-size:18px;font-weight:700}.projline b{font-size:30px;color:var(--navy);letter-spacing:-.5px}.projline small{color:var(--muted);font-size:13px}
 table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:first-child{box-shadow:inset 4px 0 0 var(--rc)}table.reg td.rcc{background:color-mix(in srgb,var(--rc) 16%,var(--surface));color:var(--rc);font-weight:700}table.reg.nowrap td{max-width:none}
@@ -773,7 +773,8 @@ addEventListener("beforeunload",saveLast);
 function defaultView(){ const lv=S.me.level, dp=S.me.dept; if(seeAll()) return "dash"; return "me"; if(dp==="물리치료"&&schedPerm("pt")!=="none") return "spt"; if(dp==="임상병리"&&schedPerm("emg")!=="none") return "semg"; if(lv===3) return dp==="원무"?"dash":(schedPerm("pt")!=="none"?"spt":"none"); return dp==="원무"?"entry":(schedPerm("pt")!=="none"?"spt":"none"); }
 function canDash(){ return seeAll(); }
 const ENTRY_ALL=["gt-cs"];
-const AMPM_BR=["gt-cs"]; // 오전·오후 보고 (총원·신환·C-arm) 쓰는 지점 (철산) // 마감일지를 전 직원이 입력하는 지점 (철산)
+const AMPM_BR=["gt-cs"];
+const AMPM_F=[["am_total","오전 총원 (원무)"],["am_new","오전 신환 (원무)"],["am_carm","오전 C-arm 건수 (영상의학)"],["am_carm_new","오전 신환 C-arm (영상의학)"],["carm_new","하루 신환 C-arm 건수 (영상의학)"]]; // 오전·오후 보고 (총원·신환·C-arm) 쓰는 지점 (철산) // 마감일지를 전 직원이 입력하는 지점 (철산)
 function canEntry(){ return S.me.level<=3 || S.me.dept==="원무" || (ENTRY_ALL.includes(S.branch)&&S.me.level===4); }
 
 function renderLogin(){
@@ -1195,6 +1196,7 @@ async function renderEntry(){
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${ptKeysEntry().map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
       ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt??r.extra?.emg)}</div></fieldset>`:""}
+      ${AMPM_BR.includes(S.branch)?`<fieldset><legend>오전 중간 보고</legend><p class="fs-note">오전 진료가 끝나면 적어 주세요 · 오전·오후 보고에 자동 반영 (오후 = 하루 마감 − 오전)</p><div class="rows">${AMPM_F.map(([k,l])=>num("am_"+k,l,r.extra?.ampm?.[k])).join("")}</div></fieldset>`:""}
       <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
     </div>
@@ -1215,7 +1217,8 @@ async function renderEntry(){
       pay_card:v("f_card"), pay_cash:v("f_cash"), pay_account:v("f_acct"), unpaid:v("f_unpaid"), unpaid_in:v("f_unpaidIn"),
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
       pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
-    o.extra={...(r.extra||{})}; if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else { delete o.extra.emg_cnt; delete o.extra.emg; } }
+    o.extra={...(r.extra||{})}; if(AMPM_BR.includes(S.branch)){ const am={}; AMPM_F.forEach(([k])=>{ const el=$("am_"+k); const t=(el?.value||"").replace(/[^\d]/g,""); if(t!=="") am[k]=+t; }); if(Object.keys(am).length) o.extra.ampm=am; else delete o.extra.ampm; }
+    if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else { delete o.extra.emg_cnt; delete o.extra.emg; } }
     if($("f_cashc")){ if($("f_cashc").value.trim()) o.extra.cash_count=v("f_cashc"); else delete o.extra.cash_count; }
     return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
@@ -3901,18 +3904,27 @@ S.apptClip ||= {};
 // ── 오전·오후 보고: 원무(총원·신환) + 영상의학(C-arm) 입력 → 재진·처방률·합계 자동 ──
 async function renderAmpm(keep){
   const main=$("main"); const st=S.ampm ||= {date:kstToday(),cap:false}; if(!keep) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const {data:r,error}=await sb.from("daily_ampm").select("*").eq("branch_id",S.branch).eq("rdate",st.date).maybeSingle();
+  const [{data:r,error},{data:dc},{data:cc}]=await Promise.all([ sb.from("daily_ampm").select("*").eq("branch_id",S.branch).eq("rdate",st.date).maybeSingle(),
+    sb.from("daily_close").select("total,doctors,extra").eq("branch_id",S.branch).eq("close_date",st.date).maybeSingle(),
+    sb.from("carm_counts").select("kind,cnt").eq("branch_id",S.branch).eq("cdate",st.date) ]);
+  // 자동 값: 오전 = 마감일지 중간 보고, 하루 = 마감일지 원장별 환자 수 · C-arm 카운트, 오후 = 하루 − 오전
+  const E=dc?.extra?.ampm||{}; const docs=dc?.doctors||[]; const dN=docs.reduce((t,d)=>t+(+d.new||0),0), dT=dN+docs.reduce((t,d)=>t+(+d.re||0),0);
+  const cs=k=>(cc||[]).filter(x=>x.kind===k).reduce((t,x)=>t+(+x.cnt||0),0); const cx=Object.values(dc?.extra?.carm||{}).reduce((t,x)=>t+(+x||0),0); const dC=cs("tech")||cs("doc")||cx||null;
+  const nn=x=>x==null||isNaN(x)?null:x; const sub=(a,b)=>a==null||b==null?null:Math.max(0,a-b);
+  const AUTO={am_total:nn(E.am_total),am_new:nn(E.am_new),am_carm:nn(E.am_carm),am_carm_new:nn(E.am_carm_new),
+    pm_total:sub(dT||null,E.am_total),pm_new:sub(dT?dN:null,E.am_new),pm_carm:sub(dC,E.am_carm),pm_carm_new:sub(nn(E.carm_new),E.am_carm_new)};
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const lv=S.me.level, dp=S.me.dept; const canF=lv<=3||dp==="원무", canR=lv<=3||dp==="영상의학"; const d0=new Date(st.date+"T00:00:00Z");
-  const V=k=>r?.[k]==null?null:+r[k]; const half=h=>{ const t=V(h+"_total"), n=V(h+"_new"), c=V(h+"_carm"), cn=V(h+"_carm_new"); return {t,n,re:t!=null&&n!=null?t-n:null,c,cn}; };
+  const OV=k=>r?.[k]==null?null:+r[k]; const V=k=>OV(k)??AUTO[k]??null;
+  { const amE=k=>OV(k)??AUTO[k]; AUTO.pm_total=sub(dT||null,amE("am_total")); AUTO.pm_new=sub(dT?dN:null,amE("am_new")); AUTO.pm_carm=sub(dC,amE("am_carm")); AUTO.pm_carm_new=sub(nn(E.carm_new),amE("am_carm_new")); } const half=h=>{ const t=V(h+"_total"), n=V(h+"_new"), c=V(h+"_carm"), cn=V(h+"_carm_new"); return {t,n,re:t!=null&&n!=null?t-n:null,c,cn}; };
   const A=half("am"), P=half("pm"); const sum=(a,b)=>a==null&&b==null?null:(a||0)+(b||0);
   const T={t:sum(A.t,P.t),n:sum(A.n,P.n),re:sum(A.re,P.re),c:sum(A.c,P.c),cn:sum(A.cn,P.cn)};
   const pct=(a,b)=>b?((a||0)/b*100).toFixed(1)+"%":"-"; const nv=x=>x==null?"":won(x);
-  const inp=(k,ok)=>st.cap||!ok?`<td class="num">${nv(V(k))||"0"}</td>`:`<td class="in"><input data-am="${k}" value="${V(k)??""}" inputmode="numeric" aria-label="${k}"></td>`;
+  const inp=(k,ok)=>st.cap||!ok?`<td class="num">${nv(V(k))||"0"}</td>`:`<td class="in${OV(k)!=null?" man":""}"><input data-am="${k}" value="${V(k)??""}" inputmode="numeric" aria-label="${k}" title="${OV(k)!=null?"직접 고친 값 (지우면 자동 값으로 돌아감)":"자동 값 (마감일지·C-arm 카운트) · 고치면 이 값으로 고정"}"></td>`;
   const H=(lab,h,X)=>`<tr class="hd"><th class="lab" rowspan="2">${lab}</th><th>총원</th><th>신환</th><th>재진</th><th>C-arm 건수</th><th>C-arm 처방률</th><th>신환 C-arm 건수</th><th>신환 C-arm 처방률</th></tr>
     <tr>${inp(h+"_total",canF)}${inp(h+"_new",canF)}<td class="num auto">${nv(X.re)||"0"}</td>${inp(h+"_carm",canR)}<td class="num auto">${pct(X.c,X.t)}</td>${inp(h+"_carm_new",canR)}<td class="num auto">${pct(X.cn,X.n)}</td></tr>`;
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>오전·오후 보고</h2><div class="meta">원무: 총원·신환 · 영상의학: C-arm 건수·신환 C-arm 건수 입력 → 재진·처방률·합계는 자동 · 칸을 고치면 바로 저장</div></div>
+    <div class="page-h"><div><h2>오전·오후 보고</h2><div class="meta">자동: 오전 = 마감일지 "오전 중간 보고" · 하루 = 마감일지 원장별 환자 수 + C-arm 카운트 · 오후 = 하루 − 오전 · 칸을 직접 고치면 그 값으로 고정 (주황 테두리, 지우면 자동으로)</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="monthnav"><button class="btn ghost sm" id="amp" aria-label="전날">◀</button><button class="btn ghost sm" id="amt">오늘</button><button class="btn ghost sm" id="amn" aria-label="다음날">▶</button></div>
         <input type="date" id="amd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜"><button class="btn ghost sm" id="amr">↻ 새로고침</button><button class="btn ${st.cap?"":"ghost"} sm" id="amc">${st.cap?"✏️ 입력 화면":"📷 캡처용 보기"}</button></div></div>
     <section class="panel ampm-card"><table class="ampm"><caption><b>${st.date}</b> <span>${WD[d0.getUTCDay()]}</span> <small>${esc((S.branches||[]).find(b=>b.id===S.branch)?.name||"")}</small></caption><tbody>
@@ -3920,14 +3932,14 @@ async function renderAmpm(keep){
       <tr class="hd tot"><th class="lab" rowspan="2">TOTAL</th><th>총원</th><th>신환</th><th>재진</th><th>C-arm 건수</th><th>C-arm 처방률</th><th>신환 C-arm 건수</th><th>신환 C-arm 처방률</th></tr>
       <tr class="tot"><td class="num">${nv(T.t)||"0"}</td><td class="num">${nv(T.n)||"0"}</td><td class="num">${nv(T.re)||"0"}</td><td class="num">${nv(T.c)||"0"}</td><td class="num">${pct(T.c,T.t)}</td><td class="num">${nv(T.cn)||"0"}</td><td class="num">${pct(T.cn,T.n)}</td></tr>
     </tbody></table>${!st.cap&&r?.updated_at?`<p class="meta" style="margin:8px 0 0">마지막 저장 ${new Date(r.updated_at).toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}</p>`:""}</section>
-    <p class="meta">재진 = 총원 − 신환 · C-arm 처방률 = C-arm 건수 ÷ 총원 · 신환 C-arm 처방률 = 신환 C-arm 건수 ÷ 신환 · [📷 캡처용 보기]를 누르면 입력칸 없이 표만 나옵니다</p></div>`;
+    <p class="meta">${dT?"":"하루 마감일지(원장별 환자 수)가 아직 없어 오후 총원·신환은 비어 있습니다 · "}${dC?"":"C-arm 카운트가 아직 없어 오후 C-arm은 비어 있습니다 · "}재진 = 총원 − 신환 · C-arm 처방률 = C-arm 건수 ÷ 총원 · 신환 C-arm 처방률 = 신환 C-arm 건수 ÷ 신환 · [📷 캡처용 보기]를 누르면 입력칸 없이 표만 나옵니다</p></div>`;
   const go=d=>{ st.date=d; renderAmpm(); };
   $("amp").onclick=()=>go(addDays(st.date,-1)); $("amn").onclick=()=>go(addDays(st.date,1)); $("amt").onclick=()=>go(kstToday()); $("amd").onchange=()=>{ if($("amd").value) go($("amd").value); };
   $("amr").onclick=()=>renderAmpm(true).then(()=>toast("최신 값으로 새로고침했습니다")); $("amc").onclick=()=>{ st.cap=!st.cap; renderAmpm(true); };
   const ins=[...main.querySelectorAll("[data-am]")];
   ins.forEach((el,i)=>{ el.addEventListener("keydown",e=>{ const mv={Enter:1,ArrowRight:1,ArrowLeft:-1,Tab:e.shiftKey?-1:1}[e.key]; if(mv&&(e.key!=="ArrowRight"||el.selectionStart===el.value.length)&&(e.key!=="ArrowLeft"||el.selectionStart===0)){ e.preventDefault(); el.blur(); const n=ins[i+mv]; if(n){ n.focus(); n.select(); } } });
     el.addEventListener("change",async()=>{ const raw=el.value.replace(/[^\d]/g,""); const val=raw===""?null:+raw; el.classList.add("saving");
-      const {error}=await sb.from("daily_ampm").upsert({branch_id:S.branch,rdate:st.date,[el.dataset.am]:val},{onConflict:"branch_id,rdate"}); el.classList.remove("saving");
+      const sv=val!=null&&val===AUTO[el.dataset.am]?null:val; const {error}=await sb.from("daily_ampm").upsert({branch_id:S.branch,rdate:st.date,[el.dataset.am]:sv},{onConflict:"branch_id,rdate"}); el.classList.remove("saving");
       if(error){ el.classList.add("err"); return toast(errMsg(error)); } const f=document.activeElement?.dataset?.am; await renderAmpm(true); if(f){ const n=main.querySelector(`[data-am="${f}"]`); if(n){ n.focus(); n.select(); } } }); });
 }
 // 근전도: 간호·원무에서 넣은 예약은 확인 전 색, 임상병리가 저장하면 해제 (undefined = 그대로 둠)
