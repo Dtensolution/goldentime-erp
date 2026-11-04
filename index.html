@@ -2522,7 +2522,7 @@ function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); co
     ${notice?`<p class="meta" style="color:var(--warn);margin:0 0 8px">${esc(notice)}</p>`:""}
     <div class="mdpal" id="mtpal"></div>
     <div class="mtgrid" id="mtparts">${parts.map(partH).join("")}</div>
-    <button type="button" class="btn ghost sm" id="mtadd" style="margin:8px 0 14px">+ 파트 추가</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px"><button type="button" class="btn ghost sm" id="mtadd">+ 파트 추가</button><button type="button" class="btn ghost sm" id="mtcarry" title="바로 앞 회의의 '이번주 안건'을 이 회의의 '지난주 리뷰'로 가져옵니다 (비어 있는 칸만)">↻ 지난 회의 안건 → 지난주 리뷰 가져오기</button></div>
     <details class="mtx" ${staff?"open":""}><summary>인원 현황 (표) <span class="meta" style="font-weight:400">· 칸을 눌러 바로 적기</span></summary>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="mtauto" ${staff&&/자동/.test(staff.name)?"checked":""}> 근무 스케줄에서 자동으로 채우기 <span class="meta">(회의 다음 날 목요일부터 2주: 목~수 · 목~화 · 스케줄이 바뀌면 회의록을 열 때 자동 반영)</span></label><button type="button" class="btn ghost sm" id="mtstaffload">↻ 지금 근무 스케줄에서 불러오기</button></div>
       <div id="mtstaffgrid"></div><button type="button" class="btn ghost sm" id="mtstaffnew" style="margin-top:6px">+ 빈 표</button></details>
@@ -2535,6 +2535,12 @@ function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); co
   const redraw=()=>{ $("mtparts").innerHTML=parts.map(partH).join(""); bindParts(); };
   const bindParts=()=>v.querySelectorAll("[data-px]").forEach(b=>b.onclick=()=>{ collect(); const i=+b.dataset.px; const p=parts[i]; if((p.rev+p.agd).trim()&&!b.dataset.sure){ b.dataset.sure=1; b.textContent="빼기?"; b.style.color="var(--bad)"; return; } parts.splice(i,1); redraw(); });
   bindParts();
+  $("mtcarry").onclick=async()=>{ collect(); const d=$("mtd").value; const k=d?+(d.slice(2,4)+d.slice(5,7)+d.slice(8,10)):999999;
+    const {data,error}=await sb.from("dept_docs").select("id,title,body").eq("branch_id",S.branch).eq("dept","회의록"); if(error) return toast(errMsg(error));
+    const prev=(data||[]).filter(x=>x.id!==doc.id&&mtKey(x.title)&&mtKey(x.title)<k&&isMt({dept:"회의록",body:x.body})).sort((a,b)=>mtKey(b.title)-mtKey(a.title))[0]; if(!prev) return toast("앞선 회의록이 없습니다");
+    const P=mtParse(prev.body).secs.filter(x=>x.part); let n=0;
+    P.forEach(ps=>{ const t=mtText(ps.agd); if(!t.trim()) return; let p=parts.find(x=>x.name===ps.name); if(!p){ p={name:ps.name,rev:"",agd:""}; parts.push(p); } if(!p.rev.trim()){ p.rev=t; n++; } });
+    redraw(); toast(n?`${prev.title.replace("주간회의 ","")} 회의의 안건을 ${n}개 파트에 가져왔습니다`:"비어 있는 '지난주 리뷰' 칸이 없거나 가져올 안건이 없습니다"); };
   $("mtadd").onclick=()=>{ collect(); const n=(prompt("파트 이름 (예: 임병)")||"").trim(); if(!n) return; parts.push({name:n,rev:"",agd:""}); redraw(); };
   // 인원 현황: 마크다운 표 ↔ 입력 칸
   const toT=L=>{ const T=[]; let cur=null; L.forEach(l=>{ if(/^\s*\|.*\|\s*$/.test(l)){ const c=l.trim().slice(1,-1).split("|").map(x=>x.trim()); if(c.every(x=>/^:?-{2,}:?$/.test(x))) return; (cur ||= (T.push([]),T[T.length-1])).push(c); } else cur=null; }); return T; };
