@@ -886,19 +886,19 @@ function render(){
   const lv=S.me.level;
   const itemOk={dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
-    dpay:seeAll()||S.me.dept==="원무",ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+    dpay:seeAll()||S.me.dept==="원무",paths:canDash()||S.me.dept==="원무"||ENTRY_ALL.includes(S.branch),ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
+  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
-  const DEPT_FN={"원무":["entry","dpay","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
+  const DEPT_FN={"원무":["entry","dpay","cal","paths","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("info",{grp:g}); });
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
-  else if(S.me.dept!=="경영지원"){ const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
+  else if(S.me.dept!=="경영지원"){ const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","paths","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       if(toolOk(md)) ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
   if(mgmtOk()) grp("경영지원",g=>{ add("docs",{dept:"회의록",label:"주간 회의록",grp:g}); deptTools("경영지원",g); });
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
@@ -928,7 +928,7 @@ function render(){
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -1262,6 +1262,54 @@ function bindEmrUpload(){ const b=$("emrup"), f=$("emrf"); if(!b||!f) return; b.
         if(S.me.level<=3){ try{ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); d.emrMap=m; await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); }catch(e){} } }
       dlg.close(); if(last) last.dispatchEvent(new Event("change",{bubbles:true})); toast(n?`${n}칸을 채웠습니다 · 자동 저장됩니다`:"채운 칸이 없습니다"); }; };
 }
+// ── 초진 내원경로 통계 (마감일지 "초진 내원경로(문진표)" 합계) ──
+async function renderPaths(){
+  const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`; killCharts();
+  const T0=kstToday(); const st=S.pthV ||= {mode:"month",ym:T0.slice(0,7),year:+T0.slice(0,4),from:addDays(T0,-29),to:T0};
+  let start,end,label; if(st.mode==="month"){ const R=monthRange(st.ym); start=R.start; end=R.end; label=`${R.y}년 ${R.m}월`; } else if(st.mode==="year"){ start=`${st.year}-01-01`; end=`${st.year}-12-31`; label=`${st.year}년`; } else { if(st.to<st.from) [st.from,st.to]=[st.to,st.from]; start=st.from; end=st.to; label=`${start.replace(/-/g,".")} ~ ${end.slice(5).replace("-",".")}`; }
+  const endYm=end.slice(0,7), tStart=shiftMonth(endYm,-11)+"-01";
+  const qs=tStart<start?tStart:start;
+  const {data,error}=await allRows(()=>sb.from("daily_close").select("close_date,paths").eq("branch_id",S.branch).gte("close_date",qs).lte("close_date",end).order("close_date"));
+  if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
+  const all=(data||[]).slice().sort((a,b)=>a.close_date.localeCompare(b.close_date)); const rows=all.filter(r=>r.close_date>=start&&r.close_date<=end);
+  const num=v=>+v||0; const has=r=>Object.values(r.paths||{}).some(v=>num(v)>0);
+  const sumOf=L=>{ const o={}; L.forEach(r=>Object.entries(r.paths||{}).forEach(([k,v])=>{ if(num(v)) o[k]=(o[k]||0)+num(v); })); return o; };
+  const P=sumOf(rows); const tot=Object.values(P).reduce((a,b)=>a+b,0);
+  const keys=[...PATHS.filter(k=>P[k]),...Object.keys(P).filter(k=>!PATHS.includes(k))].sort((a,b)=>P[b]-P[a]);
+  const lastDay=end<T0?end:T0; const dayCnt=start>lastDay?0:Math.round((new Date(lastDay)-new Date(start))/864e5)+1; const entered=rows.filter(has).length;
+  const months=[...Array(12)].map((_,i)=>shiftMonth(endYm,i-11)); const M=Object.fromEntries(months.map(m=>[m,sumOf(all.filter(r=>r.close_date.startsWith(m)))]));
+  const mKeys=[...PATHS.filter(k=>months.some(m=>M[m][k])),...[...new Set(months.flatMap(m=>Object.keys(M[m])))].filter(k=>!PATHS.includes(k))];
+  const pct=v=>tot?(v/tot*100).toFixed(1)+"%":"–"; const max=Math.max(1,...keys.map(k=>P[k]));
+  const dayKeys=keys; const byDay=rows.filter(has);
+  main.innerHTML=`<div class="wrap">
+    <div class="page-h"><div><h2>초진 내원경로 통계</h2><div class="meta">${esc(label)} · 마감일지 "초진 내원경로 (문진표)"에 적은 숫자 합계 · 입력한 날 ${entered}일 / ${dayCnt}일</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><div class="seg" role="group" aria-label="기간">${[["month","월"],["year","연"],["range","기간"]].map(([k,t])=>`<button data-pm="${k}" aria-pressed="${st.mode===k}">${t}</button>`).join("")}</div>
+        ${st.mode==="range"?`<input type="date" id="pf" value="${st.from}" style="height:30px;padding:0 6px">~<input type="date" id="pt" value="${st.to}" style="height:30px;padding:0 6px">`:`<div class="monthnav"><button class="btn ghost sm" id="pp" aria-label="이전">◀</button><b class="num" style="min-width:110px">${esc(label)}</b><button class="btn ghost sm" id="pn" aria-label="다음">▶</button></div>`}
+        <button class="btn ghost sm" id="pcsv">CSV 받기</button>${canEntry()?`<button class="btn ghost sm" id="pent">마감일지 입력으로</button>`:""}</div></div>
+    ${dayCnt&&entered<dayCnt?`<p class="meta" style="color:var(--warn);margin:0 0 10px">⚠ ${dayCnt-entered}일은 내원경로가 비어 있습니다 — 마감일지 아래쪽 "초진 내원경로" 칸을 채우면 통계에 들어갑니다.</p>`:""}
+    <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">신환 (문진표)</span><span class="v num">${won(tot)}<small>명</small></span><span class="d">입력한 날 평균 ${entered?(tot/entered).toFixed(1):"–"}명</span></div>
+      <div class="kpi"><span class="k">1위 경로</span><span class="v" style="font-size:22px">${keys[0]?esc(keys[0]):"–"}</span><span class="d">${keys[0]?`${P[keys[0]]}명 · ${pct(P[keys[0]])}`:""}</span></div>
+      <div class="kpi"><span class="k">2위 · 3위</span><span class="v" style="font-size:18px">${keys.slice(1,3).map(esc).join(" · ")||"–"}</span><span class="d">${keys.slice(1,3).map(k=>`${P[k]}명`).join(" · ")}</span></div></section>
+    <div class="grid2"><section class="panel"><h3>경로별 인원 <span>${esc(label)}</span></h3>${keys.length?`<div class="tbl-box"><table><thead><tr><th>경로</th><th class="num">인원</th><th class="num">비중</th><th style="width:40%"></th></tr></thead><tbody>
+      ${keys.map(k=>`<tr><td>${esc(k)}</td><td class="num"><b>${P[k]}</b></td><td class="num">${pct(P[k])}</td><td><div style="height:10px;border-radius:5px;background:var(--accent);width:${(P[k]/max*100).toFixed(1)}%"></div></td></tr>`).join("")}
+      <tr class="sumrow"><td>합계</td><td class="num"><b>${tot}</b></td><td class="num">100%</td><td></td></tr></tbody></table></div>`:`<div class="empty">이 기간에 입력된 내원경로가 없습니다.</div>`}</section>
+      <section class="panel"><h3>비중</h3><div class="cbox"><canvas id="pth1"></canvas></div></section></div>
+    <section class="panel"><h3>월별 추이 <span>최근 12개월 · ${months[0].replace("-",".")} ~ ${endYm.replace("-",".")}</span></h3><div class="cbox tall"><canvas id="pth2"></canvas></div>
+      <div class="tbl-box" style="margin-top:10px"><table><thead><tr><th>월</th>${mKeys.map(k=>`<th class="num">${esc(k)}</th>`).join("")}<th class="num">합계</th></tr></thead><tbody>
+      ${months.map(m=>{ const t=Object.values(M[m]).reduce((a,b)=>a+b,0); return `<tr><td>${m.slice(0,4)!==endYm.slice(0,4)?`${m.slice(2,4)}년 `:""}${+m.slice(5)}월</td>${mKeys.map(k=>`<td class="num">${M[m][k]||""}</td>`).join("")}<td class="num"><b>${t||""}</b></td></tr>`; }).join("")}</tbody></table></div></section>
+    ${st.mode!=="year"&&byDay.length?`<section class="panel"><h3>날짜별 <span>입력한 날만</span></h3><div class="tbl-box" style="max-height:60vh"><table><thead><tr><th>날짜</th>${dayKeys.map(k=>`<th class="num">${esc(k)}</th>`).join("")}<th class="num">합계</th></tr></thead><tbody>
+      ${byDay.map(r=>{ const t=Object.values(r.paths||{}).reduce((a,b)=>a+num(b),0); return `<tr><td class="num">${+r.close_date.slice(5,7)}/${+r.close_date.slice(8)} (${WD[new Date(r.close_date+"T00:00:00Z").getUTCDay()]})</td>${dayKeys.map(k=>`<td class="num">${num(r.paths?.[k])||""}</td>`).join("")}<td class="num"><b>${t}</b></td></tr>`; }).join("")}</tbody></table></div></section>`:""}
+  </div>`;
+  const PAL=["#1d5fd6","#2f8f4e","#d17a12","#7c3aed","#d0457a","#0f8c8c","#b8860b","#5b6fd6","#a35b2a","#64748b","#c0392b","#3949ab"]; const colOf=k=>PAL[(PATHS.indexOf(k)>=0?PATHS.indexOf(k):PATHS.length+mKeys.indexOf(k))%PAL.length];
+  if(keys.length) mkChart("pth1",{type:"doughnut",data:{labels:keys,datasets:[{data:keys.map(k=>P[k]),backgroundColor:keys.map(colOf),borderWidth:1}]},options:{interaction:{mode:"nearest"},plugins:{legend:{position:"right"}},scales:{x:{display:false},y:{display:false}}}});
+  mkChart("pth2",{type:"bar",data:{labels:months.map(m=>+m.slice(5)+"월"),datasets:mKeys.map(k=>({label:k,data:months.map(m=>M[m][k]||0),backgroundColor:colOf(k),stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true}}}});
+  main.querySelectorAll("[data-pm]").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.pm; renderPaths(); });
+  if($("pp")) $("pp").onclick=()=>{ if(st.mode==="month") st.ym=shiftMonth(st.ym,-1); else st.year--; renderPaths(); };
+  if($("pn")) $("pn").onclick=()=>{ if(st.mode==="month") st.ym=shiftMonth(st.ym,1); else st.year++; renderPaths(); };
+  if($("pf")) $("pf").onchange=()=>{ st.from=$("pf").value||st.from; renderPaths(); }; if($("pt")) $("pt").onchange=()=>{ st.to=$("pt").value||st.to; renderPaths(); };
+  if($("pent")) $("pent").onclick=()=>{ S.view="entry"; render(); };
+  $("pcsv").onclick=()=>downloadCSV(`내원경로_${label.replace(/[\s~.]+/g,"")}.csv`,[["날짜",...dayKeys,"합계"],...rows.filter(has).map(r=>[r.close_date,...dayKeys.map(k=>num(r.paths?.[k])),Object.values(r.paths||{}).reduce((a,b)=>a+num(b),0)]),["합계",...dayKeys.map(k=>P[k]),tot]]);
+}
 // ── 마감일지 입력 ──
 function ptKeysEntry(){ return [...ptItemsOf(S.branch),"도수상담"]; }
 async function renderEntry(){
@@ -1311,12 +1359,12 @@ async function renderEntry(){
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${ptKeysEntry().map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
       ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt??r.extra?.emg)}</div></fieldset>`:""}
       ${AMPM_BR.includes(S.branch)?`<fieldset><legend>오전 중간 보고</legend><p class="fs-note">오전 진료가 끝나면 적어 주세요 · 오전·오후 보고에 자동 반영 (오후 = 하루 마감 − 오전)</p><div class="rows">${AMPM_F.map(([k,l])=>num("am_"+k,l,r.extra?.ampm?.[k])).join("")}</div></fieldset>`:""}
-      <fieldset><legend>초진 내원경로 (문진표)</legend><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
+      <fieldset><legend>초진 내원경로 (문진표)</legend><p class="fs-note"><button type="button" class="linkbtn" id="gopaths">📊 내원경로 통계 보기</button></p><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
     </div>
     <div class="formbar" style="margin-top:20px"><span class="check" id="chk"></span><span style="display:flex;gap:8px">${canDash()?`<button type="button" class="btn ghost" id="gocal">마감 달력 보기</button>`:""}<button type="submit" class="btn" id="save">지금 저장</button></span></div>
   </form></div>`;
-  bindEmrUpload();
+  bindEmrUpload(); if($("gopaths")) $("gopaths").onclick=()=>{ S.view="paths"; render(); };
   const v=id=>{ const el=$(id); if(!el) return 0; const s=(el.value||"").replace(/[^\d]/g,""); return s?Number(s):0; };
   const fmt=el=>{ const s=el.value.replace(/[^\d]/g,""); el.value=s?Number(s).toLocaleString("ko-KR"):""; };
   // ── 자동 저장: 바뀐 칸만 저장 ──
