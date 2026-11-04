@@ -252,6 +252,12 @@ table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:
 .mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
 small.ord.zero{color:var(--good)!important;font-weight:700}
 .mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}.mdtabs .mdtabadd{background:none;border-style:dashed;color:var(--accent)}
+.mtauto{font-size:11.5px;font-weight:600;color:#2f8f4e;background:#e3f4e8;border-radius:999px;padding:1px 8px;margin-left:6px}
+#printarea{display:none}
+@media print{ body.printing-mt > *:not(#printarea){display:none!important} body.printing-mt{background:#fff!important} body.printing-mt #printarea{display:block;font-size:11px;color:#111}
+  #printarea *{-webkit-print-color-adjust:exact;print-color-adjust:exact} #printarea .prh{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #1e3a6e;margin-bottom:8px;padding-bottom:4px} #printarea .prh h2{margin:0;font-size:18px} #printarea .prh span{color:#555}
+  #printarea .mtgrid{gap:5px} #printarea .mtcard{break-inside:avoid;padding:5px 10px;border-radius:6px;box-shadow:none} #printarea .mtcard h4{font-size:13px;margin:0 0 3px} #printarea .mtcols{grid-template-columns:1fr 1fr!important;gap:10px} #printarea .md li{margin:1px 0;line-height:1.4} #printarea .mtl{font-size:10px;padding:0 6px}
+  #printarea .mtx{break-inside:avoid;padding:4px 8px;margin-top:6px} #printarea .mtx summary{list-style:none} #printarea .mtx summary::-webkit-details-marker{display:none} #printarea table{font-size:10px;width:100%} #printarea th,#printarea td{padding:2px 4px!important} #printarea .tbl-box{overflow:visible;max-height:none} }
 .doc-list .docnew{position:sticky;top:0;z-index:3;margin:0 0 10px;box-shadow:0 4px 10px -6px rgba(0,0,0,.25)}
 .mt{font-size:14.5px}.mtjump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;position:sticky;top:0;z-index:2;background:var(--panel);padding:6px 0}
 .mtj{border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));color:var(--c);background:color-mix(in srgb,var(--c) 8%,var(--panel));border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer}.mtj b{background:var(--c);color:#fff;border-radius:999px;padding:0 6px;font-size:11.5px;margin-left:2px}
@@ -2393,12 +2399,12 @@ async function renderDocs(){
         ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${d.dept==="회의록"&&mtKey(d.title)?esc(mtSub(d.title)):esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))+" "+esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
       </aside>
       <article class="panel doc-view" id="dv">${cur?`<div class="page-h" style="margin-bottom:10px"><div><h3 style="margin:0;font-size:18px">${esc(cur.title)}</h3><div class="meta">${esc(cur.dept)} · 마지막 수정 ${esc(new Date(cur.updated_at).toLocaleString("ko-KR"))} ${esc(nm(cur.updated_by))}</div></div>
-        <div style="display:flex;gap:8px">${canEditDoc(cur.dept)?`<button class="btn ghost sm" id="dhist">이전 기록</button><button class="btn sm" id="dedit">수정</button>`:""}</div></div>
+        <div style="display:flex;gap:8px">${isMt(cur)?`<button class="btn ghost sm" id="mtprint">🖨 인쇄</button>`:""}${canEditDoc(cur.dept)?`<button class="btn ghost sm" id="dhist">이전 기록</button><button class="btn sm" id="dedit">수정</button>`:""}</div></div>
         ${cur.notice?noticeBar(cur,readSet.has(cur.id)):""}${isMt(cur)?`<div id="mdv">${mtView(cur.body)}</div>`:`${canEditDoc(cur.dept)?`<p class="meta" style="margin:0 0 6px">✏️ 표 칸이나 글 줄을 누르면 바로 고칩니다 · Enter 저장 · Tab 옆 칸 · Esc 취소 <b id="mdst" style="margin-left:6px"></b></p>`:""}<div class="md${canEditDoc(cur.dept)?" mded":""}" id="mdv">${mdRender(cur.body,{edit:canEditDoc(cur.dept)})}</div>`}`:`<div class="empty">왼쪽에서 글을 고르거나 새 글을 쓰세요.</div>`}</article>
     </div></div>`;
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
-  if(cur&&isMt(cur)) bindMtView($("mdv"));
+  if(cur&&isMt(cur)){ bindMtView($("mdv")); mtAutoSync($("mdv"),cur); if($("mtprint")) $("mtprint").onclick=()=>mtPrint(cur); }
   if(cur&&canEditDoc(cur.dept)&&!isMt(cur)) bindMdEdit($("mdv"),cur,()=>renderDocs());
   const tabEd=cur&&canEditDoc(cur.dept); let curTab="__all";
   if(cur) bindMdMonths($("mdv"),cur.id); if(cur) bindMdTabs($("mdv"),cur.id,{ onChange:t=>{ curTab=t; if($("dedit")) $("dedit").textContent=t==="__all"?"수정":`'${t}' 탭 수정`; },
@@ -2462,19 +2468,48 @@ function mtView(body){ const R=mtParse(body); const parts=R.secs.filter(s=>s.par
   const col=n=>MT_COL[n]||"#64748b"; const cnt=L=>L.filter(x=>x.trim()).length;
   const box=(L,cls)=>cnt(L)?`<div class="md">${mdRender(L.join("\n"))}</div>`:`<p class="mtnone">${cls==="agd"?"안건 없음":"없음"}</p>`;
   return `<div class="mt">${mdTrim(R.pre).length?`<div class="md">${mdRender(R.pre.join("\n"))}</div>`:""}
+    ${staff.map(s=>`<details class="mtx mtstaffbox" id="mtstaff" open><summary>${esc(s.name.replace(/\s*\(.*\)\s*$/,""))}${/자동/.test(s.name)?` <span class="mtauto">근무 스케줄 자동</span>`:""}</summary><div class="md" id="mtstaffmd">${mdRender(s.raw.join("\n"))}</div></details>`).join("")}
     ${parts.length?`<div class="mtjump">${parts.map((p,i)=>`<button type="button" class="mtj" data-mtj="${i}" style="--c:${col(p.name)}">${esc(p.name)}${cnt(p.agd)?` <b>${cnt(p.agd)}</b>`:""}</button>`).join("")}${staff.length?`<button type="button" class="mtj" data-mtj="staff" style="--c:#334155">인원 현황</button>`:""}</div>`:""}
     <div class="mtgrid">${parts.map((p,i)=>`<section class="mtcard" id="mtp${i}" style="--c:${col(p.name)}"><h4>${esc(p.name)}</h4><div class="mtcols"><div><span class="mtl">지난주 리뷰</span>${box(p.rev,"rev")}</div><div><span class="mtl agd">이번주 안건</span>${box(p.agd,"agd")}</div></div></section>`).join("")}</div>
-    ${staff.map(s=>`<details class="mtx" id="mtstaff" open><summary>${esc(s.name)}</summary><div class="md">${mdRender(s.raw.join("\n"))}</div></details>`).join("")}
     ${extra.map(s=>`<details class="mtx" open><summary>${esc(s.name)}</summary><div class="md">${mdRender(s.raw.join("\n"))}</div></details>`).join("")}
     ${mdTrim(R.foot).length?`<div class="md meta" style="margin-top:10px">${mdRender(R.foot.join("\n"))}</div>`:""}</div>`; }
+// 근무 스케줄 → 인원 현황 (회의 다음 날 목요일부터 2주: 목~수 · 목~화)
+const MT_DMAP={"의료진":"의료진","원무":"원무","간호":"간호","수술":"수술","임상병리":"임병","물리치료":"물치","영상의학":"방과"};
+const mtStart=iso=>{ let d=addDays(iso,1); for(let i=0;i<7&&new Date(d+"T00:00:00Z").getUTCDay()!==4;i++) d=addDays(d,1); return d; };
+async function mtStaffCalc(meetIso){ const start=mtStart(meetIso), end=addDays(start,12); const days=[...Array(13)].map((_,i)=>addDays(start,i));
+  const [sr,hr,cr]=await Promise.all([sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).eq("active",true), allRows(()=>sb.from("shifts").select("staff_id,work_date,value").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end)), sb.from("shift_codes").select("code,start_min,end_min,is_off").eq("branch_id",S.branch)]);
+  if(sr.error||hr.error) throw (sr.error||hr.error);
+  const staff=new Map((sr.data||[]).map(x=>[x.id,x])); const codes=cr.data||[];
+  const tm=v=>{ v=String(v||"").trim(); if(!v) return null; const c=codes.find(c=>c.code&&c.code.toLowerCase()===v.toLowerCase()); if(c){ if(c.is_off||c.start_min==null) return null; return [c.start_min/60,c.end_min/60]; }
+    if(/^(off|연차|반차|휴|휴무|병가|경조사|컨퍼런스|교육)/i.test(v)) return null; if(/^주간/.test(v)) return [9,19]; if(/^야간/.test(v)) return [19,22];
+    const m=v.match(/(\d{1,2})(?::(\d{2}))?\s*[-~]\s*(\d{1,2})(?::(\d{2}))?/); if(m) return [+m[1]+(+m[2]||0)/60, +m[3]+(+m[4]||0)/60]; return /^dr|원장/i.test(v)?[9,19]:null; };
+  const cls=([a,b])=>a<=10.5&&b>=21?"A":a<=11?(b-a<=5?"D½":"D"):a<18?"E":"N";
+  const by={}; (hr.data||[]).forEach(h=>{ const st=staff.get(h.staff_id); if(!st) return; const dn=MT_DMAP[st.dept]; if(!dn) return; const t=tm(h.value); if(!t) return; const o=((by[dn] ||= {})[h.work_date] ||= {A:0,D:0,E:0,N:0,pA:0,pD:0,pE:0,doc:[0,0,0]}); const ph=PLACEHOLDER.test(st.name);
+    if(dn==="의료진"){ if(/^블로커/.test(st.name)) o.doc[2]++; else if(/^야간/.test(st.name)) o.doc[1]=Math.max(o.doc[1],1); else { if(t[0]<=11) o.doc[0]++; if(t[1]>=21) o.nt=1; } return; }
+    const k=cls(t); if(ph){ o["p"+(k==="N"?"E":k[0])]++; return; } if(k==="N") o.pE++; else if(k==="D½") o.D+=0.5; else o[k]++; });
+  const f=n=>String(Math.round(n*10)/10);
+  const cellOf=(dn,d)=>{ const o=by[dn]?.[d]; if(!o) return ""; if(dn==="의료진"){ const a=[o.doc[0],o.doc[1]||o.nt||0,o.doc[2]]; while(a.length>1&&!a[a.length-1]) a.pop(); return a.some(Boolean)?a.join("/"):""; }
+    return ["A","D","E"].map(k=>o[k]||o["p"+k]?`${k}${f(o[k])}${o["p"+k]?"+"+o["p"+k]:""}`:"").filter(Boolean).join("/"); };
+  const tbl=ds=>["| 부서 | "+ds.map(d=>`${+d.slice(5,7)}/${+d.slice(8)} (${WD[new Date(d+"T00:00:00Z").getUTCDay()]})`).join(" | ")+" |","| "+Array(ds.length+1).fill("---").join(" | ")+" |",...MT_STAFF.map(n=>"| "+n+" | "+ds.map(d=>cellOf(n,d)||" ").join(" | ")+" |")];
+  return [...tbl(days.slice(0,7)),"",...tbl(days.slice(7))]; }
+const MT_AUTO="인원 현황 (근무 스케줄 자동)";
+const mtIsoOf=t=>{ const k=String(mtKey(t)); return k.length===6?`20${k.slice(0,2)}-${k.slice(2,4)}-${k.slice(4)}`:null; };
+async function mtAutoSync(box,doc){ const R=mtParse(doc.body); const sec=R.secs.find(x=>!x.part&&/인원/.test(x.name)&&/자동/.test(x.name)); const iso=mtIsoOf(doc.title); if(!sec||!iso) return;
+  if(addDays(mtStart(iso),12)<addDays(kstToday(),-1)) return; // 지난 기간은 그대로
+  let L; try{ L=await mtStaffCalc(iso); }catch(e){ return; } if(L.join("\n")===sec.raw.join("\n")) return;
+  const el=box.querySelector("#mtstaffmd"); if(el) el.innerHTML=mdRender(L.join("\n"));
+  if(canEditDoc("회의록")){ sec.raw=L; const nb=mtJoin(R); try{ const fresh=await mdDocFresh(doc.id); if(fresh===String(doc.body)) await mdDocPut(doc,nb); }catch(e){} } }
+function mtPrint(doc){ const src=$("mdv"); if(!src) return; const pa=document.createElement("div"); pa.id="printarea"; document.getElementById("printarea")?.remove();
+  pa.innerHTML=`<div class="prh"><h2>${esc(doc.title)}</h2><span>${esc(mtSub(doc.title))}</span></div>`+src.innerHTML; pa.querySelectorAll("details").forEach(d=>d.setAttribute("open","")); pa.querySelectorAll(".mtjump,button,select,.mt > .md.meta,.mtauto").forEach(x=>x.remove());
+  document.body.appendChild(pa); document.body.classList.add("printing-mt"); const done=()=>{ document.body.classList.remove("printing-mt"); pa.remove(); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); setTimeout(()=>window.print(),50); }
 function bindMtView(box){ if(!box) return; box.querySelectorAll("[data-mtj]").forEach(b=>b.onclick=()=>{ const t=b.dataset.mtj==="staff"?$("mtstaff"):$("mtp"+b.dataset.mtj); if(t){ t.scrollIntoView({behavior:"smooth",block:"start"}); t.classList.add("mtflash"); setTimeout(()=>t.classList.remove("mtflash"),900); } }); }
 const mtMonday=iso=>{ const d=new Date(iso+"T00:00:00Z"); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return d.toISOString().slice(0,10); };
 const mtTitle=iso=>`주간회의 ${iso.slice(2,4)}.${iso.slice(5,7)}.${iso.slice(8,10)}`;
 const mtStaffTbl=mon=>{ const days=[0,1,2,3,4,5,6].map(i=>{ const d=new Date(mon+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+i); return `${d.getUTCMonth()+1}/${d.getUTCDate()} (${WD[d.getUTCDay()]})`; }); return ["| 부서 | "+days.join(" | ")+" |","| "+Array(8).fill("---").join(" | ")+" |",...MT_STAFF.map(n=>"| "+n+" | "+Array(7).fill(" ").join(" | ")+" |")].join("\n"); };
-async function mtNew(list,st){ const mon=mtMonday(kstToday()); const title=mtTitle(mon); const ex=list.find(d=>d.title===title); if(ex){ st.id=ex.id; toast("이번 주 회의록이 이미 있어 열었습니다"); return renderDocs(); }
+async function mtNew(list,st){ const mon=addDays(mtMonday(kstToday()),2); /* 회의는 수요일 */ const title=mtTitle(mon); const ex=list.find(d=>d.title===title); if(ex){ st.id=ex.id; toast("이번 주 회의록이 이미 있어 열었습니다"); return renderDocs(); }
   const last=list.find(d=>isMt(d)); const P=last?mtParse(last.body):null; const names=P?P.secs.filter(s=>s.part).map(s=>s.name):MT_PARTS;
-  const nx=new Date(mon+"T00:00:00Z"); nx.setUTCDate(nx.getUTCDate()+7); const next=nx.toISOString().slice(0,10);
-  const R={pre:[],secs:[{name:"인원 현황",part:false,raw:[mtStaffTbl(mon),"",mtStaffTbl(next)],rev:[],agd:[]},...names.map(n=>({name:n,part:true,rev:P?(P.secs.find(s=>s.name===n)?.agd||[]):[],agd:[],raw:[]}))],foot:[]};
+  let SL=[]; try{ SL=await mtStaffCalc(mon); }catch(e){ toast("근무 스케줄을 불러오지 못했습니다 — 표는 직접 적어주세요"); }
+  const R={pre:[],secs:[{name:MT_AUTO,part:false,raw:SL,rev:[],agd:[]},...names.map(n=>({name:n,part:true,rev:P?(P.secs.find(s=>s.name===n)?.agd||[]):[],agd:[],raw:[]}))],foot:[]};
   mtEditor({id:null,title,body:mtJoin(R),dept:"회의록"},st,last?`지난 회의(${last.title.replace("주간회의 ","")})의 "이번주 안건"을 이번 "지난주 리뷰"에 미리 넣어 두었습니다. 고치거나 지워서 쓰세요.`:""); }
 function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); const reload=()=>renderDocs();
   const k=String(mtKey(doc.title)); const iso=k.length===6?`20${k.slice(0,2)}-${k.slice(2,4)}-${k.slice(4)}`:mtMonday(kstToday());
@@ -2488,7 +2523,9 @@ function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); co
     <div class="mdpal" id="mtpal"></div>
     <div class="mtgrid" id="mtparts">${parts.map(partH).join("")}</div>
     <button type="button" class="btn ghost sm" id="mtadd" style="margin:8px 0 14px">+ 파트 추가</button>
-    <details class="mtx" ${staff?"open":""}><summary>인원 현황 (표) <span class="meta" style="font-weight:400">· 칸을 눌러 바로 적기</span></summary><div id="mtstaffgrid"></div><button type="button" class="btn ghost sm" id="mtstaffnew" style="margin-top:6px">+ 이번 주·다음 주 빈 표</button></details>
+    <details class="mtx" ${staff?"open":""}><summary>인원 현황 (표) <span class="meta" style="font-weight:400">· 칸을 눌러 바로 적기</span></summary>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0"><label style="display:flex;gap:6px;align-items:center;font-size:13px"><input type="checkbox" id="mtauto" ${staff&&/자동/.test(staff.name)?"checked":""}> 근무 스케줄에서 자동으로 채우기 <span class="meta">(회의 다음 날 목요일부터 2주: 목~수 · 목~화 · 스케줄이 바뀌면 회의록을 열 때 자동 반영)</span></label><button type="button" class="btn ghost sm" id="mtstaffload">↻ 지금 근무 스케줄에서 불러오기</button></div>
+      <div id="mtstaffgrid"></div><button type="button" class="btn ghost sm" id="mtstaffnew" style="margin-top:6px">+ 빈 표</button></details>
     <details class="mtx" ${extra.length?"open":""}><summary>기타 메모</summary><textarea id="mtextra" rows="5" style="width:100%;margin-top:6px">${esc(extra.map(s=>(s.name==="기타 메모"?[]:["#### "+s.name]).concat(s.raw).join("\n")).join("\n\n"))}</textarea></details>
     <p class="err" id="derr"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button>${doc.id?`<button class="btn ghost sm" id="mtraw" style="margin-left:auto">원문(글자)으로 고치기</button><button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:""}</div>`;
@@ -2507,12 +2544,14 @@ function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); co
     $("mtstaffgrid").querySelectorAll("[data-stx]").forEach(b=>b.onclick=()=>{ ST.splice(+b.dataset.stx,1); drawST(); }); };
   drawST();
   $("mtstaffnew").onclick=()=>{ const mon=mtMonday($("mtd").value||kstToday()); const nx=new Date(mon+"T00:00:00Z"); nx.setUTCDate(nx.getUTCDate()+7); ST.push(...toT(mtStaffTbl(mon).split("\n")),...toT(mtStaffTbl(nx.toISOString().slice(0,10)).split("\n"))); drawST(); };
+  $("mtstaffload").onclick=async()=>{ const d=$("mtd").value; if(!d) return toast("회의 날짜를 먼저 고르세요"); try{ const L=await mtStaffCalc(d); ST=toT(L); stNote=[]; drawST(); $("mtauto").checked=true; toast("근무 스케줄에서 불러왔습니다"); }catch(e){ toast(errMsg(e)); } };
+  $("mtstaffgrid").addEventListener("input",()=>{ if($("mtauto").checked){ $("mtauto").checked=false; toast("직접 고치면 자동 채우기가 꺼집니다 (다시 켜면 스케줄 값으로 바뀝니다)"); } });
   const stMd=()=>{ const o=[]; ST.forEach((t,i)=>{ if(i) o.push(""); const w=Math.max(...t.map(r=>r.length)); const P=r=>"| "+Array.from({length:w},(_,k)=>(r[k]||" ").replace(/\|/g,"/")).join(" | ")+" |"; o.push(P(t[0]),"| "+Array(w).fill("---").join(" | ")+" |",...t.slice(1).map(P)); }); if(stNote.length) o.push("",...stNote); return o; };
   $("dcancel").onclick=reload;
   if($("mtraw")) $("mtraw").onclick=()=>docEditor(doc,"회의록",reload,st);
   if($("ddel")) $("ddel").onclick=async()=>{ const b=$("ddel"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; } const {error}=await sb.from("dept_docs").delete().eq("id",doc.id); if(error){ $("derr").textContent=errMsg(error); return; } st.id=null; toast("삭제됨"); reload(); };
   $("dsave").onclick=async()=>{ collect(); const d=$("mtd").value; if(!d){ $("derr").textContent="회의 날짜를 고르세요."; return; } const title=mtTitle(d);
-    const out={pre:R.pre,foot:R.foot,secs:[]}; const st0=stMd(); if(st0.length) out.secs.push({name:staff?.name||"인원 현황",part:false,raw:st0});
+    const out={pre:R.pre,foot:R.foot,secs:[]}; const st0=stMd(); if(st0.length||$("mtauto").checked) out.secs.push({name:$("mtauto").checked?MT_AUTO:"인원 현황",part:false,raw:st0});
     parts.filter(p=>p.name).forEach(p=>out.secs.push({name:p.name,part:true,rev:mtLines(p.rev),agd:mtLines(p.agd)}));
     const ex=$("mtextra").value.trim(); if(ex){ const blocks=[]; let curB={name:"기타 메모",raw:[]}; ex.split(/\r?\n/).forEach(l=>{ const m=l.match(/^####\s+(.+)$/); if(m){ if(curB.raw.some(x=>x.trim())) blocks.push(curB); curB={name:m[1].trim(),raw:[]}; } else curB.raw.push(l); }); if(curB.raw.some(x=>x.trim())) blocks.push(curB); blocks.forEach(b=>out.secs.push({name:b.name,part:false,raw:mdTrim(b.raw)})); }
     const body=mtJoin(out);
