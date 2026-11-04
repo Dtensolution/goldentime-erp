@@ -477,7 +477,7 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .shtab td.sh.sel{outline:2.5px solid var(--navy)!important;outline-offset:-2px;z-index:1}
 .shtab td.sh.over{outline:2.5px dashed var(--accent)!important;outline-offset:-3px}
 .shtab td.sh.dragging{opacity:.45}
-.shtab td.sh input.shq{width:100%;min-width:60px;height:100%;border:none;outline:none;background:var(--surface);font:inherit;font-weight:600;text-align:center;padding:0 2px;color:var(--ink)}
+.shtab td.sh input.shq{position:absolute;inset:0;z-index:2;width:100%;min-width:0;height:100%;box-sizing:border-box;border:none;outline:none;background:var(--surface);font:inherit;font-weight:600;text-align:center;padding:0 2px;color:var(--ink)}
 .shtab tr.grp td{background:color-mix(in srgb,var(--dc) 14%,var(--surface));color:var(--dc);border-left:4px solid var(--dc)}
 .shtab td.nm[data-nm]{border-left:4px solid var(--dc);cursor:grab}
 .nmw{display:flex;align-items:center;justify-content:space-between;gap:4px}
@@ -880,6 +880,7 @@ function topbar(){
     <div class="me"><span class="lv">${lvName(me.level)}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<button class="linkbtn" id="logout">로그아웃</button></div></header>`;
 }
 function render(){
+  if(S.view!=="staff"){ if(window.__shQ) window.__shQ={}; if(S.staffV){ S.staffV.undo=[]; S.staffV.last=null; } }
   if(S.schedPoll){ clearInterval(S.schedPoll); S.schedPoll=null; }
   killCharts(); document.querySelectorAll(".shfloat,.clipbar").forEach(x=>x.remove());
   if(S.me.level===1 && !S.branch) return renderPicker();
@@ -919,7 +920,7 @@ function render(){
   $("homeBtn").onclick=()=>{ S.view=canDash()?"dash":defaultView(); render(); };
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=async()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; }
-    if(S.view==="staff"&&b.dataset.v!=="staff"&&shDirtyN()>0){ if(confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다.\n[확인] 저장하고 이동 · [취소] 저장하지 않고 이동 (근무표로 돌아오면 그대로 남아 있음)`)){ const r=await shFlush(); toast(r.fail?`${r.fail}칸 저장 실패: ${r.msg}`:`${r.n}칸 저장했습니다`); } }
+    if(S.view==="staff"&&b.dataset.v!=="staff"&&shDirtyN()>0){ if(confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다.\n[확인] 저장하고 이동 · [취소] 저장하지 않고 이동 (고친 내용은 지워집니다)`)){ const r=await shFlush(); toast(r.fail?`${r.fail}칸 저장 실패: ${r.msg}`:`${r.n}칸 저장했습니다`); } }
     const d=b.dataset.dept, v=b.dataset.v;
     if(d&&v==="docs"){ const st=S.docV ||= {dept:d,id:null,q:"",edit:false}; st.dept=d; st.id=null; st.q=""; }
     if(d&&v==="reg"){ const st=S.regV ||= {dept:d,id:null,q:"",month:null,limit:300}; st.dept=d; st.id=null; st.q=""; st.month=null; }
@@ -1967,8 +1968,8 @@ async function renderPrices(){
 
 // ── 전직원 근무 스케줄 ──
 const SH_COLORS={blue:"var(--c-blue)",navy:"var(--c-navy)",teal:"var(--c-teal)",purple:"var(--c-purple)",gray:"var(--c-gray)",orange:"var(--c-orange)",red:"var(--c-red)",green:"#2e9e5b",pink:"#c2477d"};
-// 근무 약자: A=9-22, D=9-19, E=14-22 (입력하면 시간으로 바꿔서 저장)
-const SH_ALIAS={A:"9-22",D:"9-19",E:"14-22"};
+// 근무 약자: A=9-22, D=9-19, E=14-22, O=OFF (입력하면 시간으로 바꿔서 저장)
+const SH_ALIAS={A:"9-22",D:"9-19",E:"14-22",O:"OFF"};
 const shAlias=v=>{ if(v==null) return v; const k=String(v).trim().toUpperCase(); return SH_ALIAS[k]||v; };
 function shInterval(v,codes){ const c=codes[v]; if(c&&c.start_min!=null&&c.end_min!=null) return [c.start_min,c.end_min]; const t=String(v||"").match(/^\s*(\d{1,2})(?::(\d{2}))?\s*-\s*(\d{1,2})(?::(\d{2}))?\s*$/); if(!t) return null; const a=+t[1]*60+(+t[2]||0), b=+t[3]*60+(+t[4]||0); return b>a?[a,b]:null; }
 // 팀장 공백 검사: 그날 팀장들의 근무가 9시~22시를 빈틈없이 덮는지
@@ -2034,7 +2035,7 @@ async function renderStaff(){
     body=`${leads.length&&Object.keys(gapOf).length?`<p class="gapnote">● 붉은 날짜 = 팀장 근무로 9시~22시가 다 채워지지 않은 날 (${Object.keys(gapOf).length}일) · 날짜에 마우스를 올리면 빈 시간이 보입니다</p>`:leads.length?`<p class="gapnote ok">✔ 이 기간은 매일 팀장 근무로 9시~22시가 다 채워졌습니다</p>`:""}<div class="sh-wrap"><table class="shtab ${st.mode}"><thead><tr><th class="nm">이름</th>${days.map(d=>{const l=dLabel(d);return `<th class="${l.we?"we":""}${d===today?" td":""}${l.sun?" sun":""}${gapOf[d]?" gap":""}${st.mode==="month"&&wkAlt(d)?" walt":""}"${wkA(d)} ${gapOf[d]?`title="${gapTxt(d)}"`:""}>${st.mode==="month"?l.d:`${l.m}/${l.d}`}<small>${l.w}</small></th>`;}).join("")}<th class="tot">근무<small>일·시간</small></th></tr></thead><tbody>
       ${groups.map(g=>`<tr class="grp" style="--dc:${deptColor(g)}"><td class="nm" ${g==="팀장"||g===BILL_DEPT?"":`data-gd="${esc(g)}"`} colspan="${days.length+2}">${esc(g)} <span class="meta">${shown.filter(s=>inG(s,g)).length}명</span></td></tr>`+
         shown.filter(s=>inG(s,g)).map(s=>{ let wd=0,hrs=0; const du={}; days.forEach(d=>{ const h=map[s.id+"|"+d]; if(h&&!isOffVal(h.value,codes)){ wd++; hrs+=shiftHours(h.value,codes); const k=dutyOf(h.value,codes); if(k) du[k]=(du[k]||0)+1; } });
-          return `<tr><td class="nm" data-nm="${s.id}" ${canEditDept(s.dept)?'draggable="true"':""} style="--dc:${deptColor(s.dept)}"><div class="nmw"><span class="nmtxt">${esc(s.name)}${s.memo?` <span class="meta">${esc(s.memo)}</span>`:""}</span>${canEditDept(s.dept)?`<button class="nmbtn" data-sedit="${s.id}" aria-label="${esc(s.name)} 정보 수정" title="이름·부서 수정, 숨기기">⋯</button>`:""}</div></td>${days.map(d=>cell(s,d)).join("")}<td class="tot num" title="${wd}일${hrs?` · ${Math.round(hrs*10)/10}시간`:""}"><b>${dutyTxt(du," ")||(wd?wd+"일":"")}</b><small class="meta" style="display:block;font-size:10.5px">${wd}일${hrs?` · ${Math.round(hrs*10)/10}h`:""}</small></td></tr>`; }).join("")).join("")}
+          return `<tr><td class="nm" data-nm="${s.id}" ${canEditDept(s.dept)?'draggable="true"':""} style="--dc:${deptColor(s.dept)}"><div class="nmw"><span class="nmtxt">${esc(s.name)}${s.memo?` <span class="meta">${esc(s.memo)}</span>`:""}</span>${canEditDept(s.dept)?`<button class="nmbtn" data-sedit="${s.id}" aria-label="${esc(s.name)} 정보 수정" title="이름·부서 수정, 숨기기">⋯</button>`:""}</div></td>${days.map(d=>cell(s,d)).join("")}<td class="tot num" title="${wd}일 근무"><b>${dutyTxt(du," ")||(wd?wd+"일":"")}</b>${dutyTxt(du," ")?`<small class="meta" style="display:block;font-size:10.5px">${wd}일</small>`:""}</td></tr>`; }).join("")).join("")}
       <tr class="sum"><td class="nm">근무 인원</td>${days.map(d=>{ const on=shown.filter(s=>{const h=map[s.id+"|"+d];return s.dept!==BILL_DEPT&&h&&!isOffVal(h.value,codes);}); const o={}; on.forEach(s=>{ const k=dutyOf(map[s.id+"|"+d].value,codes); if(k) o[k]=(o[k]||0)+1; }); const t=dutyTxt(o); return `<td class="num dutyc"${wkA(d)} title="${on.length}명">${t?t.split("/").join("<br>"):on.length||""}</td>`; }).join("")}<td></td></tr>
     </tbody></table></div>`;
   } else {
@@ -2139,7 +2140,7 @@ async function renderStaff(){
   const select=k=>{ document.querySelectorAll("td.sh.sel").forEach(x=>x.classList.remove("sel")); st.sel=k; const td=k&&tdOf(k); if(td){ td.classList.add("sel"); td.scrollIntoView({block:"nearest",inline:"nearest"}); } };
   const quickEdit=(td,initial)=>{ if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다");
     const sid=+td.dataset.s, d=td.dataset.d, key=sid+"|"+d; const inp=document.createElement("input"); inp.className="shq"; inp.value=initial??(map[key]?.value||""); inp.setAttribute("list","shcodes"); inp.setAttribute("aria-label","근무 입력");
-    td.innerHTML=""; td.appendChild(inp); inp.focus(); if(initial==null) inp.select();
+    td.appendChild(inp); inp.focus(); if(initial==null) inp.select();
     let done=false; const fin=async(save,viaKey)=>{ if(done) return; done=true; const v=inp.value.trim(); if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); if(viaKey) focusProxy(); };
     inp.onkeydown=e=>{ e.stopPropagation(); const nav=navOf(e); if(nav){ e.preventDefault(); afterIme(e,inp,()=>fin(true,true).then(()=>moveSel(...nav))); } else if(e.key==="Escape"){ fin(false,true); } };
     inp.onblur=()=>fin(true); };
