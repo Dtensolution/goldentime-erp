@@ -1500,6 +1500,7 @@ async function renderUsers(){
 
 // ── 스케줄 (도수·충격파 / 근전도) ──
 const SCHED = { pt:{title:"도수·충격파 스케줄", from:540, to:1260}, emg:{title:"근전도 스케줄", from:540, to:1290} };
+const SCHED_BR = { "gt-cs":{ pt:{to:1320} } }; // 지점별 시간 (철산 도수·충격파 22시까지)
 const SLOT_H = 18; // 10분당 px
 const laneStep = (kind,l) => kind==="emg" ? 30 : (/충격/.test(((l&&l.grp)||"")+((l&&l.name)||"")) ? 10 : 30);
 async function allRows(mk){ const out=[]; for(let i=0;;i+=1000){ const {data,error}=await mk().range(i,i+999); if(error) return {error}; out.push(...(data||[])); if(!data||data.length<1000) break; } return {data:out}; }
@@ -1527,7 +1528,7 @@ async function renderSched(kind,keep){
   if(S.schedPoll){ clearInterval(S.schedPoll); S.schedPoll=null; }
   if(!keep) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   S.sched ||= {}; const st = S.sched[kind] ||= { date:kstToday(), mode: kind==="emg"?"week":"day" };
-  const perm=schedPerm(kind), canEdit=perm==="edit", cfg=SCHED[kind];
+  const perm=schedPerm(kind), canEdit=perm==="edit", cfg={...SCHED[kind],...(SCHED_BR[S.branch]?.[kind]||{})};
   const {start,end}=schedRange(st); const grid = st.mode==="day"||st.mode==="week";
   const [lr, ir, ar, nr, dr, br] = await Promise.all([
     sb.from("sched_lanes").select("*").eq("branch_id",S.branch).eq("kind",kind).order("sort"),
