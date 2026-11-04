@@ -253,11 +253,12 @@ table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:
 small.ord.zero{color:var(--good)!important;font-weight:700}
 .mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}.mdtabs .mdtabadd{background:none;border-style:dashed;color:var(--accent)}
 .mtauto{font-size:11.5px;font-weight:600;color:#2f8f4e;background:#e3f4e8;border-radius:999px;padding:1px 8px;margin-left:6px}
-#printarea{display:none}
-@media print{ body.printing-mt > *:not(#printarea){display:none!important} body.printing-mt{background:#fff!important} body.printing-mt #printarea{display:block;font-size:11px;color:#111}
-  #printarea *{-webkit-print-color-adjust:exact;print-color-adjust:exact} #printarea .prh{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #1e3a6e;margin-bottom:8px;padding-bottom:4px} #printarea .prh h2{margin:0;font-size:18px} #printarea .prh span{color:#555}
-  #printarea .mtgrid{gap:5px} #printarea .mtcard{break-inside:avoid;padding:5px 10px;border-radius:6px;box-shadow:none} #printarea .mtcard h4{font-size:13px;margin:0 0 3px} #printarea .mtcols{grid-template-columns:1fr 1fr!important;gap:10px} #printarea .md li{margin:1px 0;line-height:1.4} #printarea .mtl{font-size:10px;padding:0 6px}
-  #printarea .mtx{break-inside:avoid;padding:4px 8px;margin-top:6px} #printarea .mtx summary{list-style:none} #printarea .mtx summary::-webkit-details-marker{display:none} #printarea table{font-size:10px;width:100%} #printarea th,#printarea td{padding:2px 4px!important} #printarea .tbl-box{overflow:visible;max-height:none} }
+#printarea{display:none;background:#fff;color:#111;font-size:11px}
+#printarea *{-webkit-print-color-adjust:exact;print-color-adjust:exact} #printarea .prh{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #1e3a6e;margin-bottom:8px;padding-bottom:4px} #printarea .prh h2{margin:0;font-size:18px} #printarea .prh span{color:#555}
+#printarea .mtgrid{gap:5px} #printarea .mtcard{break-inside:avoid;padding:5px 10px;border-radius:6px;box-shadow:none} #printarea .mtcard h4{font-size:13px;margin:0 0 3px} #printarea .mtcols{grid-template-columns:1fr 1fr!important;gap:10px} #printarea .md li{margin:1px 0;line-height:1.4} #printarea .mtl{font-size:10px;padding:0 6px}
+#printarea .mtx{break-inside:avoid;padding:4px 8px;margin-top:6px} #printarea .mtx summary{list-style:none} #printarea .mtx summary::-webkit-details-marker{display:none} #printarea table{font-size:10px;width:100%} #printarea .mt th,#printarea .mt td{padding:2px 4px!important} #printarea .tbl-box{overflow:visible;max-height:none}
+#printarea .sc-wrap{overflow:visible!important;max-height:none!important;border:0} #printarea .sc-h{position:static!important} #printarea .sc-time{position:static!important} #printarea .iclg{margin:0 0 6px}
+@media print{ body.printing-fit > *:not(#printarea){display:none!important} body.printing-fit{background:#fff!important} body.printing-fit #printarea{display:block!important;position:static!important} }
 .doc-list .docnew{position:sticky;top:0;z-index:3;margin:0 0 10px;box-shadow:0 4px 10px -6px rgba(0,0,0,.25)}
 .mt{font-size:14.5px}.mtjump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;position:sticky;top:0;z-index:2;background:var(--panel);padding:6px 0}
 .mtj{border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));color:var(--c);background:color-mix(in srgb,var(--c) 8%,var(--panel));border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer}.mtj b{background:var(--c);color:#fff;border-radius:999px;padding:0 6px;font-size:11.5px;margin-left:2px}
@@ -1615,6 +1616,7 @@ async function renderSched(kind,keep){
         <button class="btn ghost sm" id="st">오늘</button>${st.mode==="range"?`<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="rf" value="${start}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="rt" value="${end}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-rq="${k}">${t}</button>`).join("")}</span>`:st.mode==="month"?`<input type="month" id="sm" value="${st.date.slice(0,7)}" aria-label="월 선택" style="height:30px;padding:0 6px">`:st.mode==="year"?`<select id="sy" aria-label="연도 선택" style="height:30px">${[...Array(7)].map((_,i)=>+kstToday().slice(0,4)-4+i).map(y=>`<option ${String(y)===st.date.slice(0,4)?"selected":""}>${y}</option>`).join("")}</select>`:`<input type="date" id="sd" value="${st.date}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`}
         ${canEdit&&grid?`<button class="btn ghost sm" id="sundo" ${(S.schedUndo[kind]||[]).length?"":"disabled"} title="끌어서 옮긴 예약을 원래대로">↶ 되돌리기${(S.schedUndo[kind]||[]).length?` (${S.schedUndo[kind].length})`:""}</button>`:""}
         ${kind==="emg"&&st.mode==="day"?`<button class="btn ghost sm" id="phl" title="이 날 근전도 환자 전화번호만 모아서 복사">📞 당일 환자 연락처</button>`:""}
+        ${grid?`<button class="btn ghost sm" id="sprint" title="지금 보이는 시간표를 A4 한 장(가로)에 맞춰 인쇄">🖨 인쇄</button>`:""}
         <button class="btn ghost sm" id="srf" title="다른 사람이 넣거나 바꾼 예약을 바로 불러옵니다 (화면은 그대로 유지, 30초마다 자동 확인도 함)">↻ 새로고침</button>
         ${canEdit?`<button class="btn sm" id="sa">+ 예약 추가</button>`:""}
       </div></div>
@@ -1685,6 +1687,7 @@ async function renderSched(kind,keep){
   if($("sundo")) $("sundo").onclick=()=>undoMove(kind,ctx.reload);
   if(kp){ window.scrollTo(0,kp.y); main.querySelectorAll(".sc-wrap,.tbl-box").forEach((x,i)=>{ if(kp.w[i]){ x.scrollLeft=kp.w[i][0]; x.scrollTop=kp.w[i][1]; } }); }
   saveLast();
+  if($("sprint")) $("sprint").onclick=()=>{ if(schedPrintPrep()) setTimeout(()=>window.print(),50); };
   if($("srf")) $("srf").onclick=()=>{ $("srf").disabled=true; renderSched(kind,true).then(()=>toast("최신 예약으로 새로고침했습니다")); };
   // 자동 새로고침: 30초마다 바뀐 예약이 있는지 보고, 입력 중이 아니면 화면 위치 그대로 다시 그림
   if(grid){ const sig=(A,B)=>JSON.stringify([(A||[]).map(a=>[a.id,a.appt_date,a.start_min,a.minutes,a.lane_id,a.status,a.chart_no,a.patient_name,a.item,a.staff,a.doctor,a.needle_doctor,a.is_new,a.inpatient,a.phone,a.exam_no,a.ins,a.review,a.contact]).sort((x,y)=>x[0]-y[0]),(B||[]).map(b=>[b.id,b.bdate,b.dows,b.start_min,b.end_min,b.lane_id,b.note]).sort((x,y)=>x[0]-y[0])]);
@@ -2405,6 +2408,7 @@ async function renderDocs(){
     </div></div>`;
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
+  window.__mtCur=cur&&isMt(cur)?cur:null;
   if(cur&&isMt(cur)){ bindMtView($("mdv")); mtAutoSync($("mdv"),cur); if($("mtprint")) $("mtprint").onclick=()=>mtPrint(cur); }
   if(cur&&canEditDoc(cur.dept)&&!isMt(cur)) bindMdEdit($("mdv"),cur,()=>renderDocs());
   const tabEd=cur&&canEditDoc(cur.dept); let curTab="__all";
@@ -2500,9 +2504,20 @@ async function mtAutoSync(box,doc){ const R=mtParse(doc.body); const sec=R.secs.
   let L; try{ L=await mtStaffCalc(iso); }catch(e){ return; } if(L.join("\n")===sec.raw.join("\n")) return;
   const el=box.querySelector("#mtstaffmd"); if(el) el.innerHTML=mdRender(L.join("\n"));
   if(canEditDoc("회의록")){ sec.raw=L; const nb=mtJoin(R); try{ const fresh=await mdDocFresh(doc.id); if(fresh===String(doc.body)) await mdDocPut(doc,nb); }catch(e){} } }
-function mtPrint(doc){ const src=$("mdv"); if(!src) return; const pa=document.createElement("div"); pa.id="printarea"; document.getElementById("printarea")?.remove();
-  pa.innerHTML=`<div class="prh"><h2>${esc(doc.title)}</h2><span>${esc(mtSub(doc.title))}</span></div>`+src.innerHTML; pa.querySelectorAll("details").forEach(d=>d.setAttribute("open","")); pa.querySelectorAll(".mtjump,button,select,.mt > .md.meta,.mtauto").forEach(x=>x.remove());
-  document.body.appendChild(pa); document.body.classList.add("printing-mt"); const done=()=>{ document.body.classList.remove("printing-mt"); pa.remove(); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); setTimeout(()=>window.print(),50); }
+// 한 장에 맞춰 인쇄: 인쇄할 부분만 복사해 A4 한 장 크기에 맞게 줄임 (버튼 · Ctrl+P 둘 다)
+function printFit(html,land,clean){ printDone(); const pa=document.createElement("div"); pa.id="printarea"; pa.innerHTML=html; pa.querySelectorAll("details").forEach(d=>d.setAttribute("open","")); if(clean) pa.querySelectorAll(clean).forEach(x=>x.remove());
+  document.body.appendChild(pa); const PW=land?1060:730, PH=land?720:1050; // A4 (여백 8mm)에서 쓸 수 있는 크기(px)
+  const meas=w=>{ pa.style.cssText=`display:block;position:absolute;left:-99999px;top:0;${w?`width:${w}px`:"width:max-content"}`; return [pa.scrollWidth,pa.scrollHeight]; };
+  let z=1; if(land){ const [w,h]=meas(0); z=Math.min(1,PW/w,PH/h); pa.style.cssText=`width:${Math.max(w,PW/z)}px`; }
+  else { let w=PW; for(let k=0;k<4;k++){ const [,h]=meas(w); const nz=Math.min(1,PH/h); if(Math.abs(nz-z)<0.01){ z=nz; break; } z=nz; w=PW/z; } const [,h]=meas(PW/z); z=Math.min(z,PH/h); pa.style.cssText=`width:${PW/z}px`; }
+  pa.style.zoom=z; const ps=document.createElement("style"); ps.id="printpage"; ps.textContent=`@page{size:A4 ${land?"landscape":"portrait"};margin:8mm}`; document.head.appendChild(ps); document.body.classList.add("printing-fit"); }
+function printDone(){ document.getElementById("printarea")?.remove(); document.getElementById("printpage")?.remove(); document.body.classList.remove("printing-fit"); }
+function mtPrintPrep(doc){ const src=$("mdv"); if(!src) return false; printFit(`<div class="prh"><h2>${esc(doc.title)}</h2><span>${esc(mtSub(doc.title))}</span></div>`+src.innerHTML,false,".mtjump,button,select,.mt > .md.meta,.mtauto"); return true; }
+function schedPrintPrep(){ const g=document.querySelector("#main .sc-wrap"); if(!g) return false; const t=document.querySelector("#main .sched-h h2")?.textContent||"", l=document.querySelector("#main .sched-h .monthnav b")?.textContent||""; const note=$("dn")?.value||"";
+  printFit(`<div class="prh"><h2>${esc(t)}</h2><span>${esc(l)}${note?" · "+esc(note):""}</span></div>${document.querySelector("#main .iclg")?.outerHTML||""}${g.outerHTML}`,true,"button.btn"); return true; }
+function mtPrint(doc){ if(mtPrintPrep(doc)) setTimeout(()=>window.print(),50); }
+window.addEventListener("beforeprint",()=>{ if(document.getElementById("printarea")) return; if(S.view==="spt"||S.view==="semg") schedPrintPrep(); else if(S.view==="docs"&&window.__mtCur&&$("mdv")) mtPrintPrep(window.__mtCur); });
+window.addEventListener("afterprint",()=>setTimeout(printDone,0));
 function bindMtView(box){ if(!box) return; box.querySelectorAll("[data-mtj]").forEach(b=>b.onclick=()=>{ const t=b.dataset.mtj==="staff"?$("mtstaff"):$("mtp"+b.dataset.mtj); if(t){ t.scrollIntoView({behavior:"smooth",block:"start"}); t.classList.add("mtflash"); setTimeout(()=>t.classList.remove("mtflash"),900); } }); }
 const mtMonday=iso=>{ const d=new Date(iso+"T00:00:00Z"); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return d.toISOString().slice(0,10); };
 const mtTitle=iso=>`주간회의 ${iso.slice(2,4)}.${iso.slice(5,7)}.${iso.slice(8,10)}`;
