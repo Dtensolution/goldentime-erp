@@ -1174,9 +1174,50 @@ const EMR_F=[["f_total","총진료비",/^(총진료비|진료비총액|진료비
   ["f_card","카드",/^(카드|카드수납|신용카드|카드합계)$/],["f_cash","현금",/^(현금|현금수납|현금합계)$/],["f_acct","계좌이체",/^(계좌|계좌이체|이체|통장|무통장)$/],["f_unpaid","미수 발생",/^(미수|미수금|미수발생|당일미수)$/],["f_unpaidIn","미수 입금",/^(미수입금|미수회수|미수수납)$/]];
 const emrNum=v=>{ if(typeof v==="number") return isFinite(v)?v:null; const t=String(v??"").replace(/[,\s원₩]/g,""); return /^-?\d+(\.\d+)?$/.test(t)?+t:null; };
 const emrLab=v=>String(v??"").replace(/\s+/g,"").replace(/[:：()（）\[\]]/g,"");
+// 환자별 수납 목록 형식 (첫 줄 머리글: 진료일자·접수구분·진료과·초/재진·진료비총액·비급여총액·카드수납…) → 합계를 내서 채움
+async function emrListUpload(wb,X,file){
+  let g=null, H=null, hr=-1;
+  for(const sn of wb.SheetNames){ const a=X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""}); for(let i=0;i<Math.min(a.length,10);i++){ const h=a[i].map(emrLab); if(h.includes("진료비총액")&&h.some(x=>/카드/.test(x))){ g=a; H=h; hr=i; break; } } if(g) break; }
+  if(!g) return false;
+  const col=re=>H.findIndex(h=>re.test(h)); const C={date:col(/^진료일자$/), kind:col(/^접수구분$/), room:col(/^진료과$|^진료실$/), nr:col(/^초\/?재진$/), pt:col(/^환자번호$/), total:col(/^진료비총액$/), np:col(/^비급여총액$/),
+    card:col(/^카드수납$/), cash:col(/^현금수납$/), acct:col(/^계좌수납$/), kiosk:col(/^키오스크$/), mis:col(/^미수금$/), mCard:col(/^미수카드수납$/), mCash:col(/^미수현금수납$/), mAcct:col(/^미수계좌수납$/)};
+  const N=(r,i)=>i<0?0:(emrNum(r[i])||0);
+  const rows=g.slice(hr+1).filter(r=>C.date>=0?/^\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2}/.test(String(r[C.date]).trim()):r.some(x=>String(x).trim()));
+  if(!rows.length){ toast("파일에 환자 줄이 없습니다"); return true; }
+  const dates=[...new Set(rows.map(r=>String(r[C.date]).trim().slice(0,10).replace(/[\/.]/g,"-")))]; const md=$("edate")?.value||"";
+  const sum=i=>rows.reduce((s,r)=>s+N(r,i),0); const isIn=r=>/입원/.test(String(r[C.kind]||""));
+  const total=sum(C.total), inpat=rows.filter(isIn).reduce((s,r)=>s+N(r,C.total),0);
+  const V={f_total:total, f_nonpay:sum(C.np), f_inpat:inpat, f_out:total-inpat, f_card:sum(C.card)+sum(C.kiosk)+sum(C.mCard), f_cash:sum(C.cash)+sum(C.mCash), f_acct:sum(C.acct)+sum(C.mAcct), f_unpaid:sum(C.mis)};
+  const mis=sum(C.mCard)+sum(C.mCash)+sum(C.mAcct);
+  // 진료실별 신환·재진 (같은 환자가 두 번 접수돼도 한 번만)
+  let set={}; try{ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); set=data?.data?.emrRoom||{}; }catch(e){} try{ set={...set,...JSON.parse(localStorage.getItem("gt-emrroom-"+S.branch)||"{}")}; }catch(e){}
+  const R={}; rows.forEach(r=>{ if(C.room<0) return; const rm=String(r[C.room]||"").trim(); if(!rm||/미수/.test(String(r[C.kind]||""))) return; const o=R[rm] ||= {n:new Set(),re:new Set(),amt:0}; const nr=String(r[C.nr]||""); const id=C.pt>=0?String(r[C.pt]):Math.random();
+    if(/신환|초진/.test(nr)){ if(!o.re.has(id)) o.n.add(id); } else if(/재진/.test(nr)){ if(!o.n.has(id)) o.re.add(id); } o.amt+=N(r,C.total); });
+  const rooms=Object.keys(R).sort((a,b)=>a.localeCompare(b,"ko",{numeric:true}));
+  const docs=[...document.querySelectorAll("[data-doc]")].map(r=>({i:r.dataset.doc,name:r.dataset.name}));
+  const LB={f_total:"총진료비",f_nonpay:"비급여",f_out:"외래 (총진료비 − 입원)",f_inpat:"입원비",f_card:"카드 (카드수납 + 키오스크 + 미수 카드수납)",f_cash:"현금 (현금수납 + 미수 현금수납)",f_acct:"계좌이체 (계좌수납 + 미수 계좌수납)",f_unpaid:"미수 발생"};
+  const dlg=$("dlg"); dlg.innerHTML=`<form method="dialog" style="min-width:min(720px,92vw)"><h3 style="margin:0 0 6px">EMR 수납 목록 → 마감일지</h3>
+    <p class="meta" style="margin:0 0 10px">${esc(file.name)} · 환자 ${rows.length}줄을 합계했습니다${dates.length?` · 파일 날짜 <b>${esc(dates.join(", "))}</b>`:""}${md&&dates.length&&!dates.includes(md)?` <b style="color:var(--bad)">— 마감 날짜(${esc(md)})와 다릅니다!</b>`:""}</p>
+    <div class="tbl-box"><table><thead><tr><th></th><th>마감일지 칸</th><th class="num">파일 합계</th><th class="num">지금 적힌 값</th></tr></thead><tbody>
+    ${Object.entries(V).map(([id,v])=>`<tr><td><input type="checkbox" data-emv="${id}" checked aria-label="${esc(LB[id])} 채우기"></td><td>${esc(LB[id])}</td><td class="num"><b>${won(Math.round(v))}</b></td><td class="num">${esc($(id)?.value||"")}</td></tr>`).join("")}
+    </tbody></table></div>${mis?`<p class="meta" style="margin:6px 0 0">미수 회수 ${won(mis)}원은 결제수단별(카드·현금·계좌)에 더했습니다.</p>`:""}
+    ${rooms.length&&docs.length?`<h4 style="margin:14px 0 6px">진료실별 원장 · 신환(초진 포함)·재진·진료비 <span class="meta" style="font-weight:400">처음 한 번만 원장을 고르면 다음부터 자동</span></h4><div class="tbl-box"><table><thead><tr><th>진료실</th><th>원장</th><th class="num">신환</th><th class="num">재진</th><th class="num">진료비</th></tr></thead><tbody>
+      ${rooms.map(rm=>`<tr><td>${esc(rm)}</td><td><select data-emroom="${esc(rm)}" style="height:30px"><option value="">— 넣지 않음 —</option>${docs.map(d=>`<option value="${esc(d.name)}" ${set[rm]===d.name?"selected":""}>${esc(d.name)}</option>`).join("")}</select></td><td class="num">${R[rm].n.size}</td><td class="num">${R[rm].re.size}</td><td class="num">${won(R[rm].amt)}</td></tr>`).join("")}</tbody></table></div>`:""}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" value="cancel">취소</button><button type="button" class="btn" id="emrgo">칸에 채우기</button></div></form>`;
+  dlg.showModal();
+  $("emrgo").onclick=async()=>{ let n=0, last=null; const put=(id,v)=>{ const el=$(id); if(!el) return; el.value=v?won(Math.round(v)):""; el.dispatchEvent(new Event("input",{bubbles:true})); last=el; n++; };
+    dlg.querySelectorAll("[data-emv]").forEach(cb=>{ if(cb.checked) put(cb.dataset.emv,V[cb.dataset.emv]); });
+    const map={}; dlg.querySelectorAll("[data-emroom]").forEach(s=>{ if(s.value) map[s.dataset.emroom]=s.value; });
+    if(Object.keys(map).length){ const agg={}; Object.entries(map).forEach(([rm,dn])=>{ const a=agg[dn] ||= {n:0,re:0,amt:0}; a.n+=R[rm].n.size; a.re+=R[rm].re.size; a.amt+=R[rm].amt; });
+      docs.forEach(d=>{ const a=agg[d.name]; if(!a) return; put("dn"+d.i,a.n); put("dr"+d.i,a.re); put("da"+d.i,a.amt); });
+      try{ localStorage.setItem("gt-emrroom-"+S.branch,JSON.stringify(map)); }catch(e){}
+      if(S.me.level<=3){ try{ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); d.emrRoom=map; await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); }catch(e){} } }
+    dlg.close(); if(last) last.dispatchEvent(new Event("change",{bubbles:true})); toast(n?`${n}칸을 채웠습니다 · 자동 저장됩니다`:"채운 칸이 없습니다"); };
+  return true; }
 function bindEmrUpload(){ const b=$("emrup"), f=$("emrf"); if(!b||!f) return; b.onclick=()=>f.click();
   f.onchange=async()=>{ const file=f.files[0]; f.value=""; if(!file) return; let X; try{ X=await loadXLSX(); }catch(e){ return toast(errMsg(e)); }
     let wb; try{ wb=X.read(await file.arrayBuffer(),{type:"array"}); }catch(e){ return toast("파일을 읽지 못했습니다 — 엑셀(xlsx·xls) 또는 csv로 저장해 올려주세요"); }
+    if(await emrListUpload(wb,X,file)) return;
     const C=[]; wb.SheetNames.forEach(sn=>{ const g=X.utils.sheet_to_json(wb.Sheets[sn],{header:1,raw:true,defval:""}); g.forEach((row,ri)=>row.forEach((cell,ci)=>{ const lab=emrLab(cell); if(!lab||emrNum(cell)!=null||lab.length>24) return;
       let n=0; for(let k=ci+1;k<row.length&&k<=ci+10&&n<6;k++){ const x=emrNum(row[k]); if(x!=null){ n++; C.push({key:`${sn}|${lab}|R${n}`,lab,how:n===1?"오른쪽":`오른쪽 ${n}번째`,v:x,sn}); } else if(emrLab(row[k])&&n) break; }
       for(let k=ri+1,m=0;k<g.length&&k<=ri+3&&m<1;k++){ const x=emrNum((g[k]||[])[ci]); if(x!=null){ m++; C.push({key:`${sn}|${lab}|D`,lab,how:"아래",v:x,sn}); } } })); });
