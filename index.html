@@ -339,6 +339,7 @@ dialog.wide{width:min(1200px,96vw)!important;max-height:94vh}
 .tl{position:absolute;right:6px;transform:translateY(-1px);font-family:var(--f-num);font-size:11px;color:var(--muted)}
 .ap{position:absolute;overflow:hidden;text-align:left;border:1px solid var(--navy);border-left-width:3px;border-radius:5px;background:var(--navy-soft);color:var(--ink);padding:2px 5px;font-size:13px;line-height:1.3;cursor:pointer;display:flex;flex-direction:column;gap:1px}
 .ap b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap:not(.one)>*{flex-shrink:0}
 .ap span{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ap.ap-d{border-color:var(--good);background:color-mix(in srgb,var(--good) 12%,var(--surface))}
 .ap.ap-x{border-color:var(--line);background:var(--sunk);opacity:.7}
@@ -723,6 +724,7 @@ const menuDept=()=>S.me.level===5?"의사":S.me.level===3?"팀장":S.me.level===
 function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const m=Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()); return m.includes("mgmt"); }
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
+const CARM_NORED = []; // C-arm 카운트에 REDUCTION 칸을 쓰지 않는 지점
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
 const MTX_SLOT = ["gt-os","gt-cs"]; // 수기치료 시간표를 쓰는 지점 (운정·철산)
 const RESV_ITEMS = ["주사","진료·경과","도수","충격파"];
@@ -4592,6 +4594,7 @@ async function renderCarm(){
   const cell=(d,k,n)=>{ const v=V[`${d}|${k}|${n}`]; return `<td class="cm${locked(d)?" lock":""}">${ed&&!locked(d)?`<input data-cm="${d}|${k}|${esc(n)}" value="${v?v:""}" inputmode="numeric" autocomplete="off" aria-label="${d} ${esc(n)}">`:`<span>${v||""}</span>`}</td>`; };
   const sum=(k,list,d)=>list.reduce((s,c)=>s+g(d,k,c.name),0);
   const colSum=(k,n)=>days.reduce((s,d)=>s+g(d,k,n),0);
+  const RED=!CARM_NORED.includes(S.branch);
   const T={tech:days.reduce((s,d)=>s+sum("tech",techs,d),0), red:days.reduce((s,d)=>s+g(d,"reduction",""),0), doc:days.reduce((s,d)=>s+sum("doc",docs,d),0), techS:days.reduce((s,d)=>s+sum("tech_s",techs,d),0), docS:days.reduce((s,d)=>s+sum("doc_s",docs,d),0)};
   // 소관절 칸 사용(지점 설정 carm_small): 사람마다 소관절·C-arm 두 칸
   const small=!!(set&&set.raw&&set.raw.carm_small); const CNEW=AMPM_BR.includes(S.branch); // 신환 C-arm 칸 (그날 C-arm 중 신환 건수)
@@ -4606,13 +4609,13 @@ async function renderCarm(){
     <div class="page-h"><div><h2>C-arm(C-arm) 카운트</h2><div class="meta">${R.y}년 ${R.m}월 · 칸에 숫자를 적으면 바로 저장 · 토요일 파랑, 일요일·공휴일 빨강 · 확정 ${nCf}일</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="cmcsv">엑셀(CSV) 받기</button><div class="monthnav"><button class="btn ghost sm" id="cmp" aria-label="이전 달">◀</button><input type="month" id="cmym" value="${st.ym}" aria-label="월 선택" class="ympick"><button class="btn ghost sm" id="cmn" aria-label="다음 달">▶</button></div></div></div>
     <section class="kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="kpi lead"><span class="k">방사선사 합계</span><span class="v num" id="cmk1">${T.tech}<small>건</small></span><span class="d" id="cmk1d">${techs.map(c=>`${esc(c.name)} ${colSum("tech",c.name)}`).join(" · ")}</span></div>
-      ${small?`<div class="kpi"><span class="k">소관절 합계</span><span class="v num" id="cmk2">${T.techS+T.docS}<small>건</small></span><span class="d">방사선사 ${T.techS} · 원장 ${T.docS}</span></div>`:`<div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>`}
+      ${small?`<div class="kpi"><span class="k">소관절 합계</span><span class="v num" id="cmk2">${T.techS+T.docS}<small>건</small></span><span class="d">방사선사 ${T.techS} · 원장 ${T.docS}</span></div>`:RED?`<div class="kpi"><span class="k">REDUCTION</span><span class="v num" id="cmk2">${T.red}<small>건</small></span></div>`:""}
       <div class="kpi"><span class="k">원장별 합계</span><span class="v num" id="cmk3">${T.doc}<small>건</small></span><span class="d" id="cmk3d">${docs.map(c=>`${esc(c.name)} ${colSum("doc",c.name)}`).join(" · ")}</span></div></section>
     ${ed?`<p class="cmhelp" id="cmhelp">마우스로 끌어서 여러 칸 선택 → 숫자 적고 <b>Enter</b> = 한 번에 채우기 · <b>Delete</b> = 지우기 · 화살표·Tab으로 칸 이동 · 엑셀에서 복사해 붙여넣기(Ctrl+V)도 됩니다 · <b>확정</b>한 날은 1~3등급(팀장까지)만 고칠 수 있습니다</p>`:""}
     <div class="cmgrid" style="--cmcols:minmax(0,${(small?2:1)*techs.length+2}fr) minmax(0,${(small?2:1)*docs.length+2}fr)">
-      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="tech">${small?headS(techs,0,CNEW?'신환 C-arm<br><small>합계 제외·분류용</small>':""):`<thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th><th class="cmd">REDUCTION</th>${CNEW?`<th class="cfh">신환 C-arm<br><small>합계 제외·분류용</small></th>`:""}</tr></thead>`}<tbody>
-        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("tech",techs,d):`${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${cell(d,"reduction","")}`}${CNEW?cell(d,"carm_new",""):""}</tr>`).join("")}
-        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("tech",techs):`${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td><td class="num">${T.red}</td>`}${CNEW?`<td class="num">${days.reduce((s,d)=>s+g(d,"carm_new",""),0)}</td>`:""}</tr></tbody></table></div>
+      <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="tech">${small?headS(techs,0,CNEW?'신환 C-arm<br><small>합계 제외·분류용</small>':""):`<thead><tr><th class="cmd">${R.m}월</th>${head(techs)}<th class="tot">total</th>${RED?`<th class="cmd">REDUCTION</th>`:""}${CNEW?`<th class="cfh">신환 C-arm<br><small>합계 제외·분류용</small></th>`:""}</tr></thead>`}<tbody>
+        ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("tech",techs,d):`${techs.map(c=>cell(d,"tech",c.name)).join("")}<td class="tot num">${sum("tech",techs,d)}</td>${RED?cell(d,"reduction",""):""}`}${CNEW?cell(d,"carm_new",""):""}</tr>`).join("")}
+        <tr class="sumrow"><td class="cmd">합계</td>${small?sumS("tech",techs):`${techs.map(c=>`<td class="num">${colSum("tech",c.name)}</td>`).join("")}<td class="tot num">${T.tech}</td>${RED?`<td class="num">${T.red}</td>`:""}`}${CNEW?`<td class="num">${days.reduce((s,d)=>s+g(d,"carm_new",""),0)}</td>`:""}</tr></tbody></table></div>
         ${ed?`<div class="cmadd"><input id="cmt" placeholder="방사선사 이름" style="height:30px;padding:0 8px;width:130px"><button class="btn ghost sm" id="cmta">+ 방사선사 열</button></div>`:""}</section>
       <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab${small?" small":""}" data-cmt="doc">${small?headS(docs,0,CNEW?['신환 C-arm<br><small>합계 제외·분류용</small>',"확정"]:"확정"):`<thead><tr><th class="cmd">${R.m}월</th>${head(docs)}<th class="tot">total</th>${CNEW?`<th class="cfh">신환 C-arm<br><small>합계 제외·분류용</small></th>`:""}<th class="cfh">확정</th></tr></thead>`}<tbody>
         ${days.map(d=>`<tr class="${CF[d]?"cfrow":""}"><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${small?rowS("doc",docs,d):`${docs.map(c=>cell(d,"doc",c.name)).join("")}<td class="tot num">${sum("doc",docs,d)}</td>`}${CNEW?cell(d,"carm_new",""):""}${cfCell(d)}</tr>`).join("")}
@@ -4623,7 +4626,7 @@ async function renderCarm(){
   const again=()=>{ S.cmKeepY=window.scrollY; return renderCarm(); };
   $("cmp").onclick=()=>{ st.ym=shiftMonth(st.ym,-1); renderCarm(); }; $("cmn").onclick=()=>{ st.ym=shiftMonth(st.ym,1); renderCarm(); };
   $("cmym").onchange=()=>{ if(/^\d{4}-\d{2}$/.test($("cmym").value)){ st.ym=$("cmym").value; renderCarm(); } };
-  $("cmcsv").onclick=()=>downloadCSV(`C-arm카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total","REDUCTION","",...docs.map(c=>c.name),"원장 total","확정",...(CNEW?["신환 C-arm"]:[])],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),g(d,"reduction",""),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):"",...(CNEW?[g(d,"carm_new","")]:[])]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,T.red,"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
+  $("cmcsv").onclick=()=>downloadCSV(`C-arm카운트_${st.ym}.csv`,[["날짜",...techs.map(c=>c.name),"방사선사 total",...(RED?["REDUCTION"]:[]),"",...docs.map(c=>c.name),"원장 total","확정",...(CNEW?["신환 C-arm"]:[])],...days.map(d=>[d,...techs.map(c=>g(d,"tech",c.name)),sum("tech",techs,d),...(RED?[g(d,"reduction","")]:[]),"",...docs.map(c=>g(d,"doc",c.name)),sum("doc",docs,d),CF[d]?(CF[d].confirmed_name||"O"):"",...(CNEW?[g(d,"carm_new","")]:[])]),["합계",...techs.map(c=>colSum("tech",c.name)),T.tech,...(RED?[T.red]:[]),"",...docs.map(c=>colSum("doc",c.name)),T.doc,nCf]]);
   // 확정·해제
   main.querySelectorAll("[data-cf]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cf; if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="확정할까요?"; b.classList.add("sure"); setTimeout(()=>{ if(b.isConnected){ delete b.dataset.sure; b.textContent="확정"; b.classList.remove("sure"); } },4000); return; }
     const {error}=await sb.from("carm_confirm").insert({branch_id:S.branch,cdate:d,confirmed_name:S.me.name}); if(error) return toast(errMsg(error)); toast(`${+d.slice(5,7)}/${+d.slice(8)} 확정 · 이제 팀장(3등급) 이상만 고칠 수 있습니다`); again(); });
@@ -4642,7 +4645,7 @@ async function renderCarm(){
     const tr=el.closest("tr"); const tot=tr.querySelector("td.tot"); if(tot){ const L=k==="doc"?docs:techs; tot.textContent=sum(k==="reduction"?"tech":k,L,d); }
     const tb=el.closest("table"); const idx=[...tr.children].indexOf(el.closest("td")); const sr=tb.querySelector("tr.sumrow"); if(sr&&sr.children[idx]) sr.children[idx].textContent=k==="reduction"?days.reduce((s,dd)=>s+g(dd,"reduction",""),0):colSum(k,n);
     const L=k==="doc"?docs:techs; if(k!=="reduction"){ const tt=sr.querySelector("td.tot"); if(tt) tt.textContent=days.reduce((s,dd)=>s+sum(k,L,dd),0); }
-    const tsum=(kk,LL)=>days.reduce((s,dd)=>s+sum(kk,LL,dd),0); $("cmk1").innerHTML=`${tsum("tech",techs)}<small>건</small>`; $("cmk3").innerHTML=`${tsum("doc",docs)}<small>건</small>`; $("cmk2").innerHTML=`${days.reduce((s,dd)=>s+g(dd,"reduction",""),0)}<small>건</small>`;
+    const tsum=(kk,LL)=>days.reduce((s,dd)=>s+sum(kk,LL,dd),0); $("cmk1").innerHTML=`${tsum("tech",techs)}<small>건</small>`; $("cmk3").innerHTML=`${tsum("doc",docs)}<small>건</small>`; if($("cmk2")&&!small) $("cmk2").innerHTML=`${days.reduce((s,dd)=>s+g(dd,"reduction",""),0)}<small>건</small>`;
     $("cmk1d").textContent=techs.map(c=>`${c.name} ${colSum("tech",c.name)}`).join(" · "); $("cmk3d").textContent=docs.map(c=>`${c.name} ${colSum("doc",c.name)}`).join(" · "); };
   // 칸 위치 (잠긴 칸도 자리 유지)
   const grid=tbl=>[...tbl.querySelectorAll("tbody tr:not(.sumrow)")].map(tr=>[...tr.querySelectorAll("td.cm")]);
