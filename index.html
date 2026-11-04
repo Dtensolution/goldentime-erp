@@ -252,6 +252,16 @@ table.reg.nowrap th,table.reg.nowrap td{white-space:nowrap}table.reg tr.rcol td:
 .mdcal-c .ent{word-break:keep-all;margin-bottom:1px}.mdcal-c .ent b{font-weight:600}.mdcal-c .ent.off{color:#9b2c22;background:#f6d5d1;border-radius:3px;padding:0 3px}@media (max-width:760px){.mdcal-c{min-height:70px;font-size:10.5px;padding:2px}.mdcal-c .ent{white-space:normal}}
 small.ord.zero{color:var(--good)!important;font-weight:700}
 .mdtabs{display:flex;flex-wrap:wrap;gap:4px;margin:-6px -6px 14px;padding:0 4px;border-bottom:2px solid var(--navy)}.mdtabs button{border:1px solid var(--line);border-bottom:none;background:var(--sunk);border-radius:10px 10px 0 0;padding:8px 16px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted);margin-bottom:-2px}.mdtabs button:hover{color:var(--ink)}.mdtabs button[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}.mdtabs .mdtabadd{background:none;border-style:dashed;color:var(--accent)}
+.doc-list .docnew{position:sticky;top:0;z-index:3;margin:0 0 10px;box-shadow:0 4px 10px -6px rgba(0,0,0,.25)}
+.mt{font-size:14.5px}.mtjump{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;position:sticky;top:0;z-index:2;background:var(--panel);padding:6px 0}
+.mtj{border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));color:var(--c);background:color-mix(in srgb,var(--c) 8%,var(--panel));border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer}.mtj b{background:var(--c);color:#fff;border-radius:999px;padding:0 6px;font-size:11.5px;margin-left:2px}
+.mtgrid{display:grid;gap:12px}.mtcard{border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:12px 16px 10px;background:var(--panel);scroll-margin-top:60px;transition:box-shadow .3s}.mtcard.mtflash{box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 35%,transparent)}
+.mtcard h4{margin:0 0 8px;color:var(--c);font-size:16.5px}.mtcols{display:grid;grid-template-columns:1fr 1fr;gap:18px}.mtcols>div,.mtcols>label{min-width:0}@media(max-width:760px){.mtcols{grid-template-columns:1fr;gap:8px}}
+.mtl{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--sunk);color:var(--muted);margin-bottom:4px}.mtl.agd{background:color-mix(in srgb,var(--c) 14%,transparent);color:var(--c)}
+.mtcard .md ul{margin:2px 0;padding-left:18px}.mtcard .md li{margin:3px 0;line-height:1.55}.mtnone{color:var(--muted);font-size:13px;margin:4px 0}
+.mtx{border:1px solid var(--line);border-radius:12px;padding:8px 14px;margin-top:12px;background:var(--panel);scroll-margin-top:60px}.mtx summary{cursor:pointer;font-weight:700;color:var(--navy)}.mtx .tbl-box{margin-top:6px}
+.mtst input{border:none;background:transparent;width:100%;min-width:70px;height:30px;padding:0 4px;font-size:13px}.mtst input:focus{outline:2px solid var(--accent);background:var(--panel)}.mtst .mtsth{font-weight:700}.mtst td,.mtst th{padding:0 2px}
+.mted textarea{width:100%;font-size:14px;line-height:1.5}.mtedh{display:flex;gap:6px;align-items:center;margin-bottom:6px}.mtedh input{font-weight:700;color:var(--c);height:32px;max-width:200px}
 .mdmv{float:right;height:26px;font-size:12px;padding:0 6px;margin:2px 0 0 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);max-width:130px}.mdmv:hover{color:var(--ink);border-color:var(--accent)}
 .goalempty{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:13px;color:var(--muted)}
 .trend h3 span b{font-size:13px}
@@ -679,7 +689,7 @@ const LEVELS = {1:"대표·본부",2:"원장·총괄",3:"부서장",4:"직원",5
 const seeAll = () => S.me.level<=3 || S.me.level===5;
 // 부서별 메뉴 (3·4등급). 1·2등급과 총괄은 전부. 계정·원장 관리에서 1등급이 지점별로 바꿀 수 있습니다.
 const lvName=l=>+l===5?"의사":`${l}등급 ${LEVELS[l]}`;
-const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["manual","수기치료"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","C-arm 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"],["sec","보안 자료"]];
+const MENU_PICK=[["entry","마감일지 입력"],["cal","마감 달력"],["dash","대시보드"],["spt","도수·충격파"],["cons","도수상담"],["manual","수기치료"],["semg","근전도"],["staff","근무 스케줄"],["resv","예약관리"],["ot","연장근무"],["leave","연차관리"],["inv","물품·재고"],["carm","C-arm 카운트"],["docs","업무게시판"],["reg","업무 기록부"],["info","기본정보"],["std","의료진 표준화"],["upload","엑셀 업로드"],["perf","부서 실적"],["sec","보안 자료"],["mgmt","경영지원 (회의록)"]];
 const MENU_BASE=["staff","resv","ot","leave","docs","reg","info"];
 const MENU_DEFAULT={
   "원무":["entry","cal","spt","cons","semg",...MENU_BASE,"upload"],
@@ -689,7 +699,7 @@ const MENU_DEFAULT={
   "임상병리":["semg","inv",...MENU_BASE],
   "병동":["inv",...MENU_BASE],
   "수술":["inv",...MENU_BASE],
-  "경영지원":[...MENU_BASE],
+  "경영지원":[...MENU_BASE,"mgmt"],
   "의료진":[...MENU_BASE,"std"]};
 MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK.map(([k])=>k).filter(k=>k!=="sec"); MENU_DEFAULT["2등급"]=MENU_PICK.map(([k])=>k); // 3등급 팀장: 처음엔 전부 // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
 // 메뉴 그룹 아이콘·색 (C안)
@@ -701,6 +711,8 @@ const SEC_TABS=["업체관련 일괄","직원인사명부","경리시트"];
 const MENU_DEPTS=["2등급","팀장","원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
 const umGroup=u=>+u.level===5?"의사":+u.level===3?"팀장":+u.level===2?"2등급":(u.dept||"");
 const menuDept=()=>S.me.level===5?"의사":S.me.level===3?"팀장":S.me.level===2?"2등급":S.me.dept;
+// 경영지원 메뉴(주간 회의록 + 경영지원 게시판·기록부·물품) — 부서별 메뉴에서 "경영지원" 체크로 켬
+function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const m=Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()); return m.includes("mgmt"); }
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
@@ -870,17 +882,18 @@ function render(){
     dpay:seeAll()||S.me.dept==="원무",ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
   const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
   const DEPT_FN={"원무":["entry","dpay","cal","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
-  grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("docs",{dept:"회의록",label:"회의록",grp:g}); add("info",{grp:g}); });
-  if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","경영지원","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
-  else { const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
+  grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("info",{grp:g}); });
+  if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
+  else if(S.me.dept!=="경영지원"){ const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       if(toolOk(md)) ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
+  if(mgmtOk()) grp("경영지원",g=>{ add("docs",{dept:"회의록",label:"주간 회의록",grp:g}); deptTools("경영지원",g); });
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept,sec:()=>S.secSel};
@@ -2167,7 +2180,7 @@ function shiftDialog(td,map,codesL,staff,reload,save){
 
 // ── 부서별 업무게시판 ──
 const DOC_DEPTS=["공통","회의록","원무","간호","병동","수술","물리치료","영상의학","임상병리","청구","경영지원"];
-function canEditDoc(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (["공통","회의록","청구"].includes(dept) && me.level<=3); }
+function canEditDoc(dept){ const me=S.me; if(dept==="회의록") return me.level<=3||me.dept==="경영지원"; return me.level<=3 || me.dept===dept || (["공통","회의록","청구"].includes(dept) && me.level<=3); }
 // 글자 색·형광펜: {빨강:글자} {파랑:글자} {초록:글자} {주황:글자} {보라:글자} ==형광펜==
 const MD_COLORS={빨강:"mcR",파랑:"mcB",초록:"mcG",주황:"mcO",보라:"mcP"};
 const mdColor=h=>h.replace(/\{(빨강|파랑|초록|주황|보라):([^{}]+?)\}/g,(x,c,t)=>`<span class="${MD_COLORS[c]}">${t}</span>`).replace(/==([^=]+?)==/g,"<mark>$1</mark>");
@@ -2359,33 +2372,34 @@ function bindMdEdit(box,doc,rerender){
 async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; }
+  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
   const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
   if(dr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(dr.error))}</div></div>`; return; }
-  const docs=(dr.data||[]).filter(d=>!String(d.title||"").startsWith(INV_LED)), nm=id=>(ur.data||[]).find(u=>u.user_id===id)?.name||"-";
+  const docs=(dr.data||[]).filter(d=>!String(d.title||"").startsWith(INV_LED)&&(d.dept!=="회의록"||mgmtOk())), nm=id=>(ur.data||[]).find(u=>u.user_id===id)?.name||"-";
   const q=st.q.toLowerCase();
   const list = q ? docs.filter(d=>(d.title+" "+d.body).toLowerCase().includes(q)) : docs.filter(d=>d.dept===st.dept);
+  if(!q&&st.dept==="회의록") list.sort((a,b)=>mtKey(b.title)-mtKey(a.title)||String(b.updated_at).localeCompare(String(a.updated_at)));
   let cur = docs.find(d=>d.id===st.id); if(!cur || (!q && cur.dept!==st.dept)) cur=list[0]||null; st.id=cur?.id||null;
   const ed=canEditDoc(q?(cur?.dept||st.dept):st.dept);
   const counts=Object.fromEntries(DOC_DEPTS.map(d=>[d,docs.filter(x=>x.dept===d).length]));
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>업무게시판</h2><div class="meta">부서별 업무 정리 · 고칠 때마다 이전 내용이 기록됩니다 · 비밀번호·환자 개인정보는 적지 마세요</div></div>
       <input id="dq" placeholder="전체 검색 (제목·내용)" value="${esc(st.q)}" style="height:34px;padding:0 10px;width:min(260px,100%)"></div>
-    <div class="chips">${DOC_DEPTS.filter(toolOk).map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
+    <div class="chips">${DOC_DEPTS.filter(toolOk).filter(d=>d!=="회의록"||mgmtOk()).map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
     <div class="doc-shell">
-      <aside class="panel doc-list">${q?`<p class="meta" style="margin:0 0 8px">"${esc(st.q)}" 검색 결과 ${list.length}건</p>`:""}
-        ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))} ${esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
-        ${!q&&canEditDoc(st.dept)?`<button class="btn block" id="dnew" style="margin-top:10px">+ 새 글</button>`:""}
+      <aside class="panel doc-list">${!q&&canEditDoc(st.dept)?`<button class="btn block docnew" id="dnew">${st.dept==="회의록"?"+ 이번 주 회의록":"+ 새 글"}</button>`:""}${q?`<p class="meta" style="margin:0 0 8px">"${esc(st.q)}" 검색 결과 ${list.length}건</p>`:""}
+        ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${d.dept==="회의록"&&mtKey(d.title)?esc(mtSub(d.title)):esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))+" "+esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
       </aside>
       <article class="panel doc-view" id="dv">${cur?`<div class="page-h" style="margin-bottom:10px"><div><h3 style="margin:0;font-size:18px">${esc(cur.title)}</h3><div class="meta">${esc(cur.dept)} · 마지막 수정 ${esc(new Date(cur.updated_at).toLocaleString("ko-KR"))} ${esc(nm(cur.updated_by))}</div></div>
         <div style="display:flex;gap:8px">${canEditDoc(cur.dept)?`<button class="btn ghost sm" id="dhist">이전 기록</button><button class="btn sm" id="dedit">수정</button>`:""}</div></div>
-        ${cur.notice?noticeBar(cur,readSet.has(cur.id)):""}${canEditDoc(cur.dept)?`<p class="meta" style="margin:0 0 6px">✏️ 표 칸이나 글 줄을 누르면 바로 고칩니다 · Enter 저장 · Tab 옆 칸 · Esc 취소 <b id="mdst" style="margin-left:6px"></b></p>`:""}<div class="md${canEditDoc(cur.dept)?" mded":""}" id="mdv">${mdRender(cur.body,{edit:canEditDoc(cur.dept)})}</div>`:`<div class="empty">왼쪽에서 글을 고르거나 새 글을 쓰세요.</div>`}</article>
+        ${cur.notice?noticeBar(cur,readSet.has(cur.id)):""}${isMt(cur)?`<div id="mdv">${mtView(cur.body)}</div>`:`${canEditDoc(cur.dept)?`<p class="meta" style="margin:0 0 6px">✏️ 표 칸이나 글 줄을 누르면 바로 고칩니다 · Enter 저장 · Tab 옆 칸 · Esc 취소 <b id="mdst" style="margin-left:6px"></b></p>`:""}<div class="md${canEditDoc(cur.dept)?" mded":""}" id="mdv">${mdRender(cur.body,{edit:canEditDoc(cur.dept)})}</div>`}`:`<div class="empty">왼쪽에서 글을 고르거나 새 글을 쓰세요.</div>`}</article>
     </div></div>`;
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
-  if(cur&&canEditDoc(cur.dept)) bindMdEdit($("mdv"),cur,()=>renderDocs());
+  if(cur&&isMt(cur)) bindMtView($("mdv"));
+  if(cur&&canEditDoc(cur.dept)&&!isMt(cur)) bindMdEdit($("mdv"),cur,()=>renderDocs());
   const tabEd=cur&&canEditDoc(cur.dept); let curTab="__all";
   if(cur) bindMdMonths($("mdv"),cur.id); if(cur) bindMdTabs($("mdv"),cur.id,{ onChange:t=>{ curTab=t; if($("dedit")) $("dedit").textContent=t==="__all"?"수정":`'${t}' 탭 수정`; },
     onAdd:tabEd?async names=>{ const n=(prompt("새 탭 이름")||"").trim(); if(!n) return; if(names.includes(n)) return toast("같은 이름의 탭이 있습니다");
@@ -2393,8 +2407,8 @@ async function renderDocs(){
   if(tabEd) bindMdMove($("mdv"),cur,()=>renderDocs());
   document.querySelectorAll("[data-doc]").forEach(b=>b.onclick=()=>{ st.id=+b.dataset.doc; renderDocs(); });
   bindSearch("dq",v=>{ st.q=v; return renderDocs(); });
-  if($("dnew")) $("dnew").onclick=()=>docEditor(null, st.dept, ()=>renderDocs(), st);
-  if($("dedit")) $("dedit").onclick=async()=>{ if(window.__mdFlush){ await window.__mdFlush(); window.__mdFlush=null; } docEditor(cur, cur.dept, ()=>renderDocs(), st, null, curTab!=="__all"?curTab:null); };
+  if($("dnew")) $("dnew").onclick=()=>st.dept==="회의록"?mtNew(list,st):docEditor(null, st.dept, ()=>renderDocs(), st);
+  if($("dedit")) $("dedit").onclick=async()=>{ if(window.__mdFlush){ await window.__mdFlush(); window.__mdFlush=null; } isMt(cur)?mtEditor(cur,st):docEditor(cur, cur.dept, ()=>renderDocs(), st, null, curTab!=="__all"?curTab:null); };
   if($("dhist")) $("dhist").onclick=async()=>{
     const {data,error}=await sb.from("dept_doc_revs").select("*").eq("doc_id",cur.id).order("saved_at",{ascending:false}).limit(30);
     if(error) return toast(errMsg(error)); const dlg=$("dlg");
@@ -2424,6 +2438,88 @@ function docEditor(doc, dept, reload, st, notice, tab){
     const {error}=await sb.from("dept_docs").delete().eq("id",doc.id); if(error){ $("derr").textContent=errMsg(error); return; } st.id=null; toast("삭제됨"); reload(); };
 }
 
+// ── 주간 회의록 (파트별 지난주 리뷰 · 이번주 안건) ──
+const MT_PARTS=["원무","간호","병동","물치","방과","수술","공통"];
+const MT_STAFF=["의료진","원무","간호","수술","임병","물치","방과"];
+const MT_COL={"원무":"#d17a12","간호":"#d0457a","병동":"#7656b8","수술":"#1c8c8c","물치":"#2f8f4e","물리치료":"#2f8f4e","방과":"#5b6fd6","영상의학":"#5b6fd6","임병":"#a35b2a","임상병리":"#a35b2a","의료진":"#1858a8","공통":"#64748b"};
+const mtKey=t=>{ const m=String(t||"").match(/(\d{2})\.(\d{2})\.(\d{2})/); return m?+(m[1]+m[2]+m[3]):0; };
+const mtSub=t=>{ const k=String(mtKey(t)); const y=2000+ +k.slice(0,2), m=+k.slice(2,4), d=+k.slice(4); const dt=new Date(Date.UTC(y,m-1,d)); const wk=Math.ceil(d/7); return `${y}. ${m}. ${d}. (${WD[dt.getUTCDay()]}) · ${m}월 ${wk}주차`; };
+const isMt=d=>d&&d.dept==="회의록"&&/^###\s*(지난주 리뷰|이번주 안건)\s*$/m.test(String(d.body||""));
+function mtParse(body){ const R={pre:[],secs:[],foot:[]}; let cur=null, sub=null, foot=false;
+  String(body||"").split(/\r?\n/).forEach(l=>{ let m; if(foot){ R.foot.push(l); return; } if(l.trim()==="---"){ foot=true; return; }
+    if((m=l.match(/^##\s+(.+)$/))&&!/^###/.test(l)){ cur={name:m[1].trim(),raw:[],rev:[],agd:[],part:false}; R.secs.push(cur); sub=null; return; }
+    if(!cur){ R.pre.push(l); return; }
+    if((m=l.match(/^###\s*(지난주 리뷰|이번주 안건)\s*$/))){ sub=m[1]==="지난주 리뷰"?"rev":"agd"; cur.part=true; return; }
+    (sub?cur[sub]:cur.raw).push(l); });
+  R.secs.forEach(s=>{ s.rev=mdTrim(s.rev); s.agd=mdTrim(s.agd); s.raw=mdTrim(s.raw); }); return R; }
+function mtJoin(R){ const L=[]; if(mdTrim(R.pre).length) L.push(...mdTrim(R.pre),"");
+  R.secs.forEach(s=>{ L.push("## "+s.name); if(s.part){ L.push("### 지난주 리뷰",...s.rev,"### 이번주 안건",...s.agd); } else L.push(...s.raw); L.push(""); });
+  if(mdTrim(R.foot).length) L.push("---",...mdTrim(R.foot)); return L.join("\n").replace(/\n+$/,""); }
+const mtLines=t=>String(t||"").split(/\r?\n/).map(x=>x.replace(/\s+$/,"")).filter(x=>x.trim()).map(x=>/^\s*([-*•]\s|\d+[.)]\s|\|)/.test(x)?x:"- "+x.trim());
+const mtText=L=>L.map(x=>x.replace(/^-\s+/,"")).join("\n");
+function mtView(body){ const R=mtParse(body); const parts=R.secs.filter(s=>s.part); const other=R.secs.filter(s=>!s.part);
+  const staff=other.filter(s=>/인원/.test(s.name)), extra=other.filter(s=>!/인원/.test(s.name));
+  const col=n=>MT_COL[n]||"#64748b"; const cnt=L=>L.filter(x=>x.trim()).length;
+  const box=(L,cls)=>cnt(L)?`<div class="md">${mdRender(L.join("\n"))}</div>`:`<p class="mtnone">${cls==="agd"?"안건 없음":"없음"}</p>`;
+  return `<div class="mt">${mdTrim(R.pre).length?`<div class="md">${mdRender(R.pre.join("\n"))}</div>`:""}
+    ${parts.length?`<div class="mtjump">${parts.map((p,i)=>`<button type="button" class="mtj" data-mtj="${i}" style="--c:${col(p.name)}">${esc(p.name)}${cnt(p.agd)?` <b>${cnt(p.agd)}</b>`:""}</button>`).join("")}${staff.length?`<button type="button" class="mtj" data-mtj="staff" style="--c:#334155">인원 현황</button>`:""}</div>`:""}
+    <div class="mtgrid">${parts.map((p,i)=>`<section class="mtcard" id="mtp${i}" style="--c:${col(p.name)}"><h4>${esc(p.name)}</h4><div class="mtcols"><div><span class="mtl">지난주 리뷰</span>${box(p.rev,"rev")}</div><div><span class="mtl agd">이번주 안건</span>${box(p.agd,"agd")}</div></div></section>`).join("")}</div>
+    ${staff.map(s=>`<details class="mtx" id="mtstaff" open><summary>${esc(s.name)}</summary><div class="md">${mdRender(s.raw.join("\n"))}</div></details>`).join("")}
+    ${extra.map(s=>`<details class="mtx" open><summary>${esc(s.name)}</summary><div class="md">${mdRender(s.raw.join("\n"))}</div></details>`).join("")}
+    ${mdTrim(R.foot).length?`<div class="md meta" style="margin-top:10px">${mdRender(R.foot.join("\n"))}</div>`:""}</div>`; }
+function bindMtView(box){ if(!box) return; box.querySelectorAll("[data-mtj]").forEach(b=>b.onclick=()=>{ const t=b.dataset.mtj==="staff"?$("mtstaff"):$("mtp"+b.dataset.mtj); if(t){ t.scrollIntoView({behavior:"smooth",block:"start"}); t.classList.add("mtflash"); setTimeout(()=>t.classList.remove("mtflash"),900); } }); }
+const mtMonday=iso=>{ const d=new Date(iso+"T00:00:00Z"); const w=(d.getUTCDay()+6)%7; d.setUTCDate(d.getUTCDate()-w); return d.toISOString().slice(0,10); };
+const mtTitle=iso=>`주간회의 ${iso.slice(2,4)}.${iso.slice(5,7)}.${iso.slice(8,10)}`;
+const mtStaffTbl=mon=>{ const days=[0,1,2,3,4,5,6].map(i=>{ const d=new Date(mon+"T00:00:00Z"); d.setUTCDate(d.getUTCDate()+i); return `${d.getUTCMonth()+1}/${d.getUTCDate()} (${WD[d.getUTCDay()]})`; }); return ["| 부서 | "+days.join(" | ")+" |","| "+Array(8).fill("---").join(" | ")+" |",...MT_STAFF.map(n=>"| "+n+" | "+Array(7).fill(" ").join(" | ")+" |")].join("\n"); };
+async function mtNew(list,st){ const mon=mtMonday(kstToday()); const title=mtTitle(mon); const ex=list.find(d=>d.title===title); if(ex){ st.id=ex.id; toast("이번 주 회의록이 이미 있어 열었습니다"); return renderDocs(); }
+  const last=list.find(d=>isMt(d)); const P=last?mtParse(last.body):null; const names=P?P.secs.filter(s=>s.part).map(s=>s.name):MT_PARTS;
+  const nx=new Date(mon+"T00:00:00Z"); nx.setUTCDate(nx.getUTCDate()+7); const next=nx.toISOString().slice(0,10);
+  const R={pre:[],secs:[{name:"인원 현황",part:false,raw:[mtStaffTbl(mon),"",mtStaffTbl(next)],rev:[],agd:[]},...names.map(n=>({name:n,part:true,rev:P?(P.secs.find(s=>s.name===n)?.agd||[]):[],agd:[],raw:[]}))],foot:[]};
+  mtEditor({id:null,title,body:mtJoin(R),dept:"회의록"},st,last?`지난 회의(${last.title.replace("주간회의 ","")})의 "이번주 안건"을 이번 "지난주 리뷰"에 미리 넣어 두었습니다. 고치거나 지워서 쓰세요.`:""); }
+function mtEditor(doc,st,notice){ const v=$("dv"); const R=mtParse(doc.body); const reload=()=>renderDocs();
+  const k=String(mtKey(doc.title)); const iso=k.length===6?`20${k.slice(0,2)}-${k.slice(2,4)}-${k.slice(4)}`:mtMonday(kstToday());
+  const staff=R.secs.find(s=>!s.part&&/인원/.test(s.name)); const extra=R.secs.filter(s=>!s.part&&!/인원/.test(s.name));
+  let parts=R.secs.filter(s=>s.part).map(s=>({name:s.name,rev:mtText(s.rev),agd:mtText(s.agd)})); if(!parts.length) parts=MT_PARTS.map(n=>({name:n,rev:"",agd:""}));
+  const partH=(p,i)=>`<section class="mtcard mted" style="--c:${MT_COL[p.name]||"#64748b"}" data-pi="${i}"><div class="mtedh"><input data-pn="${i}" value="${esc(p.name)}" aria-label="파트 이름"><button type="button" class="nmbtn" data-px="${i}" title="이 파트 빼기" aria-label="이 파트 빼기">✕</button></div>
+    <div class="mtcols"><label><span class="mtl">지난주 리뷰</span><textarea data-pr="${i}" rows="${Math.max(3,p.rev.split("\n").length+1)}" placeholder="한 줄에 하나씩">${esc(p.rev)}</textarea></label><label><span class="mtl agd">이번주 안건</span><textarea data-pa="${i}" rows="${Math.max(3,p.agd.split("\n").length+1)}" placeholder="한 줄에 하나씩">${esc(p.agd)}</textarea></label></div></section>`;
+  v.innerHTML=`<div class="page-h" style="margin-bottom:8px"><div><h3 style="margin:0;font-size:18px">${doc.id?"회의록 고치기":"새 주간 회의록"}</h3><div class="meta">파트별로 한 줄에 하나씩 적으세요 · 줄 앞 "-"는 자동으로 붙습니다</div></div>
+      <div class="field" style="margin:0"><label for="mtd">회의 날짜</label><input type="date" id="mtd" value="${iso}"></div></div>
+    ${notice?`<p class="meta" style="color:var(--warn);margin:0 0 8px">${esc(notice)}</p>`:""}
+    <div class="mdpal" id="mtpal"></div>
+    <div class="mtgrid" id="mtparts">${parts.map(partH).join("")}</div>
+    <button type="button" class="btn ghost sm" id="mtadd" style="margin:8px 0 14px">+ 파트 추가</button>
+    <details class="mtx" ${staff?"open":""}><summary>인원 현황 (표) <span class="meta" style="font-weight:400">· 칸을 눌러 바로 적기</span></summary><div id="mtstaffgrid"></div><button type="button" class="btn ghost sm" id="mtstaffnew" style="margin-top:6px">+ 이번 주·다음 주 빈 표</button></details>
+    <details class="mtx" ${extra.length?"open":""}><summary>기타 메모</summary><textarea id="mtextra" rows="5" style="width:100%;margin-top:6px">${esc(extra.map(s=>(s.name==="기타 메모"?[]:["#### "+s.name]).concat(s.raw).join("\n")).join("\n\n"))}</textarea></details>
+    <p class="err" id="derr"></p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button>${doc.id?`<button class="btn ghost sm" id="mtraw" style="margin-left:auto">원문(글자)으로 고치기</button><button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:""}</div>`;
+  let lastTa=null; v.addEventListener("focusin",e=>{ if(e.target.tagName==="TEXTAREA") lastTa=e.target; });
+  const pal=$("mtpal"); pal.innerHTML=`<span class="meta">글자를 고른 뒤 →</span>`+mdPalHtml(); pal.querySelectorAll("[data-mpal]").forEach(b=>{ b.onmousedown=e=>e.preventDefault(); b.onclick=()=>{ if(!lastTa) return toast("먼저 글 칸에서 색을 넣을 글자를 고르세요"); const tmp=document.createElement("div"); bindMdPalette(lastTa,tmp); tmp.querySelector(`[data-mpal="${b.dataset.mpal}"]`).click(); }; });
+  const collect=()=>{ parts=[...v.querySelectorAll("[data-pi]")].map(sec=>{ const i=sec.dataset.pi; return {name:v.querySelector(`[data-pn="${i}"]`).value.trim(),rev:v.querySelector(`[data-pr="${i}"]`).value,agd:v.querySelector(`[data-pa="${i}"]`).value}; }); };
+  const redraw=()=>{ $("mtparts").innerHTML=parts.map(partH).join(""); bindParts(); };
+  const bindParts=()=>v.querySelectorAll("[data-px]").forEach(b=>b.onclick=()=>{ collect(); const i=+b.dataset.px; const p=parts[i]; if((p.rev+p.agd).trim()&&!b.dataset.sure){ b.dataset.sure=1; b.textContent="빼기?"; b.style.color="var(--bad)"; return; } parts.splice(i,1); redraw(); });
+  bindParts();
+  $("mtadd").onclick=()=>{ collect(); const n=(prompt("파트 이름 (예: 임병)")||"").trim(); if(!n) return; parts.push({name:n,rev:"",agd:""}); redraw(); };
+  // 인원 현황: 마크다운 표 ↔ 입력 칸
+  const toT=L=>{ const T=[]; let cur=null; L.forEach(l=>{ if(/^\s*\|.*\|\s*$/.test(l)){ const c=l.trim().slice(1,-1).split("|").map(x=>x.trim()); if(c.every(x=>/^:?-{2,}:?$/.test(x))) return; (cur ||= (T.push([]),T[T.length-1])).push(c); } else cur=null; }); return T; };
+  let ST=toT(staff?staff.raw:[]); let stNote=(staff?staff.raw:[]).filter(l=>l.trim()&&!/^\s*\|/.test(l));
+  const drawST=()=>{ $("mtstaffgrid").innerHTML=ST.map((t,ti)=>`<div class="tbl-box" style="margin-top:6px"><table class="mtst"><tbody>${t.map((r,ri)=>`<tr>${r.map((c,ci)=>`<${ri?"td":"th"}><input data-st="${ti},${ri},${ci}" value="${esc(c)}" ${ci===0||ri===0?'class="mtsth"':""}></${ri?"td":"th"}>`).join("")}</tr>`).join("")}</tbody></table><button type="button" class="nmbtn" data-stx="${ti}" title="이 표 빼기" style="margin:4px 0">✕ 이 표 빼기</button></div>`).join("")||`<p class="meta" style="margin:6px 0">표가 없습니다.</p>`;
+    $("mtstaffgrid").querySelectorAll("[data-st]").forEach(inp=>inp.oninput=()=>{ const [a,b2,c]=inp.dataset.st.split(",").map(Number); ST[a][b2][c]=inp.value; });
+    $("mtstaffgrid").querySelectorAll("[data-stx]").forEach(b=>b.onclick=()=>{ ST.splice(+b.dataset.stx,1); drawST(); }); };
+  drawST();
+  $("mtstaffnew").onclick=()=>{ const mon=mtMonday($("mtd").value||kstToday()); const nx=new Date(mon+"T00:00:00Z"); nx.setUTCDate(nx.getUTCDate()+7); ST.push(...toT(mtStaffTbl(mon).split("\n")),...toT(mtStaffTbl(nx.toISOString().slice(0,10)).split("\n"))); drawST(); };
+  const stMd=()=>{ const o=[]; ST.forEach((t,i)=>{ if(i) o.push(""); const w=Math.max(...t.map(r=>r.length)); const P=r=>"| "+Array.from({length:w},(_,k)=>(r[k]||" ").replace(/\|/g,"/")).join(" | ")+" |"; o.push(P(t[0]),"| "+Array(w).fill("---").join(" | ")+" |",...t.slice(1).map(P)); }); if(stNote.length) o.push("",...stNote); return o; };
+  $("dcancel").onclick=reload;
+  if($("mtraw")) $("mtraw").onclick=()=>docEditor(doc,"회의록",reload,st);
+  if($("ddel")) $("ddel").onclick=async()=>{ const b=$("ddel"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; } const {error}=await sb.from("dept_docs").delete().eq("id",doc.id); if(error){ $("derr").textContent=errMsg(error); return; } st.id=null; toast("삭제됨"); reload(); };
+  $("dsave").onclick=async()=>{ collect(); const d=$("mtd").value; if(!d){ $("derr").textContent="회의 날짜를 고르세요."; return; } const title=mtTitle(d);
+    const out={pre:R.pre,foot:R.foot,secs:[]}; const st0=stMd(); if(st0.length) out.secs.push({name:staff?.name||"인원 현황",part:false,raw:st0});
+    parts.filter(p=>p.name).forEach(p=>out.secs.push({name:p.name,part:true,rev:mtLines(p.rev),agd:mtLines(p.agd)}));
+    const ex=$("mtextra").value.trim(); if(ex){ const blocks=[]; let curB={name:"기타 메모",raw:[]}; ex.split(/\r?\n/).forEach(l=>{ const m=l.match(/^####\s+(.+)$/); if(m){ if(curB.raw.some(x=>x.trim())) blocks.push(curB); curB={name:m[1].trim(),raw:[]}; } else curB.raw.push(l); }); if(curB.raw.some(x=>x.trim())) blocks.push(curB); blocks.forEach(b=>out.secs.push({name:b.name,part:false,raw:mdTrim(b.raw)})); }
+    const body=mtJoin(out);
+    if(doc.id&&!$("dsave").dataset.force){ try{ const fresh=await mdDocFresh(doc.id); if(fresh!==String(doc.body||"")){ $("dsave").dataset.force=1; $("dsave").textContent="그래도 덮어쓰기"; $("derr").textContent="이 회의록을 여는 사이에 다른 분이 고쳤습니다. [취소]로 새로 불러오거나, 정말 덮어쓰려면 한 번 더 누르세요."; return; } }catch(e){} }
+    const res=doc.id?await sb.from("dept_docs").update({title,body}).eq("id",doc.id).select("id").single():await sb.from("dept_docs").insert({branch_id:S.branch,dept:"회의록",title,body}).select("id").single();
+    if(res.error){ $("derr").textContent=errMsg(res.error); return; } st.id=res.data.id; toast("저장됨"); reload(); };
+}
 function docTabEditor(doc,reload,tab){ const v=$("dv"); const P=mdTabParts(doc.body); const part=P.find(p=>p.name===tab); if(!part){ toast("탭을 찾을 수 없습니다"); return reload(); }
   const orig=mdTrim(part.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n");
   v.innerHTML=`<p class="meta" style="margin:0 0 8px">${esc(doc.title)} › <b>${esc(tab)}</b> 탭만 고칩니다 · 다른 탭 내용은 그대로 둡니다</p>
