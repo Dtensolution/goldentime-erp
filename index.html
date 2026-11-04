@@ -1067,7 +1067,7 @@ async function renderDash(){
     </div>
     <div class="grid2">
       <section class="panel"><h3>원장별 진료 인원 <span>신환 + 재진, 명</span></h3><div class="cbox"><canvas id="c4" role="img" aria-label="원장별 진료 인원 그래프"></canvas></div>
-        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th><th>재진 비중</th></tr></thead><tbody>${docNames.map(n=>{const d=T.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw+d.re)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td><td class="num">${pct(d.re,d.nw+d.re)}</td></tr>`}).join("")}</tbody></table></div></section>
+        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th></tr></thead><tbody>${docNames.map(n=>{const d=T.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw+d.re)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td></tr>`}).join("")}</tbody></table></div><p class="meta" style="margin:6px 0 0">원장별 신환 재방문율은 부서 실적 → 진료(원장)에서 봅니다 (EMR 수납 목록 기준)</p></section>
       <section class="panel"><h3>도수 · 충격파 <span>종류별 건수 · 도수 상담 ${won(T.consult)}건</span></h3><div class="cbox"><canvas id="c5" role="img" aria-label="도수 충격파 그래프"></canvas></div>${ptMoneyHtml(T)}
         <div class="tbl-box" style="margin-top:12px"><table><tbody>${ptItemsOf(S.branch).filter(k=>T.pt[k]).map(k=>`<tr><td>${k}</td><td class="num">${won(T.pt[k])}건</td></tr>`).join("")}</tbody></table></div></section>
     </div>
@@ -1216,12 +1216,13 @@ async function emrListUpload(wb,X,file){
     if(/신환|초진/.test(nr)){ if(!o.re.has(id)) o.n.add(id); } else if(/재진/.test(nr)){ if(!o.n.has(id)) o.re.add(id); } o.amt+=N(r,C.total); });
   const rooms=Object.keys(R).sort((a,b)=>a.localeCompare(b,"ko",{numeric:true}));
   const docs=[...document.querySelectorAll("[data-doc]")].map(r=>({i:r.dataset.doc,name:r.dataset.name}));
+  const VR=rows.filter(r=>C.pt>=0&&String(r[C.pt]||"").trim()&&!/미수/.test(String(r[C.kind]||""))).map(r=>({d:String(r[C.date]).trim().slice(0,10).replace(/[\/.]/g,"-"),chart:String(r[C.pt]).trim(),room:C.room>=0?String(r[C.room]||"").trim():"",kind:/신환/.test(String(r[C.nr]||""))?"신환":/초진/.test(String(r[C.nr]||""))?"초진":"재진",ins:"",amt:N(r,C.total)}));
   const LB={f_total:"총진료비",f_nonpay:"비급여",f_out:"외래 (총진료비 − 입원)",f_inpat:"입원비",f_card:"카드 (카드수납 + 키오스크 + 미수 카드수납)",f_cash:"현금 (현금수납 + 미수 현금수납)",f_acct:"계좌이체 (계좌수납 + 미수 계좌수납)",f_unpaid:"미수 발생"};
   const dlg=$("dlg"); dlg.innerHTML=`<form method="dialog" style="min-width:min(720px,92vw)"><h3 style="margin:0 0 6px">EMR 수납 목록 → 마감일지</h3>
     <p class="meta" style="margin:0 0 10px">${esc(file.name)} · 환자 ${rows.length}줄을 합계했습니다${dates.length?` · 파일 날짜 <b>${esc(dates.join(", "))}</b>`:""}${md&&dates.length&&!dates.includes(md)?` <b style="color:var(--bad)">— 마감 날짜(${esc(md)})와 다릅니다!</b>`:""}</p>
     <div class="tbl-box"><table><thead><tr><th></th><th>마감일지 칸</th><th class="num">파일 합계</th><th class="num">지금 적힌 값</th></tr></thead><tbody>
     ${Object.entries(V).map(([id,v])=>`<tr><td><input type="checkbox" data-emv="${id}" checked aria-label="${esc(LB[id])} 채우기"></td><td>${esc(LB[id])}</td><td class="num"><b>${won(Math.round(v))}</b></td><td class="num">${esc($(id)?.value||"")}</td></tr>`).join("")}
-    </tbody></table></div>${mis?`<p class="meta" style="margin:6px 0 0">미수 회수 ${won(mis)}원은 결제수단별(카드·현금·계좌)에 더했습니다.</p>`:""}
+    </tbody></table></div><p class="meta" style="margin:6px 0 0">🔁 원장을 고른 진료실의 환자별 진료 기록(날짜·차트번호·원장·초/재진, 이름 제외)도 함께 저장해 원장별 신환 재방문율 계산에 씁니다.</p>${mis?`<p class="meta" style="margin:6px 0 0">미수 회수 ${won(mis)}원은 결제수단별(카드·현금·계좌)에 더했습니다.</p>`:""}
     ${rooms.length&&docs.length?`<h4 style="margin:14px 0 6px">진료실별 원장 · 신환(초진 포함)·재진·진료비 <span class="meta" style="font-weight:400">처음 한 번만 원장을 고르면 다음부터 자동</span></h4><div class="tbl-box"><table><thead><tr><th>진료실</th><th>원장</th><th class="num">신환</th><th class="num">재진</th><th class="num">진료비</th></tr></thead><tbody>
       ${rooms.map(rm=>`<tr><td>${esc(rm)}</td><td><select data-emroom="${esc(rm)}" style="height:30px"><option value="">— 넣지 않음 —</option>${docs.map(d=>`<option value="${esc(d.name)}" ${set[rm]===d.name?"selected":""}>${esc(d.name)}</option>`).join("")}</select></td><td class="num">${R[rm].n.size}</td><td class="num">${R[rm].re.size}</td><td class="num">${won(R[rm].amt)}</td></tr>`).join("")}</tbody></table></div>`:""}
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px"><button class="btn ghost" value="cancel">취소</button><button type="button" class="btn" id="emrgo">칸에 채우기</button></div></form>`;
@@ -1229,6 +1230,8 @@ async function emrListUpload(wb,X,file){
   $("emrgo").onclick=async()=>{ let n=0, last=null; const put=(id,v)=>{ const el=$(id); if(!el) return; el.value=v?won(Math.round(v)):""; el.dispatchEvent(new Event("input",{bubbles:true})); last=el; n++; };
     dlg.querySelectorAll("[data-emv]").forEach(cb=>{ if(cb.checked) put(cb.dataset.emv,V[cb.dataset.emv]); });
     const map={}; dlg.querySelectorAll("[data-emroom]").forEach(s=>{ if(s.value) map[s.dataset.emroom]=s.value; });
+    if(VR.length){ try{ const mapD=r=>map[r.room]||null; const U={}; VR.forEach(r=>{ if(!mapD(r)) return; const k=r.d+"|"+r.chart+"|"+mapD(r); const o=U[k]; if(!o) U[k]={branch_id:S.branch,visit_date:r.d,chart_no:r.chart,doctor:mapD(r),kind:r.kind,room:r.room||null,amount:r.amt,source:"emr"}; else { if(r.kind!=="재진") o.kind=r.kind; o.amount+=r.amt; } });
+        const ds=[...new Set(VR.map(r=>r.d))]; await sb.from("visits").delete().eq("branch_id",S.branch).eq("source","emr").in("visit_date",ds); const {error}=Object.keys(U).length?await sb.from("visits").insert(Object.values(U)):{}; if(error) toast("환자별 기록 저장 실패: "+errMsg(error)); }catch(e){ toast("환자별 기록 저장 실패: "+errMsg(e)); } }
     if(Object.keys(map).length){ const agg={}; Object.entries(map).forEach(([rm,dn])=>{ const a=agg[dn] ||= {n:0,re:0,amt:0}; a.n+=R[rm].n.size; a.re+=R[rm].re.size; a.amt+=R[rm].amt; });
       docs.forEach(d=>{ const a=agg[d.name]; if(!a) return; put("dn"+d.i,a.n); put("dr"+d.i,a.re); put("da"+d.i,a.amt); });
       try{ localStorage.setItem("gt-emrroom-"+S.branch,JSON.stringify(map)); }catch(e){}
@@ -3534,6 +3537,16 @@ async function renderOrg(){
       renderOrg(); }; });
 }
 
+// 원장별 신환 재방문: visits(날짜·차트번호·원장·초/재진)로 계산
+function revisitStats(V,from,to){ const today=kstToday(); const by={}; const tot={n:0,same:0,s30:0,e30:0,other:0}; const ch={};
+  V.forEach(v=>{ (ch[v.chart_no] ||= []).push(v); }); Object.values(ch).forEach(L=>L.sort((a,b)=>a.visit_date.localeCompare(b.visit_date)));
+  const seen=new Set();
+  V.filter(v=>v.visit_date>=from&&v.visit_date<=to&&/신환|초진/.test(v.kind||"")).forEach(v=>{ const k=v.chart_no+"|"+v.doctor; if(seen.has(k)) return; seen.add(k);
+    const later=ch[v.chart_no].filter(x=>x.visit_date>v.visit_date); const same=later.filter(x=>x.doctor===v.doctor); const o=by[v.doctor] ||= {n:0,same:0,s30:0,e30:0,other:0};
+    const d30=new Date(Date.parse(v.visit_date+"T00:00:00Z")+30*864e5).toISOString().slice(0,10); const elig=d30<=today; o.n++; tot.n++;
+    if(same.length){ o.same++; tot.same++; } else if(later.length){ o.other++; tot.other++; }
+    if(elig){ o.e30++; tot.e30++; if(same.some(x=>x.visit_date<=d30)){ o.s30++; tot.s30++; } } });
+  return {by,tot}; }
 // ── 부서 실적 ──
 const PERF_TABS=[["doc","진료(원장)"],["pt","물리치료"],["emg","임상병리"],["front","원무"],["ward","수술·병동"]];
 const PERF_DEPT={"물리치료":["pt"],"임상병리":["emg"],"원무":["front","doc"],"수술":["ward"],"병동":["ward"]};
@@ -3553,6 +3566,7 @@ async function renderPerf(){
   const res={};
   try{
     if(need==="dc"){ const rows=(await loadRange(PR.start,R.end)).filter(r=>+r.total>0||st.tab==="front"); res.cur=rows.filter(r=>r.close_date>=R.start); res.prev=rows.filter(r=>r.close_date<R.start);
+      if(st.tab==="doc"){ const vr=await allRows(()=>sb.from("visits").select("visit_date,chart_no,doctor,kind").eq("branch_id",S.branch).gte("visit_date",R.start).order("visit_date")); res.visits=vr.error?[]:vr.data; res.visErr=vr.error; }
       if(st.tab==="front"){ const rv=await allRows(()=>sb.from("reservations").select("resv_date,visit").eq("branch_id",S.branch).gte("resv_date",PR.start).lte("resv_date",R.end).order("id")); if(rv.error) throw rv.error; res.rv=rv.data; } }
     else { const [ar,ir]=await Promise.all([ allRows(()=>sb.from("appointments").select("appt_date,item,staff,doctor,needle_doctor,status,is_new,inpatient").eq("branch_id",S.branch).eq("kind",need).gte("appt_date",PR.start).lte("appt_date",R.end).order("id")),
         sb.from("sched_items").select("name,price").eq("branch_id",S.branch).eq("kind",need) ]); if(ar.error) throw ar.error;
@@ -3566,11 +3580,18 @@ async function renderPerf(){
 
   if(st.tab==="doc"){
     const A=aggRows(res.cur), P=aggRows(res.prev); const names=Object.keys(A.docs).sort((a,b)=>(A.docs[b].nw+A.docs[b].re)-(A.docs[a].nw+A.docs[a].re));
-    body=kpiRow([{k:"총 진료 인원",v:won(A.visits),u:"명",d:cmpPrev(A.visits,P.visits),lead:true},{k:"신환",v:won(A.newP),u:"명",d:cmpPrev(A.newP,P.newP)},{k:"재진",v:won(A.reP),u:"명",d:cmpPrev(A.reP,P.reP)},{k:"재진 비중",v:A.visits?(A.reP/A.visits*100).toFixed(1):"–",u:"%",d:P.visits?`전월 ${(P.reP/P.visits*100).toFixed(1)}%`:""},A.docAmt?{k:"원장별 진료비 합계",v:wonMan(A.docAmt),u:"",d:cmpPrev(A.docAmt,P.docAmt||0,wonMan)||`1인당 ${won(Math.round(A.docAmt/Math.max(1,A.visits)))}원`}:{k:"진료일 · 일평균",v:A.days,u:"일",d:A.days?`일평균 ${(A.visits/A.days).toFixed(1)}명`:""}])+
-      `<div class="grid2"><section class="panel"><h3>원장별 <span>마감일지 기준</span></h3><div class="tbl-box"><table><thead><tr><th>원장</th><th>신환</th><th>재진</th><th>총</th><th>일평균</th><th>재진 비중</th>${A.docAmt?"<th>진료비</th><th>1인당</th>":""}<th>전월 총</th><th>증감</th></tr></thead><tbody>
-      ${names.map(n=>{ const d=A.docs[n], p=P.docs[n]; const t=d.nw+d.re, pt=p?p.nw+p.re:0; return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td><td class="num"><b>${won(t)}</b></td><td class="num">${A.days?(t/A.days).toFixed(1):"–"}</td><td class="num">${pct(d.re,t)}</td>${A.docAmt?`<td class="num">${won(d.amt)}</td><td class="num">${t?won(Math.round(d.amt/t)):"–"}</td>`:""}<td class="num">${pt?won(pt):"–"}</td><td class="num">${pt?`<span class="${t>=pt?"up":"down"}">${t>=pt?"▲":"▼"}${Math.abs((t-pt)/pt*100).toFixed(1)}%</span>`:""}</td></tr>`; }).join("")||`<tr><td colspan="8" class="meta">자료가 없습니다.</td></tr>`}</tbody></table></div></section>
-      <section class="panel"><h3>원장별 진료 인원 <span>신환 / 재진</span></h3><div class="cbox"><canvas id="pf1"></canvas></div></section></div>`;
-    csv=[["원장","신환","재진","총","재진비중","진료비"],...names.map(n=>{ const d=A.docs[n]; return [n,d.nw,d.re,d.nw+d.re,pct(d.re,d.nw+d.re),d.amt||0]; })];
+    const RV=revisitStats(res.visits||[],R.start,R.end); const rvNames=[...new Set([...names,...Object.keys(RV.by)])].filter(n=>RV.by[n]);
+    body=kpiRow([{k:"총 진료 인원",v:won(A.visits),u:"명",d:cmpPrev(A.visits,P.visits),lead:true},{k:"신환",v:won(A.newP),u:"명",d:cmpPrev(A.newP,P.newP)},{k:"재진",v:won(A.reP),u:"명",d:cmpPrev(A.reP,P.reP)},{k:"신환 재방문율",v:RV.tot.n?(RV.tot.same/RV.tot.n*100).toFixed(1):"–",u:RV.tot.n?"%":"",d:RV.tot.n?`같은 원장 재방문 ${RV.tot.same} / 신환 ${RV.tot.n}명 (EMR)`:"EMR 수납 목록을 올리면 계산"},A.docAmt?{k:"원장별 진료비 합계",v:wonMan(A.docAmt),u:"",d:cmpPrev(A.docAmt,P.docAmt||0,wonMan)||`1인당 ${won(Math.round(A.docAmt/Math.max(1,A.visits)))}원`}:{k:"진료일 · 일평균",v:A.days,u:"일",d:A.days?`일평균 ${(A.visits/A.days).toFixed(1)}명`:""}])+
+      `<div class="grid2"><section class="panel"><h3>원장별 <span>마감일지 기준</span></h3><div class="tbl-box"><table><thead><tr><th>원장</th><th>신환</th><th>재진</th><th>총</th><th>일평균</th><th title="이 원장님께 처음 온 환자 중 다시 이 원장님께 온 비율 (EMR 수납 목록 기준)">신환 재방문율</th>${A.docAmt?"<th>진료비</th><th>1인당</th>":""}<th>전월 총</th><th>증감</th></tr></thead><tbody>
+      ${names.map(n=>{ const d=A.docs[n], p=P.docs[n]; const t=d.nw+d.re, pt=p?p.nw+p.re:0; return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td><td class="num"><b>${won(t)}</b></td><td class="num">${A.days?(t/A.days).toFixed(1):"–"}</td><td class="num">${RV.by[n]?.n?pct(RV.by[n].same,RV.by[n].n):"–"}</td>${A.docAmt?`<td class="num">${won(d.amt)}</td><td class="num">${t?won(Math.round(d.amt/t)):"–"}</td>`:""}<td class="num">${pt?won(pt):"–"}</td><td class="num">${pt?`<span class="${t>=pt?"up":"down"}">${t>=pt?"▲":"▼"}${Math.abs((t-pt)/pt*100).toFixed(1)}%</span>`:""}</td></tr>`; }).join("")||`<tr><td colspan="8" class="meta">자료가 없습니다.</td></tr>`}</tbody></table></div></section>
+      <section class="panel"><h3>원장별 진료 인원 <span>신환 / 재진</span></h3><div class="cbox"><canvas id="pf1"></canvas></div></section></div>
+      <section class="panel"><h3>원장별 신환 재방문 <span>EMR 수납 목록(환자별) 기준 · 이 달에 그 원장님께 신환·초진으로 온 환자가 이후 다시 왔는지 · 다른 원장님 환자는 섞이지 않음</span></h3>
+      ${rvNames.length?`<div class="tbl-box"><table><thead><tr><th>원장</th><th class="num">신환</th><th class="num">같은 원장 재방문</th><th class="num">재방문율</th><th class="num" title="신환 온 지 30일이 지난 환자만으로 계산">30일 내 재방문율</th><th class="num">다른 원장으로만 재방문</th><th class="num">아직 재방문 없음</th></tr></thead><tbody>
+        ${rvNames.map(n=>{ const x=RV.by[n]; return `<tr><td>${esc(n)}</td><td class="num">${x.n}</td><td class="num">${x.same}</td><td class="num"><b>${pct(x.same,x.n)}</b></td><td class="num">${x.e30?`${pct(x.s30,x.e30)} <small class="meta">(${x.s30}/${x.e30})</small>`:"–"}</td><td class="num">${x.other}</td><td class="num">${x.n-x.same-x.other}</td></tr>`; }).join("")}
+        <tr class="sumrow"><td>합계</td><td class="num">${RV.tot.n}</td><td class="num">${RV.tot.same}</td><td class="num"><b>${pct(RV.tot.same,RV.tot.n)}</b></td><td class="num">${RV.tot.e30?pct(RV.tot.s30,RV.tot.e30):"–"}</td><td class="num">${RV.tot.other}</td><td class="num">${RV.tot.n-RV.tot.same-RV.tot.other}</td></tr></tbody></table></div>
+        <p class="meta" style="margin:6px 0 0">재방문은 오늘까지 다시 온 기록으로 셉니다 — 이번 달 신환은 아직 돌아올 시간이 짧아 낮게 보일 수 있어, 30일 내 재방문율은 30일이 지난 신환만으로 계산합니다.</p>`
+      :`<div class="empty">아직 환자별 진료 기록이 없습니다. 원무에서 <b>마감일지 → EMR 마감파일 업로드</b>로 수납 목록(환자별)을 올리면, 차트번호·원장·초/재진이 쌓여 여기서 원장별 재방문율이 계산됩니다.${res.visErr?` <small>(${esc(errMsg(res.visErr))})</small>`:""}</div>`}</section>`;
+    csv=[["원장","신환","재진","총","신환(EMR)","같은 원장 재방문","재방문율","진료비"],...names.map(n=>{ const d=A.docs[n], x=RV.by[n]; return [n,d.nw,d.re,d.nw+d.re,x?.n||0,x?.same||0,x?.n?pct(x.same,x.n):"",d.amt||0]; })];
     charts.push(()=>mkChart("pf1",{data:{labels:names,datasets:[{label:"신환",data:names.map(n=>A.docs[n].nw),backgroundColor:sky,stack:"s"},{label:"재진",data:names.map(n=>A.docs[n].re),backgroundColor:navy,stack:"s"}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}}));
   }
   else if(st.tab==="pt"||st.tab==="emg"){
@@ -3910,7 +3931,7 @@ async function renderReport(){
       <h2>1. 요약</h2>
       ${T(["항목","이번 달","전월","증감"],[["총진료비",won(A.total)+"원",won(P.total)+"원",ch(A.total,P.total)],["일평균 진료비",won(Math.round(A.total/Math.max(1,A.days)))+"원",won(Math.round(P.total/Math.max(1,P.days)))+"원",ch(A.total/Math.max(1,A.days),P.total/Math.max(1,P.days))],["비급여 (비중)",`${won(A.nonpay)}원 (${(A.npRate*100).toFixed(1)}%)`,`${won(P.nonpay)}원 (${(P.npRate*100).toFixed(1)}%)`,ch(A.nonpay,P.nonpay)],["총 진료 인원",won(A.visits)+"명",won(P.visits)+"명",ch(A.visits,P.visits)],["신환 / 재진",`${won(A.newP)} / ${won(A.reP)}`,`${won(P.newP)} / ${won(P.reP)}`,ch(A.newP,P.newP)],["건당진료비",won(Math.round(A.perVisit))+"원",won(Math.round(P.perVisit))+"원",ch(A.perVisit,P.perVisit)],["수술",won(A.surg)+"건",won(P.surg)+"건",ch(A.surg,P.surg)],["도수 / 충격파",`${A.dosu} / ${A.shock}건`,`${P.dosu} / ${P.shock}건`,ch(A.dosu+A.shock,P.dosu+P.shock)]])}
       <h2>2. 원장별 진료</h2>
-      ${docN.length?T(["원장","신환","재진","총","재진 비중",...(A.docAmt?["진료비"]:[])],docN.map(n=>{ const d=A.docs[n]; return [esc(n),won(d.nw),won(d.re),won(d.nw+d.re),pct(d.re,d.nw+d.re),...(A.docAmt?[won(d.amt)+"원"]:[])]; })):`<p class="meta">자료 없음</p>`}
+      ${docN.length?T(["원장","신환","재진","총",...(A.docAmt?["진료비"]:[])],docN.map(n=>{ const d=A.docs[n]; return [esc(n),won(d.nw),won(d.re),won(d.nw+d.re),...(A.docAmt?[won(d.amt)+"원"]:[])]; })):`<p class="meta">자료 없음</p>`}
       <h2>3. 물리치료 · 근전도 (스케줄 기준)</h2>
       ${T(["구분","이번 달","전월","예상 매출"],[["도수",ptC.filter(a=>isDosu(a.item)).length+"건",ptP.filter(a=>isDosu(a.item)).length+"건",""],["충격파",ptC.filter(a=>isShock(a.item)).length+"건",ptP.filter(a=>isShock(a.item)).length+"건",""],["물리치료 합계",ptC.length+"건",ptP.length+"건",won(ptAmt)+"원"],["근전도",emC.length+"건",emP.length+"건",won(emAmt)+"원"]])}
       ${Object.keys(byStaff).length?T(["치료사","도수","충격파","총"],Object.entries(byStaff).sort((a,b)=>b[1].n-a[1].n).map(([k,o])=>[esc(k),o.d,o.s,o.n])):""}
@@ -4062,7 +4083,6 @@ async function renderHQ(){
       ${row("비급여 비중",x=>x.A.total?(x.A.npRate*100).toFixed(1)+"%":"–")}
       ${row("총 진료 인원",x=>won(x.A.visits)+chg(x.A.visits,x.P.visits))}
       ${row("신환",x=>won(x.A.newP)+chg(x.A.newP,x.P.newP))}
-      ${row("재진 비중",x=>x.A.visits?(x.A.reP/x.A.visits*100).toFixed(1)+"%":"–")}
       ${row("건당진료비",x=>won(Math.round(x.A.perVisit)))}
       ${row("수술",x=>won(x.A.surg)+"건")}
       ${row("도수·충격파 (마감일지)",x=>won(x.A.dosu+x.A.shock)+"건")}
