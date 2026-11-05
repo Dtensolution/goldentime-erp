@@ -329,6 +329,8 @@ dialog.wide{width:min(1200px,96vw)!important;max-height:94vh}
 .sc-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .sc-grid{display:grid;min-width:max-content}
 .sc-col{border-right:1px solid var(--line);min-width:0}
+.sc-body .night{position:absolute;left:0;right:0;background:color-mix(in srgb,#5b4fa8 9%,transparent);border-top:2px solid color-mix(in srgb,#5b4fa8 45%,transparent);pointer-events:none;z-index:0}
+.sc-time .sc-body .night{background:color-mix(in srgb,#5b4fa8 14%,transparent)}.sc-body .night span{position:absolute;right:4px;top:2px;font-size:10.5px;color:#5b4fa8;font-weight:600}
 .sc-col:last-child{border-right:none}
 .sc-col.today .sc-h{background:var(--accent-soft);color:var(--navy)}
 .sc-h{position:sticky;top:0;z-index:2;height:44px;display:flex;flex-direction:column;justify-content:center;align-items:center;background:var(--sunk);border-bottom:1px solid var(--line);font-size:13px;font-weight:600}
@@ -1642,6 +1644,8 @@ async function renderSched(kind,keep){
   const firstLane=lanes[0]?.id;
   const inCol=(a,c)=> a.appt_date===c.date && (a.lane_id===c.lane.id || (!lanes.some(l=>l.id===a.lane_id) && c.lane.id===firstLane));
   const timeCol=[...Array(rows/3+1)].map((_,i)=>{ const m=cfg.from+i*30; return `<div class="tl" style="top:${i*3*SLOT_H}px">${hhmm(m)}</div>`; }).join("");
+  // 19시 이후 = 야간 (배경색 다르게)
+  const NIGHT=1140; const nightBand=cfg.to>NIGHT&&NIGHT>=cfg.from?`<div class="night" style="top:${(NIGHT-cfg.from)/10*SLOT_H}px;height:${(cfg.to-NIGHT)/10*SLOT_H}px" aria-hidden="true"><span>야간</span></div>`:"";
   const colHtml=cols.map((c,ci)=>{
     const list=appts.filter(a=>inCol(a,c)).sort((a,b)=>a.start_min-b.start_min||a.id-b.id);
     const tracks=[]; list.forEach(a=>{ let t=tracks.findIndex(e=>e<=a.start_min); if(t<0){ t=tracks.length; tracks.push(0);} tracks[t]=a.start_min+a.minutes; a._t=t; });
@@ -1653,7 +1657,7 @@ async function renderSched(kind,keep){
       return `<button class="ap ${ST_CLASS[a.status]||""}${kind==="emg"&&a.review&&!LOST_ST.has(a.status)?(a.review==="간호"?" rvN":" rvW"):""}${icx?" icol":""}${h<SLOT_H*2-2?" one":""}${kind==="emg"&&a._k?" nth"+a._k:""}" data-ap="${a.id}" style="${icx?`--ic:${icOf(a.item)};`:""}top:${top}px;height:${h}px;left:calc(${a._t/n*100}% + 2px);width:calc(${100/n}% - 4px)" title="${esc(hhmm(a.start_min))} ${esc(a.chart_no||"")} ${esc(a.patient_name||"")} · ${esc(a.item)} · ${esc(a.staff||"")}">
         <b>${icx&&a.status==="완료"?'<em class="okm" title="완료">✓</em>':""}${inpB}${nthB}${kind==="emg"?[a.chart_no,a.patient_name,a.item==="-"?"":a.item].filter(Boolean).map(esc).join(" / "):`${(()=>{ const m=String(a.note||"").match(/(\d{1,2})\s*회(차)?/); return m?`<em class="rnd" title="메모: ${esc(a.note)}">${+m[1]}회차</em>`:""; })()}${esc(a.chart_no||"")} ${esc(a.patient_name||"")} <i class="apit">${esc(a.item)}</i>`}${a.is_new?` <i class="apnew">신환</i>`:""}${badges}${kind==="emg"&&a.phone?` <i class="apph">${esc(a.phone)}</i>`:""}</b><span>${[a.staff?esc(a.staff):"",a.doctor?esc(a.doctor):"",a.status!=="예약"?a.status:""].filter(Boolean).join(" · ")||"&nbsp;"}</span>${kind==="emg"&&a.note?`<span class="apmemo" title="${esc(a.note)}">📝 ${esc(a.note)}</span>`:""}</button>`; }).join("");
     return `<div class="sc-col${c.today?" today":""}${c.dstart?" dstart":""}"><div class="sc-h${st.mode==="week"?" sc-go":""}" ${st.mode==="week"?`data-goday="${c.date}" role="button" tabindex="0" title="${c.date} 하루 보기"`:""}>${c.day?`<small class="sc-day">${esc(c.day)}</small>`:""}${esc(c.name)}${c.grp&&st.mode!=="week"?`<small>${esc(c.grp)}</small>`:""}</div>
-      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return b.auto?`<div class="blk auto" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="근무 스케줄에 따라 자동으로 막힘 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.who?" · 이날 근무: "+esc(b.who):""} (근무 스케줄을 바꾸면 자동으로 바뀝니다)"><span>⏰ 근무 시간 외</span></div>`:`<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
+      <div class="sc-body${laneStep(kind,c.lane)===30?" half":""}" data-col="${ci}" style="height:${H}px">${nightBand}${blocksFor(blocks,c.date,c.lane.id).filter(b=>b.end_min>cfg.from&&b.start_min<cfg.to).map(b=>{ const s0=Math.max(b.start_min,cfg.from), e0=Math.min(b.end_min,cfg.to); return b.auto?`<div class="blk auto" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="근무 스케줄에 따라 자동으로 막힘 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.who?" · 이날 근무: "+esc(b.who):""} (근무 스케줄을 바꾸면 자동으로 바뀝니다)"><span>⏰ 근무 시간 외</span></div>`:`<div class="blk" data-blk="${b.id}" style="top:${(s0-cfg.from)/10*SLOT_H}px;height:${(e0-s0)/10*SLOT_H}px" title="예약 불가 ${hhmm(b.start_min)}~${hhmm(b.end_min)}${b.note?" · "+esc(b.note):""}"><span>🚫 막음${b.note?" · "+esc(b.note):""}</span></div>`; }).join("")}${cards}</div></div>`;
   }).join("");
   // 집계
   const live=appts.filter(a=>!LOST_ST.has(a.status));
@@ -1701,7 +1705,7 @@ async function renderSched(kind,keep){
     ${grid&&kind==="pt"&&items.length?`<div class="iclg">${items.filter(i=>i.active!==false).map(i=>`<span style="--ic:${icOf(i.name)}"><i></i>${esc(i.name)}</span>`).join("")}<span>· 완료는 ✓ 표시 · 취소·노쇼·변경은 회색</span></div>`:""}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
     `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px ${cols.map(c=>{ const wide=FX.wideShock&&st.mode!=="week"&&/충격/.test((c.lane?.grp||"")+(c.lane?.name||""))&&!/pain/i.test(c.lane?.name||""); const w=Math.max(st.mode==="week"?(lanes.length>1?140:160):150,(c._n||1)*(st.mode==="week"?96:110)); return wide?`minmax(${Math.round(w*1.9)}px,2.2fr)`:`minmax(${w}px,1fr)`; }).join(" ")}">
-      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
+      <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${nightBand.replace("</span>","</span>").replace(/<span>.*?<\/span>/,"")}${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
     ${FX.wkNoteBottom&&st.mode==="week"&&noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:""}
     ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
     ${grid&&kind==="emg"?`<div class="iclg"><span style="--ic:#e0609a"><i></i>간호에서 넣은 예약 (확인 전)</span><span style="--ic:#d4a514"><i></i>원무에서 넣은 예약 (확인 전)</span><span>· 임상병리에서 열어 저장하면 1차(파랑)·2차(초록)로 바뀝니다</span></div>`:""}
@@ -2770,8 +2774,8 @@ async function renderOvertime(){
           ${otDepts.length>1?`<div class="field" style="grid-column:1/-1;margin:0"><label>부서</label><div class="chips" style="margin:0">${otDepts.map(d=>`<button type="button" class="fchip" data-ofd="${esc(d)}" aria-pressed="${d===st.fdept}">${esc(d)}</button>`).join("")}</div></div>`:""}
           <div class="field"><label for="o_s">직원</label><select id="o_s">${otOpts()||`<option value="">${esc(S.me.name)}</option>`}</select></div>
           <div class="field"><label for="o_d">날짜</label><input type="date" id="o_d" value="${kstToday()}" required></div>
-          <div class="field"><label for="o_a">시작</label><input type="time" id="o_a" value="08:30" required></div>
-          <div class="field"><label for="o_b">끝</label><input type="time" id="o_b" value="09:00" required></div>
+          <div class="field"><label for="o_a">시작</label><input id="o_a" class="otime" value="오전 08:30" required autocomplete="off" inputmode="numeric" placeholder="예: 18 또는 1830 → 오후 06:30"></div>
+          <div class="field"><label for="o_b">끝</label><input id="o_b" class="otime" value="오전 09:00" required autocomplete="off" inputmode="numeric" placeholder="예: 22 → 오후 10:00, 24 → 자정"></div>
           <div class="field"><label for="o_k">구분</label><select id="o_k">${OT_KINDS.map(k=>`<option>${k}</option>`).join("")}</select></div>
           <div class="field"><label for="o_n">메모</label><input id="o_n" placeholder="예: 인계, 교육, 수술 연장"></div>
           <p class="meta" id="o_m" style="grid-column:1/-1;margin:0"></p>
@@ -2796,7 +2800,13 @@ async function renderOvertime(){
   bindRet(st,()=>renderOvertime());
   document.querySelectorAll("[data-ow]").forEach(b=>b.onclick=()=>{ st.who=st.who===b.dataset.ow?null:b.dataset.ow; renderOvertime(); });
   if($("owx")) $("owx").onclick=()=>{ st.who=null; renderOvertime(); };
-  const mins=()=>{ const a=toMin($("o_a").value.replace(":","")), b=toMin($("o_b").value.replace(":","")); if(a==null||b==null) return null; return [a, b<=a?b+1440:b]; };
+  // 시간 칸: 22 · 2200 · 22:00 · 22시 30분 · 오후 10:00 모두 받음 → 오후 10:00 으로 보여줌 (24 = 자정)
+  const tin=v=>{ let t=String(v||"").trim(); if(!t) return null; const pm=/오후|pm/i.test(t), am=/오전|am/i.test(t); const n=t.replace(/[^0-9:시분]/g,"");
+    let h,m=0; const a=n.match(/^(\d{1,2})\s*[:시]\s*(\d{1,2})?/); if(a){ h=+a[1]; m=+(a[2]||0); } else { const d=n.replace(/\D/g,""); if(!d) return null; if(d.length<=2){ h=+d; } else { h=+d.slice(0,d.length-2); m=+d.slice(-2); } }
+    if(pm&&h<12) h+=12; if(am&&h===12) h=0; if(h>24||m>59||(h===24&&m)) return null; return h*60+m; };
+  const t12=x=>{ if(x==null) return ""; if(x===1440) return "자정 12:00 (24시)"; const h=Math.floor(x/60), m=x%60; return `${h<12?"오전":"오후"} ${String(h%12||12).padStart(2,"0")}:${String(m).padStart(2,"0")}`; };
+  ["o_a","o_b"].forEach(i=>$(i).addEventListener("blur",()=>{ const x=tin($(i).value); if(x!=null) $(i).value=t12(x); else if($(i).value.trim()) toast("시간을 알아볼 수 없습니다 (예: 22, 2230, 22:30)"); }));
+  const mins=()=>{ const a=tin($("o_a").value), b=tin($("o_b").value); if(a==null||b==null) return null; return [a, b<=a?b+1440:b]; };
   const lunchOf=m=>m&&$("o_k").value!=="점심"&&m[0]<=OT_LUNCH[0]&&m[1]>=OT_LUNCH[1]?OT_LUNCH[1]-OT_LUNCH[0]:0;
   const showM=()=>{ const m=mins(); const l=lunchOf(m); $("o_m").textContent=m?`${hm(m[1]-m[0]-l)} 으로 기록됩니다.${l?` (점심 ${fmtMin(OT_LUNCH[0])}~${fmtMin(OT_LUNCH[1])} 1시간 뺌)`:""}`:""; }; ["o_a","o_b","o_k"].forEach(i=>$(i).addEventListener("input",showM)); $("o_k").addEventListener("change",showM); showM();
   document.querySelectorAll("[data-ofd]").forEach(b=>b.onclick=()=>{ st.fdept=b.dataset.ofd; document.querySelectorAll("[data-ofd]").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("o_s").innerHTML=otOpts(); });
