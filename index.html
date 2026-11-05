@@ -727,7 +727,7 @@ function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
 const FX = {};
-const APPT_ENTER_KEEP = ["gt-os"]; // 예약 창에서 Enter로 닫히지 않는 지점
+const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"]; // 예약 창에서 Enter로 닫히지 않는 지점
 const LEAVE_DEPT_ORD = ["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리"]; // 연차관리 직원 목록 부서 순서 // 지점 사이트별 추가 기능 (바로튼튼은 build에서 켬)
 const CARM_NORED = []; // C-arm 카운트에 REDUCTION 칸을 쓰지 않는 지점
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
