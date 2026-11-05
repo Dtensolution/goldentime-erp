@@ -727,6 +727,7 @@ function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
 const FX = {};
+const APPT_ENTER_KEEP = ["gt-os"]; // 예약 창에서 Enter로 닫히지 않는 지점
 const LEAVE_DEPT_ORD = ["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리"]; // 연차관리 직원 목록 부서 순서 // 지점 사이트별 추가 기능 (바로튼튼은 build에서 켬)
 const CARM_NORED = []; // C-arm 카운트에 REDUCTION 칸을 쓰지 않는 지점
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
@@ -1835,6 +1836,8 @@ function apptDialog(ctx, a, preset){
       <div>${a&&canEdit?`<button class="btn ghost" id="a_del" type="button" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:""}</div>
       <div style="display:flex;gap:8px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button>${canEdit?`<button class="btn" id="a_ok" type="button">저장</button>`:""}</div></div></form>`;
   dlg.showModal();
+  // 예약 창: Enter로 창이 닫히지 않게 (닫기 버튼 · Esc로만 닫힘) — 지점별
+  if(APPT_ENTER_KEEP.includes(S.branch)) $("apf").addEventListener("keydown",e=>{ if(e.key==="Enter"&&!e.isComposing&&e.target.tagName!=="TEXTAREA"&&e.target.tagName!=="BUTTON") e.preventDefault(); });
   if($("a_log")) $("a_log").addEventListener("toggle",()=>{ if($("a_log").open&&!$("a_log").dataset.ld){ $("a_log").dataset.ld=1; loadApptLog({appt:a.id}).then(h=>{ $("a_log").querySelector("div").outerHTML=h; }); } });
   const histFor=()=>apptHistory($("a_c").value.trim(), a?.id); if(v.chart_no) histFor(); $("a_c").addEventListener("change",histFor);
   // 전에 왔던 환자(차트번호·이름)면 전화번호 자동으로 채우기
