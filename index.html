@@ -727,7 +727,10 @@ function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
 const FX = {};
-const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"]; // 예약 창에서 Enter로 닫히지 않는 지점
+const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
+const NIGHT_BR = ["gt-os","gt-cs"];      // 스케줄 19시 이후 야간 색
+const OT_TIME_BR = ["gt-os","gt-cs"];    // 연장근무 시간 칸: 22 → 오후 10:00
+const LEAVE_SORT_BR = ["gt-os","gt-cs"]; // 연차관리 목록 자동 정렬 (부서 → 등급 → 입사일) // 예약 창에서 Enter로 닫히지 않는 지점
 const LEAVE_DEPT_ORD = ["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리"]; // 연차관리 직원 목록 부서 순서 // 지점 사이트별 추가 기능 (바로튼튼은 build에서 켬)
 const CARM_NORED = []; // C-arm 카운트에 REDUCTION 칸을 쓰지 않는 지점
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
@@ -1646,7 +1649,7 @@ async function renderSched(kind,keep){
   const inCol=(a,c)=> a.appt_date===c.date && (a.lane_id===c.lane.id || (!lanes.some(l=>l.id===a.lane_id) && c.lane.id===firstLane));
   const timeCol=[...Array(rows/3+1)].map((_,i)=>{ const m=cfg.from+i*30; return `<div class="tl" style="top:${i*3*SLOT_H}px">${hhmm(m)}</div>`; }).join("");
   // 19시 이후 = 야간 (배경색 다르게)
-  const NIGHT=1140; const nightBand=cfg.to>NIGHT&&NIGHT>=cfg.from?`<div class="night" style="top:${(NIGHT-cfg.from)/10*SLOT_H}px;height:${(cfg.to-NIGHT)/10*SLOT_H}px" aria-hidden="true"><span>야간</span></div>`:"";
+  const NIGHT=1140; const nightBand=NIGHT_BR.includes(S.branch)&&cfg.to>NIGHT&&NIGHT>=cfg.from?`<div class="night" style="top:${(NIGHT-cfg.from)/10*SLOT_H}px;height:${(cfg.to-NIGHT)/10*SLOT_H}px" aria-hidden="true"><span>야간</span></div>`:"";
   const colHtml=cols.map((c,ci)=>{
     const list=appts.filter(a=>inCol(a,c)).sort((a,b)=>a.start_min-b.start_min||a.id-b.id);
     const tracks=[]; list.forEach(a=>{ let t=tracks.findIndex(e=>e<=a.start_min); if(t<0){ t=tracks.length; tracks.push(0);} tracks[t]=a.start_min+a.minutes; a._t=t; });
@@ -2777,8 +2780,8 @@ async function renderOvertime(){
           ${otDepts.length>1?`<div class="field" style="grid-column:1/-1;margin:0"><label>부서</label><div class="chips" style="margin:0">${otDepts.map(d=>`<button type="button" class="fchip" data-ofd="${esc(d)}" aria-pressed="${d===st.fdept}">${esc(d)}</button>`).join("")}</div></div>`:""}
           <div class="field"><label for="o_s">직원</label><select id="o_s">${otOpts()||`<option value="">${esc(S.me.name)}</option>`}</select></div>
           <div class="field"><label for="o_d">날짜</label><input type="date" id="o_d" value="${kstToday()}" required></div>
-          <div class="field"><label for="o_a">시작</label><input id="o_a" class="otime" value="오전 08:30" required autocomplete="off" inputmode="numeric" placeholder="예: 18 또는 1830 → 오후 06:30"></div>
-          <div class="field"><label for="o_b">끝</label><input id="o_b" class="otime" value="오전 09:00" required autocomplete="off" inputmode="numeric" placeholder="예: 22 → 오후 10:00, 24 → 자정"></div>
+          <div class="field"><label for="o_a">시작</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_a" class="otime" value="오전 08:30" required autocomplete="off" inputmode="numeric" placeholder="예: 18 또는 1830 → 오후 06:30">`:`<input type="time" id="o_a" value="08:30" required>`}</div>
+          <div class="field"><label for="o_b">끝</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_b" class="otime" value="오전 09:00" required autocomplete="off" inputmode="numeric" placeholder="예: 22 → 오후 10:00, 24 → 자정">`:`<input type="time" id="o_b" value="09:00" required>`}</div>
           <div class="field"><label for="o_k">구분</label><select id="o_k">${OT_KINDS.map(k=>`<option>${k}</option>`).join("")}</select></div>
           <div class="field"><label for="o_n">메모</label><input id="o_n" placeholder="예: 인계, 교육, 수술 연장"></div>
           <p class="meta" id="o_m" style="grid-column:1/-1;margin:0"></p>
@@ -2808,7 +2811,7 @@ async function renderOvertime(){
     let h,m=0; const a=n.match(/^(\d{1,2})\s*[:시]\s*(\d{1,2})?/); if(a){ h=+a[1]; m=+(a[2]||0); } else { const d=n.replace(/\D/g,""); if(!d) return null; if(d.length<=2){ h=+d; } else { h=+d.slice(0,d.length-2); m=+d.slice(-2); } }
     if(pm&&h<12) h+=12; if(am&&h===12) h=0; if(h>24||m>59||(h===24&&m)) return null; return h*60+m; };
   const t12=x=>{ if(x==null) return ""; if(x===1440) return "자정 12:00 (24시)"; const h=Math.floor(x/60), m=x%60; return `${h<12?"오전":"오후"} ${String(h%12||12).padStart(2,"0")}:${String(m).padStart(2,"0")}`; };
-  ["o_a","o_b"].forEach(i=>$(i).addEventListener("blur",()=>{ const x=tin($(i).value); if(x!=null) $(i).value=t12(x); else if($(i).value.trim()) toast("시간을 알아볼 수 없습니다 (예: 22, 2230, 22:30)"); }));
+  if(OT_TIME_BR.includes(S.branch)) ["o_a","o_b"].forEach(i=>$(i).addEventListener("blur",()=>{ const x=tin($(i).value); if(x!=null) $(i).value=t12(x); else if($(i).value.trim()) toast("시간을 알아볼 수 없습니다 (예: 22, 2230, 22:30)"); }));
   const mins=()=>{ const a=tin($("o_a").value), b=tin($("o_b").value); if(a==null||b==null) return null; return [a, b<=a?b+1440:b]; };
   const lunchOf=m=>m&&$("o_k").value!=="점심"&&m[0]<=OT_LUNCH[0]&&m[1]>=OT_LUNCH[1]?OT_LUNCH[1]-OT_LUNCH[0]:0;
   const showM=()=>{ const m=mins(); const l=lunchOf(m); $("o_m").textContent=m?`${hm(m[1]-m[0]-l)} 으로 기록됩니다.${l?` (점심 ${fmtMin(OT_LUNCH[0])}~${fmtMin(OT_LUNCH[1])} 1시간 뺌)`:""}`:""; }; ["o_a","o_b","o_k"].forEach(i=>$(i).addEventListener("input",showM)); $("o_k").addEventListener("change",showM); showM();
@@ -3375,14 +3378,15 @@ async function renderLeave(){
   const asOf=kstToday();
   let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
-    .sort((a,b)=>{ /* 부서 순 → 등급 높은 순 → 입사일 빠른 순 (새 직원도 자동으로 제자리) */
+    .sort((a,b)=>{ if(!LEAVE_SORT_BR.includes(S.branch)){ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return (a.g?.sort??1e6)-(b.g?.sort??1e6)||o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); }
+      /* 부서 순 → 등급 높은 순 → 입사일 빠른 순 (새 직원도 자동으로 제자리) */
       const o=d=>{ const i=LEAVE_DEPT_ORD.indexOf(d); return i<0?50+Math.max(0,STAFF_DEPTS.indexOf(d)):i; };
       const rk=p=>{ const nm=p.name.replace(/\s+/g,""); const pr=profL.find(x=>String(x.name||"").replace(/\s+/g,"")===nm); if(pr) return +pr.level===5?1.5:+pr.level; return staff.find(x=>x.name===p.name)?.lead?3.5:9; };
       const hd=p=>p.g?.hire_date||"9999-12-31";
       return o(a.dept)-o(b.dept)||rk(a)-rk(b)||hd(a).localeCompare(hd(b))||a.name.localeCompare(b.name,"ko"); });
   const RET=new Set(await retiredList()); const nRet=people.filter(p=>RET.has(p.name)).length; if(!st.showRet) people=people.filter(p=>!RET.has(p.name));
   const allPeople=people.slice(); people.splice(0,people.length,...allPeople.filter(p=>st.dept==="전체"||p.dept===st.dept));
-  const depts=[...new Set(allPeople.map(p=>p.dept))].filter(Boolean).sort((a,b)=>{ const o=d=>{ const i=LEAVE_DEPT_ORD.indexOf(d); return i<0?50+Math.max(0,STAFF_DEPTS.indexOf(d)):i; }; return o(a)-o(b); });
+  const depts=[...new Set(allPeople.map(p=>p.dept))].filter(Boolean).sort((a,b)=>{ const o=d=>{ if(!LEAVE_SORT_BR.includes(S.branch)){ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; } const i=LEAVE_DEPT_ORD.indexOf(d); return i<0?50+Math.max(0,STAFF_DEPTS.indexOf(d)):i; }; return o(a)-o(b); });
   const lq=(st.lq||"").trim(); const list=lq?uses.filter(u=>u.staff_name.includes(lq)).slice().reverse():st.who?uses.filter(u=>u.staff_name===st.who).slice().reverse():uses.slice(-40).reverse();
   const dOrder=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
   const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)&&!RET.has(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
@@ -3391,8 +3395,8 @@ async function renderLeave(){
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용 · 병가는 무급이라 연차에서 빠집니다 · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}${retToggle(st,nRet,lv)}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="무급 · 연차 사용·잔여에 들어가지 않음">병가 <small>(무급·연차 제외)</small></th><th>확인 전</th></tr></thead><tbody>
-      ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button>${RET.has(p.name)?` <span class="pill off">퇴사</span>`:""}${retUi(RET,p.name,lv)}</td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}${retToggle(st,nRet,lv)}</span></h3><div class="tbl-box"><table><thead><tr>${lv<=3&&!LEAVE_SORT_BR.includes(S.branch)?`<th style="width:56px">순서</th>`:""}<th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="무급 · 연차 사용·잔여에 들어가지 않음">병가 <small>(무급·연차 제외)</small></th><th>확인 전</th></tr></thead><tbody>
+      ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}">${lv<=3&&!LEAVE_SORT_BR.includes(S.branch)?`<td class="lmv"><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="-1" aria-label="${esc(p.name)} 위로" ${ix===0?"disabled":""}>▲</button><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="1" aria-label="${esc(p.name)} 아래로" ${ix===people.length-1?"disabled":""}>▼</button></td>`:""}<td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button>${RET.has(p.name)?` <span class="pill off">퇴사</span>`:""}${retUi(RET,p.name,lv)}</td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
         <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=3?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
         <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="10" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
