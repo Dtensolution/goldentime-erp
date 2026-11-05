@@ -724,6 +724,8 @@ const menuDept=()=>S.me.level===5?"의사":S.me.level===3?"팀장":S.me.level===
 function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const m=Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()); return m.includes("mgmt"); }
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
+const FX = {};
+const LEAVE_DEPT_ORD = ["의료진","간호","수술","병동","원무","물리치료","영상의학","임상병리"]; // 연차관리 직원 목록 부서 순서 // 지점 사이트별 추가 기능 (바로튼튼은 build에서 켬)
 const CARM_NORED = []; // C-arm 카운트에 REDUCTION 칸을 쓰지 않는 지점
 const CARM_ENTRY = ["gt-cs"]; const CARM_KEYS = ["스파인 C-arm","관절 C-arm"]; // 마감일지에 C-arm 칸을 쓰는 지점 (철산)
 const MTX_SLOT = ["gt-os","gt-cs"]; // 수기치료 시간표를 쓰는 지점 (운정·철산)
@@ -976,7 +978,7 @@ const ptN=(r,k)=>Number(r.pt?.[k]||0);
 function aggRows(rows){
   const a={days:rows.length,total:0,nonpay:0,out:0,inpat:0,surg:0,cash:0,free:0,newP:0,reP:0,real:0,visit:0,consult:0,pt:{},docs:{}};
   rows.forEach(r=>{ a.total+=+r.total; a.nonpay+=+r.nonpay; a.out+=(+r.outpatient||(+r.total>0?Math.max(0,+r.total-(+r.inpatient||0)):0)); a.inpat+=+r.inpatient||0; a.surg+=+r.surgery_cnt; a.cash+=+r.pay_cash; a.free+=+(r.pay_free||0);
-    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt??r.extra?.emg??0);
+    a.real+=+(r.resv?.real||0); a.visit+=+(r.resv?.visit||0); a.consult+=ptN(r,"도수상담"); CARM_KEYS.forEach(k=>{ (a.cx ||= {}); a.cx[k]=(a.cx[k]||0)+Number(r.extra?.carm?.[k]||0); }); a.emgE=(a.emgE||0)+Number(r.extra?.emg_cnt??r.extra?.emg??0); a.eegE=(a.eegE||0)+Number(r.extra?.eeg_cnt||0);
     ptItemsOf(S.branch).forEach(k=>a.pt[k]=(a.pt[k]||0)+ptN(r,k));
     a.ptAll ||= {}; Object.entries(r.pt||{}).forEach(([k,v])=>{ if(k!=="_m"&&isFinite(+v)) a.ptAll[k]=(a.ptAll[k]||0)+(+v||0); });
     (r.doctors||[]).forEach(d=>{ const k=d.name||"기타"; (a.docs[k] ||= {nw:0,re:0,amt:0}); a.docs[k].nw+= +d.new||0; a.docs[k].re+= +d.re||0; a.docs[k].amt+= +d.amt||0; a.docAmt=(a.docAmt||0)+(+d.amt||0); a.newP+= +d.new||0; a.reP+= +d.re||0; }); });
@@ -1089,8 +1091,8 @@ async function renderDash(){
       <section class="panel"><h3>건당진료비 <span>원</span></h3><div class="cbox"><canvas id="c3" role="img" aria-label="건당진료비 그래프"></canvas></div></section>
     </div>
     <div class="grid2">
-      <section class="panel"><h3>원장별 진료 인원 <span>신환 + 재진, 명</span></h3><div class="cbox"><canvas id="c4" role="img" aria-label="원장별 진료 인원 그래프"></canvas></div>
-        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th></tr></thead><tbody>${docNames.map(n=>{const d=T.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw+d.re)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td></tr>`}).join("")}</tbody></table></div><p class="meta" style="margin:6px 0 0">원장별 신환 재방문율은 부서 실적 → 진료(원장)에서 봅니다 (EMR 수납 목록 기준)</p></section>
+      ${FX.docTotal?"":`<section class="panel"><h3>원장별 진료 인원 <span>신환 + 재진, 명</span></h3><div class="cbox"><canvas id="c4" role="img" aria-label="원장별 진료 인원 그래프"></canvas></div>
+        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th></tr></thead><tbody>${docNames.map(n=>{const d=T.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(d.nw+d.re)}</td><td class="num">${won(d.nw)}</td><td class="num">${won(d.re)}</td></tr>`}).join("")}</tbody></table></div><p class="meta" style="margin:6px 0 0">원장별 신환 재방문율은 부서 실적 → 진료(원장)에서 봅니다 (EMR 수납 목록 기준)</p></section>`}
       <section class="panel"><h3>도수 · 충격파 <span>종류별 건수 · 도수 상담 ${won(T.consult)}건</span></h3><div class="cbox"><canvas id="c5" role="img" aria-label="도수 충격파 그래프"></canvas></div>${ptMoneyHtml(T)}
         <div class="tbl-box" style="margin-top:12px"><table><tbody>${ptItemsOf(S.branch).filter(k=>T.pt[k]).map(k=>`<tr><td>${k}</td><td class="num">${won(T.pt[k])}건</td></tr>`).join("")}</tbody></table></div></section>
     </div>
@@ -1098,7 +1100,7 @@ async function renderDash(){
       <section class="panel"><h3>예약 이행 <span>실 예약 vs 실제 방문 · 선은 이행률</span></h3><div class="cbox"><canvas id="c6" role="img" aria-label="예약 이행 그래프"></canvas></div></section>
       <section class="panel"><h3>수술 · 비급여 <span>수술 건수(막대), 비급여 원(선)</span></h3><div class="cbox"><canvas id="c7" role="img" aria-label="수술 비급여 그래프"></canvas></div></section>
     </div>
-    ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm · 근전도 (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")} · 근전도 ${won(T.emgE||0)}건</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
+    ${CARM_ENTRY.includes(S.branch)?`<section class="panel"><h3>C-arm · 근전도 (마감일지) <span>${CARM_KEYS.map(k=>`${k} ${won(T.cx?.[k]||0)}건`).join(" · ")} · 근전도 ${won(T.emgE||0)}건${FX.eeg?` · 뇌파 ${won(T.eegE||0)}건`:""}</span></h3><div class="cbox"><canvas id="c8" role="img" aria-label="C-arm 마감일지 그래프"></canvas></div></section>`:""}
     <div id="ceBox"><p class="meta">C-arm·근전도 불러오는 중…</p></div>
     <section class="panel"><h3>전광판 표 <span>최근 순 · 금액 원</span></h3><div class="tbl-box">${tbl}</div></section>
   </div>`;
@@ -1116,7 +1118,7 @@ async function renderDash(){
   mkChart("c4",{data:{labels:L,datasets:docNames.map((n,i)=>({label:n,data:B.map(b=>{const d=b.a.docs[n];return d?d.nw+d.re:0}),backgroundColor:DOC_COLORS[i%DOC_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c5",{data:{labels:L,datasets:ptItemsOf(S.branch).filter(k=>T.pt[k]).map((k,i)=>({label:k,data:B.map(b=>b.a.pt[k]||0),backgroundColor:PT_COLORS[Math.max(0,ptItemsOf(S.branch).indexOf(k))%PT_COLORS.length],stack:"s"}))},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true}}}});
   mkChart("c6",{data:{labels:L,datasets:[{label:"실 예약",data:B.map(b=>b.a.real),backgroundColor:cssv("--bar-weekend"),order:2},{label:"실제 방문",data:B.map(b=>b.a.visit),backgroundColor:navy,order:2},{type:"line",label:"이행률",data:B.map(b=>+(b.a.keep*100).toFixed(1)),borderColor:good,backgroundColor:good,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{...pctAxis,beginAtZero:false}}}});
-  if(CARM_ENTRY.includes(S.branch)) mkChart("c8",{data:{labels:L,datasets:[...CARM_KEYS.map((k,i)=>({label:k,data:B.map(b=>b.a.cx?.[k]||0),backgroundColor:[navy,sky][i%2],stack:"s"})),{label:"근전도",data:B.map(b=>b.a.emgE||0),backgroundColor:"#e8a13a",stack:"e"}]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
+  if(CARM_ENTRY.includes(S.branch)) mkChart("c8",{data:{labels:L,datasets:[...CARM_KEYS.map((k,i)=>({label:k,data:B.map(b=>b.a.cx?.[k]||0),backgroundColor:[navy,sky][i%2],stack:"s"})),{label:"근전도",data:B.map(b=>b.a.emgE||0),backgroundColor:"#e8a13a",stack:"e"},...(FX.eeg?[{label:"뇌파",data:B.map(b=>b.a.eegE||0),backgroundColor:"#9b6fd1",stack:"b"}]:[])]},options:{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,ticks:{precision:0}}}}});
   mkChart("c7",{data:{labels:L,datasets:[{label:"수술 건수",data:B.map(b=>b.a.surg),backgroundColor:navy,order:2},{type:"line",label:"비급여(원)",data:B.map(b=>Math.round(b.a.nonpay)),borderColor:sky,backgroundColor:sky,yAxisID:"y2",tension:.3,pointRadius:2,order:1}]},options:{scales:{y2:{position:"right",grid:{display:false},beginAtZero:true,ticks:{callback:v=>won(Math.round(v/1e4))+"만"}}},plugins:{tooltip:{callbacks:{label:c=>c.dataset.yAxisID==="y2"?`비급여 ${won(c.raw)}원`:`수술 ${c.raw}건`}}}}});
 }
 async function renderDashOne(seg){
@@ -1147,13 +1149,13 @@ async function renderDashOne(seg){
     ${trendPanel("tr1",TRt,TR,"day")}
     <div class="grid2">
       <section class="panel"><h3>진료비 구성 <span>원</span></h3><div class="cbox"><canvas id="o1" role="img" aria-label="진료비 구성"></canvas></div></section>
-      <section class="panel"><h3>원장별 진료 인원 <span>신환 / 재진, 명</span></h3><div class="cbox"><canvas id="o2" role="img" aria-label="원장별 진료 인원"></canvas></div>
-        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th>${A.docAmt?"<th>진료비</th><th>1인당</th>":""}</tr></thead><tbody>${docNames.map(n=>{const x=A.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(x.nw+x.re)}</td><td class="num">${won(x.nw)}</td><td class="num">${won(x.re)}</td>${A.docAmt?`<td class="num">${won(x.amt)}</td><td class="num">${x.nw+x.re?won(Math.round(x.amt/(x.nw+x.re))):"–"}</td>`:""}</tr>`}).join("")||`<tr><td colspan="6" class="meta">입력 없음</td></tr>`}</tbody></table></div></section>
+      ${FX.docTotal?`<section class="panel"><h3>환자 수 <span>명</span></h3><div class="tbl-box"><table><tbody><tr><td>신환</td><td class="num">${won(A.newP)}명</td></tr><tr><td>재진</td><td class="num">${won(A.reP)}명</td></tr><tr class="cur"><td>합계</td><td class="num">${won(A.visits)}명</td></tr></tbody></table></div></section>`:`      <section class="panel"><h3>원장별 진료 인원 <span>신환 / 재진, 명</span></h3><div class="cbox"><canvas id="o2" role="img" aria-label="원장별 진료 인원"></canvas></div>
+        <div class="tbl-box" style="margin-top:12px"><table><thead><tr><th>원장</th><th>총</th><th>신환</th><th>재진</th>${A.docAmt?"<th>진료비</th><th>1인당</th>":""}</tr></thead><tbody>${docNames.map(n=>{const x=A.docs[n];return `<tr><td>${esc(n)}</td><td class="num">${won(x.nw+x.re)}</td><td class="num">${won(x.nw)}</td><td class="num">${won(x.re)}</td>${A.docAmt?`<td class="num">${won(x.amt)}</td><td class="num">${x.nw+x.re?won(Math.round(x.amt/(x.nw+x.re))):"–"}</td>`:""}</tr>`}).join("")||`<tr><td colspan="6" class="meta">입력 없음</td></tr>`}</tbody></table></div></section>`}
     </div>
     <div class="grid2">
       <section class="panel"><h3>도수 · 충격파 <span>종류별 건수 · 도수 상담 ${won(A.consult)}건</span></h3>${ptK.length?`<div class="cbox"><canvas id="o3" role="img" aria-label="도수 충격파"></canvas></div>`:`<p class="meta">입력 없음</p>`}${ptMoneyHtml(A)}</section>
       <section class="panel"><h3>수술 · 예약 <span>이 날</span></h3><div class="tbl-box"><table><tbody>
-        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr>${CARM_ENTRY.includes(S.branch)?CARM_KEYS.map(k=>`<tr><td>${k}</td><td class="num">${won(A.cx?.[k]||0)}건</td></tr>`).join("")+`<tr><td>근전도</td><td class="num">${won(A.emgE||0)}건</td></tr>`:""}<tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
+        <tr><td>수술</td><td class="num">${won(A.surg)}건</td></tr>${CARM_ENTRY.includes(S.branch)?CARM_KEYS.map(k=>`<tr><td>${k}</td><td class="num">${won(A.cx?.[k]||0)}건</td></tr>`).join("")+`<tr><td>근전도</td><td class="num">${won(A.emgE||0)}건</td></tr>`+(FX.eeg?`<tr><td>뇌파</td><td class="num">${won(A.eegE||0)}건</td></tr>`:""):""}<tr><td>입원 진료비</td><td class="num">${won(A.inpat)}원</td></tr><tr><td>실 예약 / 방문</td><td class="num">${won(A.real)} / ${won(A.visit)}</td></tr><tr><td>현금 수납</td><td class="num">${won(A.cash)}원</td></tr></tbody></table></div></section>
     </div>
     <section class="panel"><h3>비교 <span>이 날 · 전일 · 지난주 같은 요일 · 금액 원</span></h3><div class="tbl-box"><table><thead><tr><th>구분</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th><th>도수</th><th>충격파</th><th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
       ${cmpRows.map(([l,a],i)=>`<tr class="${i===0?"cur":""}"><td>${l}</td>${rowCells(a)}</tr>`).join("")}</tbody></table></div></section>
@@ -1349,8 +1351,8 @@ async function renderEntry(){
   const r=row||{}; const rv=r.resv||{}; const ri=rv.items||{};
   const num=(id,label,val)=>`<div class="row"><label for="${id}">${label}</label><input id="${id}" inputmode="numeric" data-n value="${val?won(val):""}"></div>`;
   // 저장된 원장 목록 + 현재 활성 원장 합치기
-  const docRows=[...docs.map(d=>({doctor_id:d.id,name:d.name}))]; (r.doctors||[]).forEach(d=>{ if(!docRows.find(x=>x.name===d.name)) docRows.push({doctor_id:d.doctor_id,name:d.name}); });
-  const dv=(name,k)=>{ const f=(r.doctors||[]).find(x=>x.name===name); return f&&f[k]?won(f[k]):""; };
+  const docRows=FX.docTotal?[{doctor_id:null,name:"전체"}]:[...docs.map(d=>({doctor_id:d.id,name:d.name}))]; if(!FX.docTotal) (r.doctors||[]).forEach(d=>{ if(!docRows.find(x=>x.name===d.name)) docRows.push({doctor_id:d.doctor_id,name:d.name}); });
+  const dv=(name,k)=>{ if(FX.docTotal){ const t=(r.doctors||[]).reduce((a,x)=>a+(+x[k]||0),0); return t?won(t):""; } const f=(r.doctors||[]).find(x=>x.name===name); return f&&f[k]?won(f[k]):""; };
   setTimeout(()=>{ const b=$("nd_add"); if(!b) return; const go=async()=>{ let n=$("nd_name").value.trim(); if(!n) return toast("원장 이름을 적어주세요"); if(!/원장$/.test(n)) n+=" 원장";
       const all=S.doctors||[]; const ex=all.find(d=>d.name===n||d.name.replace(/\s*원장$/,"")===n.replace(/\s*원장$/,""));
       const res= ex ? await sb.from("doctors").update({active:true}).eq("id",ex.id) : await sb.from("doctors").insert({branch_id:S.branch,name:n,sort:(Math.max(0,...all.map(d=>d.sort||0))+1),active:true});
@@ -1371,11 +1373,11 @@ async function renderEntry(){
         ${num("f_cashc","실제 현금 (금고에서 센 금액)",r.extra?.cash_count)}
         <div class="row calc"><span title="센 현금 − (현금 − Free)">시재 차액 (센 현금 − 받을 현금)</span><output id="o_cashd">–</output></div></div></fieldset>
       <div hidden><input id="x_cash" data-n value="${r.exp_cash?won(r.exp_cash):""}"><input id="x_card" data-n value="${r.exp_card?won(r.exp_card):""}"><input id="x_free" data-n value="${r.exp_free?won(r.exp_free):""}"><input id="i_cash" data-n value="${r.inc_cash?won(r.inc_cash):""}"><input id="i_card" data-n value="${r.inc_card?won(r.inc_card):""}"><input id="i_acct" data-n value="${r.inc_account?won(r.inc_account):""}"></div>
-      <fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
+      ${FX.docTotal?`<fieldset><legend>환자 수</legend><p class="fs-note">그날 전체 신환·재진 수</p><div class="rows">${docRows.map((d,i)=>`<div data-doc="${i}" data-name="${esc(d.name)}" data-id="" style="display:contents"><div class="row"><label for="dn${i}">신환</label><input id="dn${i}" inputmode="numeric" data-n value="${dv(d.name,"new")}"></div><div class="row"><label for="dr${i}">재진</label><input id="dr${i}" inputmode="numeric" data-n value="${dv(d.name,"re")}"></div><input id="da${i}" type="hidden" data-n value=""></div>`).join("")}<div class="row calc"><span>합계</span><output id="o_dt">–</output></div><output id="o_dn" hidden></output><output id="o_dr" hidden></output><output id="o_da" hidden></output></div></fieldset>`:`<fieldset><legend>원장별 환자 수 · 진료비</legend><p class="fs-note">진료비는 원장별 EMR 진료비 합계 (선택) · 원장별 매출로 집계됩니다</p><div class="gridD gridDh"><span>원장</span><span>신환</span><span>재진</span><span>진료비(원)</span></div><div class="rows" style="margin-top:6px">
         ${docRows.map((d,i)=>`<div class="gridD" data-doc="${i}" data-name="${esc(d.name)}" data-id="${esc(d.doctor_id??"")}"><label>${esc(d.name)}</label><input id="dn${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 신환" value="${dv(d.name,"new")}"><input id="dr${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 재진" value="${dv(d.name,"re")}"><input id="da${i}" inputmode="numeric" data-n aria-label="${esc(d.name)} 진료비" value="${dv(d.name,"amt")}"></div>`).join("")||`<p class="meta">등록된 원장이 없습니다. 계정·원장 관리에서 추가하세요.</p>`}
         <div class="gridD row calc" style="display:grid"><span>합계</span><output id="o_dn" class="num" style="text-align:right">–</output><output id="o_dr" class="num" style="text-align:right">–</output><output id="o_da" class="num" style="text-align:right">–</output></div>
         <div class="row calc"><span>차액 (원장별 진료비 합계 − 총진료비)</span><output id="o_dad">–</output></div></div>
-        ${lv<=3?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>
+        ${lv<=3?`<div class="docadd"><input id="nd_name" placeholder="예: 정종은 원장" aria-label="추가할 원장 이름"><button type="button" class="btn ghost sm" id="nd_add">+ 원장 추가</button><span class="meta">추가하면 마감일지·예약 주치의에 바로 나옵니다 · 빼기는 계정·원장 관리</span></div>`:""}</fieldset>`}
       <fieldset><legend>예약</legend><p class="fs-note">예약 명단은 예약용 구글시트에 두고, 여기에는 건수만 적습니다.</p>
         <div class="grid3h"><span>구분</span><span>예약</span><span>변경</span><span>취소</span></div><div class="rows" style="margin-top:6px">
         ${RESV_ITEMS.map((it,i)=>`<div class="grid3"><label>${it}</label>${["resv","change","cancel"].map(k=>`<input id="rv_${i}_${k}" inputmode="numeric" data-n aria-label="${it} ${k}" value="${ri[it]?.[k]?won(ri[it][k]):""}">`).join("")}</div>`).join("")}
@@ -1384,7 +1386,7 @@ async function renderEntry(){
         <div hidden>${WHY.map((w,i)=>`<input id="rw_${i}" data-n value="${rv.why?.[w]?won(rv.why[w]):""}">`).join("")}</div>
         <div class="row calc"><span>예약 이행률</span><output id="o_rate">–</output></div></div></fieldset>
       <fieldset><legend>도수 · 충격파</legend><p class="fs-note" id="ptnote">전광판의 도수·충격파 건수</p><div class="rows">${ptKeysEntry().map((k,i)=>num("pt"+i,k==="도수상담"?"도수 상담":k,r.pt?.[k])).join("")}</div></fieldset>
-      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt??r.extra?.emg)}</div></fieldset>`:""}
+      ${CARM_ENTRY.includes(S.branch)?`<fieldset><legend>C-arm · 근전도</legend><p class="fs-note" id="cxnote">그날 건수</p><div class="rows">${CARM_KEYS.map((k,i)=>num("cx"+i,k,r.extra?.carm?.[k])).join("")}${num("cxe","근전도",r.extra?.emg_cnt??r.extra?.emg)}${FX.eeg?num("cxb","뇌파",r.extra?.eeg_cnt):""}</div></fieldset>`:""}
       ${AMPM_BR.includes(S.branch)?`<fieldset><legend>오전 중간 보고</legend><p class="fs-note">오전 진료가 끝나면 적어 주세요 · 오전·오후 보고에 자동 반영 (오후 = 하루 마감 − 오전)</p><div class="rows">${AMPM_F.map(([k,l])=>num("am_"+k,l,r.extra?.ampm?.[k])).join("")}</div></fieldset>`:""}
       <fieldset><legend>초진 내원경로 (문진표)</legend><p class="fs-note"><button type="button" class="linkbtn" id="gopaths">📊 내원경로 통계 보기</button></p><div class="rows">${PATHS.map((p,i)=>num("fp"+i,p,r.paths?.[p])).join("")}</div></fieldset>
       <fieldset><legend>특이사항 · 인수인계</legend><div class="field" style="margin:0"><label for="f_note" class="meta">다음 날 대시보드·마이페이지 맨 위에 "전날 인수인계"로 보입니다 · 시재 차이 사유 등 (환자 개인정보는 적지 마세요)</label><textarea id="f_note" rows="5">${esc(r.note||"")}</textarea></div></fieldset>
@@ -1408,7 +1410,7 @@ async function renderEntry(){
       exp_cash:v("x_cash"), exp_card:v("x_card"), exp_free:v("x_free"), inc_cash:v("i_cash"), inc_card:v("i_card"), inc_account:v("i_acct"),
       pay_free:v("f_free"), pt, resv:{...rv,items,real:v("rv_real"),visit:v("rv_visit"),why}, doctors, paths, note:$("f_note").value.trim()||null };
     o.extra={...(r.extra||{})}; if(AMPM_BR.includes(S.branch)){ const am={}; AMPM_F.forEach(([k])=>{ const el=$("am_"+k); const t=(el?.value||"").replace(/[^\d]/g,""); if(t!=="") am[k]=+t; }); if(Object.keys(am).length) o.extra.ampm=am; else delete o.extra.ampm; }
-    if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else { delete o.extra.emg_cnt; delete o.extra.emg; } }
+    if(CARM_ENTRY.includes(S.branch)){ o.extra.carm=Object.fromEntries(CARM_KEYS.map((k,i)=>[k,v("cx"+i)]).filter(x=>x[1])); if(v("cxe")) o.extra.emg_cnt=v("cxe"); else { delete o.extra.emg_cnt; delete o.extra.emg; } if(FX.eeg){ if(v("cxb")) o.extra.eeg_cnt=v("cxb"); else delete o.extra.eeg_cnt; } }
     if($("f_cashc")){ if($("f_cashc").value.trim()) o.extra.cash_count=v("f_cashc"); else delete o.extra.cash_count; }
     return o; };
   const setAsv=(h)=>{ const x=$("asv"); if(x) x.innerHTML=h; };
@@ -1445,7 +1447,7 @@ async function renderEntry(){
     const sc=$("o_sum"); if(t&&(o||ip)){ const ok=o+ip===t; sc.textContent=ok?"일치":"차이 "+won(o+ip-t)+"원"; sc.style.color=ok?"var(--good)":"var(--warn)"; } else { sc.textContent="–"; sc.style.color=""; }
     $("o_pay").textContent=won(v("f_card")+v("f_cash")+v("f_acct"))+"원";
     { const cc=$("f_cashc")?.value.trim(); const e=$("o_cashd"); if(e){ if(cc){ const d=v("f_cashc")-(v("f_cash")-v("f_free")); e.textContent=d===0?"0원 · 일치":`${d>0?"+":""}${won(d)}원`; e.style.color=d===0?"var(--good)":"var(--warn)"; e.title=`받을 현금 ${won(v("f_cash")-v("f_free"))}원 (현금 ${won(v("f_cash"))} − Free ${won(v("f_free"))})`; } else { e.textContent="–"; e.style.color=""; } } }
-    $("o_dn").textContent=won(docRows.reduce((a,_,i)=>a+v("dn"+i),0)); $("o_dr").textContent=won(docRows.reduce((a,_,i)=>a+v("dr"+i),0));
+    if($("o_dt")) $("o_dt").textContent=won(docRows.reduce((a,_,i)=>a+v("dn"+i)+v("dr"+i),0)); $("o_dn").textContent=won(docRows.reduce((a,_,i)=>a+v("dn"+i),0)); $("o_dr").textContent=won(docRows.reduce((a,_,i)=>a+v("dr"+i),0));
     { const da=docRows.reduce((a,_,i)=>a+v("da"+i),0), o=$("o_da"); o.textContent=da?won(da):"–"; o.title=da&&t?(da===t?"총진료비와 일치":`총진료비와 ${won(da-t)}원 차이`):""; o.style.color=da&&t&&da!==t?"var(--warn)":""; const dd=$("o_dad"); if(dd){ dd.textContent=da&&t?(da===t?"0원 · 일치":`${da-t>0?"+":""}${won(da-t)}원`):"–"; dd.style.color=da&&t?(da===t?"var(--good)":"var(--warn)"):""; } }
     $("o_rate").textContent=pct(v("rv_visit"),v("rv_real"));
     const c=$("chk"); const canc=RESV_ITEMS.reduce((a,_,i)=>a+v(`rv_${i}_cancel`),0), why=WHY.reduce((a,_,i)=>a+v("rw_"+i),0);
@@ -1658,7 +1660,7 @@ async function renderSched(kind,keep){
   const byItem=items.map(i=>{ const L=appts.filter(a=>a.item===i.name); const ok=L.filter(a=>a.status==="예약"||a.status==="완료");
     return {name:i.name, r:L.filter(a=>a.status==="예약").length, d:L.filter(a=>a.status==="완료").length, x:L.filter(a=>a.status==="취소"||a.status==="노쇼").length, c:L.filter(a=>a.status==="변경").length, amt:ok.length*(i.price||0)}; }).filter(x=>x.r+x.d+x.x+x.c);
   const other=appts.filter(a=>!itemBy[a.item]); if(other.length) byItem.push({name:"기타",r:other.filter(a=>a.status==="예약").length,d:other.filter(a=>a.status==="완료").length,x:other.filter(a=>a.status==="취소"||a.status==="노쇼").length,c:other.filter(a=>a.status==="변경").length,amt:0});
-  const byStaff={}; live.forEach(a=>{ const k=a.staff||"(미지정)"; (byStaff[k] ||= {n:0,nw:0,amt:0}); byStaff[k].n++; if(a.is_new) byStaff[k].nw++; byStaff[k].amt+=itemBy[a.item]?.price||0; });
+  const byStaff={}; live.forEach(a=>{ const k=staffBase(a.staff)||"(미지정)"; (byStaff[k] ||= {n:0,nw:0,amt:0}); byStaff[k].n++; if(a.is_new) byStaff[k].nw++; byStaff[k].amt+=itemBy[a.item]?.price||0; });
   const totAmt=byItem.reduce((s,x)=>s+x.amt,0);
   const noteRows = st.mode==="week" ? notes.filter(n=>n.note).map(n=>`<li><b>${+n.note_date.slice(5,7)}/${+n.note_date.slice(8)}</b> ${esc(n.note)}</li>`).join("") : "";
   const dayNote = notes.find(n=>n.note_date===st.date)?.note||"";
@@ -1695,11 +1697,12 @@ async function renderSched(kind,keep){
         <button class="btn ghost sm" id="srf" title="다른 사람이 넣거나 바꾼 예약을 바로 불러옵니다 (화면은 그대로 유지, 30초마다 자동 확인도 함)">↻ 새로고침</button>
         ${canEdit?`<button class="btn sm" id="sa">+ 예약 추가</button>`:""}
       </div></div>
-    ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
+    ${st.mode!=="day"&&st.mode!=="week"?"":st.mode==="day"?`<section class="panel sc-note"><label for="dn" class="meta">당직 · 휴무 · 전달사항 (그날 메모)</label><div style="display:flex;gap:8px;margin-top:6px"><input id="dn" value="${esc(dayNote)}" ${canEdit?"":"readonly"} placeholder="예: 야간 당직 김○○ (오전 휴무), 점심 당직 이○○" style="flex:1;height:34px;padding:0 10px">${canEdit?`<button class="btn ghost sm" id="dns">메모 저장</button>`:""}</div></section>`:(noteRows&&!FX.wkNoteBottom?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:"")}
     ${grid&&kind==="pt"&&items.length?`<div class="iclg">${items.filter(i=>i.active!==false).map(i=>`<span style="--ic:${icOf(i.name)}"><i></i>${esc(i.name)}</span>`).join("")}<span>· 완료는 ✓ 표시 · 취소·노쇼·변경은 회색</span></div>`:""}
     ${!grid?periodHtml:!cols.length?`<div class="empty">설정된 방이 없습니다. 아래 방·치료항목 설정에서 방을 추가하세요.</div>`:
-    `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px ${cols.map(c=>`minmax(${Math.max(st.mode==="week"?(lanes.length>1?140:160):150,(c._n||1)*(st.mode==="week"?96:110))}px,1fr)`).join(" ")}">
+    `<div class="sc-wrap"><div class="sc-grid" style="grid-template-columns:52px ${cols.map(c=>{ const wide=FX.wideShock&&st.mode!=="week"&&/충격/.test((c.lane?.grp||"")+(c.lane?.name||""))&&!/pain/i.test(c.lane?.name||""); const w=Math.max(st.mode==="week"?(lanes.length>1?140:160):150,(c._n||1)*(st.mode==="week"?96:110)); return wide?`minmax(${Math.round(w*1.9)}px,2.2fr)`:`minmax(${w}px,1fr)`; }).join(" ")}">
       <div class="sc-col sc-time"><div class="sc-h"></div><div class="sc-body" style="height:${H}px">${timeCol}</div></div>${colHtml}</div></div>${canEdit?`<p class="meta" style="margin:-10px 0 0">예약 카드를 마우스로 끌어 다른 시간·방에 놓으면 옮길 수 있습니다 (확인 창이 뜨고, 위 [되돌리기]로 취소) · <b>복사</b>: 카드 오른쪽 클릭 → 복사 (또는 카드 위에서 Ctrl+C) → 빈 칸 오른쪽 클릭 → 붙여넣기 (또는 Ctrl+V) · Ctrl 누르고 끌면 복사 · 카드를 <b>오른쪽 클릭</b>하면 상태(완료·취소·노쇼)를 바로 바꿉니다</p>`:""}`}
+    ${FX.wkNoteBottom&&st.mode==="week"&&noteRows?`<section class="panel"><h3>이번 주 메모</h3><ul class="sc-notes">${noteRows}</ul></section>`:""}
     ${kind==="emg"&&grid?contactPanel(appts,st.mode==="week"?[...Array(7)].map((_,i)=>addDays(start,i)):[st.date],canEdit):""}
     ${grid&&kind==="emg"?`<div class="iclg"><span style="--ic:#e0609a"><i></i>간호에서 넣은 예약 (확인 전)</span><span style="--ic:#d4a514"><i></i>원무에서 넣은 예약 (확인 전)</span><span>· 임상병리에서 열어 저장하면 1차(파랑)·2차(초록)로 바뀝니다</span></div>`:""}
     ${blocksPanel(kind,dbBlocks,lanes,canEdit,cfg)}
@@ -1708,8 +1711,8 @@ async function renderSched(kind,keep){
       <section class="panel"><h3>치료별 집계 <span>${periodName} · 예상 매출은 예약+완료 × 단가</span></h3>${byItem.length?`<div class="tbl-box"><table><thead><tr><th>치료</th><th>예약</th><th>완료</th><th>취소·노쇼</th><th>변경</th><th>예상 매출</th></tr></thead><tbody>
         ${byItem.map(x=>`<tr><td>${esc(x.name)}</td><td class="num">${x.r}</td><td class="num">${x.d}</td><td class="num">${x.x}</td><td class="num">${x.c||0}</td><td class="num">${won(x.amt)}원</td></tr>`).join("")}
         <tr class="cur"><td>합계</td><td class="num">${byItem.reduce((s,x)=>s+x.r,0)}</td><td class="num">${byItem.reduce((s,x)=>s+x.d,0)}</td><td class="num">${byItem.reduce((s,x)=>s+x.x,0)}</td><td class="num">${byItem.reduce((s,x)=>s+(x.c||0),0)}</td><td class="num">${won(totAmt)}원</td></tr></tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>
-      <section class="panel"><h3>담당자별 <span>취소·노쇼 제외</span></h3>${Object.keys(byStaff).length?`<div class="tbl-box"><table><thead><tr><th>담당</th><th>건수</th><th>신환</th><th>예상 매출</th></tr></thead><tbody>
-        ${Object.entries(byStaff).sort((a,b)=>b[1].n-a[1].n).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.nw}</td><td class="num">${won(v.amt)}원</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>
+      <section class="panel"><h3>담당자별 <span>취소·노쇼 제외 · 이름별 합계 (#회차는 합쳐서)</span></h3>${Object.keys(byStaff).length?`<div class="tbl-box"><table><thead><tr><th>담당</th><th>건수</th><th>신환</th><th>예상 매출</th></tr></thead><tbody>
+        ${Object.entries(mergeStaff(byStaff)).sort((a,b)=>b[1].n-a[1].n).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v.n}</td><td class="num">${v.nw}</td><td class="num">${won(v.amt)}원</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">예약이 없습니다.</p>`}</section>
     </div>
     ${S.me.level<=3?`<details class="panel"><summary><b>방·치료항목 설정</b> <span class="meta">방 이름, 치료별 소요시간·단가</span></summary><div class="grid2" style="margin-top:12px">
       <div><h3 style="font-size:14px">방(열)</h3><div class="tbl-box"><table><thead><tr><th>이름</th><th>구분</th><th>순서</th><th></th></tr></thead><tbody>
@@ -1916,7 +1919,8 @@ async function renderSchedStats(kind){
   const W=Object.values(weeks).sort((a,b)=>a.mon-b.mon);
   const {data:actS}=await sb.from("staff").select("name").eq("branch_id",S.branch).eq("active",true); const activeSet=new Set((actS||[]).map(x=>x.name));
   const isRet=k=>k!=="(미지정)"&&!activeSet.has(k); S.statShowRet ??= true;
-  const staffs={}; live.forEach(a=>{ (staffs[a.staff||"(미지정)"] ||= []).push(a); });
+  const staffs={}; live.forEach(a=>{ (staffs[staffBase(a.staff)||"(미지정)"] ||= []).push(a); });
+  { const K=Object.keys(staffs); K.forEach(k=>{ if(k.length!==2) return; const full=K.find(x=>x!==k&&x.length>=3&&x.endsWith(k)); if(full){ staffs[full].push(...staffs[k]); delete staffs[k]; } }); }
   const nRet=Object.keys(staffs).filter(isRet).length;
   const docs={}; if(kind==="emg"){ live.forEach(a=>{ if(a.doctor) (docs[a.doctor] ||= {order:0,needle:0}).order++; if(a.needle_doctor) (docs[a.needle_doctor] ||= {order:0,needle:0}).needle++; }); }
   const pctS=(a,b)=>b?(a/b*100).toFixed(1)+"%":"–";
@@ -2735,7 +2739,7 @@ async function renderOvertime(){
   const depts=[...new Set(rows.map(r=>r.dept||"기타"))];
   const shown=rows.filter(r=>st.dept==="전체"||(r.dept||"기타")===st.dept);
   const by={}; shown.forEach(r=>{ const k=r.staff_name; const o=by[k] ||= {name:k,dept:r.dept,tot:0,n:0,pend:0}; o[r.kind]=(o[r.kind]||0)+r.minutes; o.tot+=r.minutes; o.n++; if(!r.approved) o.pend++; });
-  const people=Object.values(by).sort((a,b)=>(a.dept||"").localeCompare(b.dept||"")||b.tot-a.tot);
+  const RET=new Set(await retiredList()); let people=Object.values(by).sort((a,b)=>(a.dept||"").localeCompare(b.dept||"")||b.tot-a.tot); const nRet=people.filter(p=>RET.has(p.name)).length; if(!st.showRet) people=people.filter(p=>!RET.has(p.name));
   const kindTot=k=>shown.filter(r=>r.kind===k).reduce((s,r)=>s+r.minutes,0);
   const canWrite=true; const canApprove=lv<=3;
   const oq=(st.oq||"").trim(); let found=null, fsum=null;
@@ -2745,7 +2749,7 @@ async function renderOvertime(){
     fsum={}; found.forEach(r=>{ const o=fsum[r.staff_name] ||= {n:0,m:0,days:new Set()}; o.n++; o.m+=r.minutes; o.days.add(r.work_date); }); }
   const list=found?found:st.who?shown.filter(r=>r.staff_name===st.who):shown.slice().reverse();
   const dOrd=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
-  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
+  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)&&!RET.has(s.name)).sort((a,b)=>dOrd(a.dept)-dOrd(b.dept)||a.sort-b.sort);
   const otDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = otDepts.includes(st.fdept)?st.fdept:(otDepts.includes(S.me.dept)?S.me.dept:otDepts[0]);
   const otOpts=()=>myStaff.filter(s=>otDepts.length<=1||s.dept===st.fdept).map(s=>`<option value="${s.id}" data-n="${esc(s.name)}" data-d="${esc(s.dept)}">${esc(s.name)}${s.title?" "+esc(s.title):""}</option>`).join("");
   main.innerHTML=`<div class="wrap">
@@ -2757,8 +2761,8 @@ async function renderOvertime(){
       ${OT_KINDS.map(k=>`<div class="kpi"><span class="k">${k}</span><span class="v num" style="font-size:18px">${hm(kindTot(k))}</span><span class="d">${shown.filter(r=>r.kind===k).length}건</span></div>`).join("")}
     </section>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-od="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 합계 <span>이름을 누르면 아래에 그 사람 기록만 보입니다</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th>${OT_KINDS.map(k=>`<th>${k}</th>`).join("")}<th>합계</th><th>건수</th><th>확인 전</th></tr></thead><tbody>
-      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept||"")}</td><td><button class="linkbtn" data-ow="${esc(p.name)}">${esc(p.name)}</button></td>${OT_KINDS.map(k=>`<td class="num">${p[k]?hm(p[k]):""}</td>`).join("")}<td class="num"><b>${hm(p.tot)}</b></td><td class="num">${p.n}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="99" class="meta">이 달 기록이 없습니다.</td></tr>`}
+    <section class="panel"><h3>직원별 합계 <span>이름을 누르면 아래에 그 사람 기록만 보입니다${retToggle(st,nRet,lv)}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th>${OT_KINDS.map(k=>`<th>${k}</th>`).join("")}<th>합계</th><th>건수</th><th>확인 전</th></tr></thead><tbody>
+      ${people.map(p=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept||"")}</td><td><button class="linkbtn" data-ow="${esc(p.name)}">${esc(p.name)}</button>${RET.has(p.name)?` <span class="pill off">퇴사</span>`:""}${retUi(RET,p.name,lv)}</td>${OT_KINDS.map(k=>`<td class="num">${p[k]?hm(p[k]):""}</td>`).join("")}<td class="num"><b>${hm(p.tot)}</b></td><td class="num">${p.n}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="99" class="meta">이 달 기록이 없습니다.</td></tr>`}
     </tbody></table></div></section>
     <div class="grid2">
       <section class="panel"><h3>기록 추가</h3>
@@ -2789,6 +2793,7 @@ async function renderOvertime(){
   $("mp").onclick=()=>{ st.month=shiftMonth(st.month,-1); renderOvertime(); };
   $("mn").onclick=()=>{ st.month=shiftMonth(st.month,1); renderOvertime(); };
   document.querySelectorAll("[data-od]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.od; st.who=null; renderOvertime(); });
+  bindRet(st,()=>renderOvertime());
   document.querySelectorAll("[data-ow]").forEach(b=>b.onclick=()=>{ st.who=st.who===b.dataset.ow?null:b.dataset.ow; renderOvertime(); });
   if($("owx")) $("owx").onclick=()=>{ st.who=null; renderOvertime(); };
   const mins=()=>{ const a=toMin($("o_a").value.replace(":","")), b=toMin($("o_b").value.replace(":","")); if(a==null||b==null) return null; return [a, b<=a?b+1440:b]; };
@@ -3348,7 +3353,8 @@ async function renderLeave(){
   const st = S.lvV ||= {year:+kstToday().slice(0,4), who:null, dept:"전체"}; const lv=S.me.level;
   const [gr,ur,sr]=await Promise.all([ sb.from("leave_grants").select("*").eq("branch_id",S.branch).eq("year",st.year),
     sb.from("leave_uses").select("*").eq("branch_id",S.branch).gte("use_date",`${st.year}-01-01`).lte("use_date",`${st.year}-12-31`).order("use_date"),
-    sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort") ]);
+    sb.from("staff").select("id,name,dept,sort,active,lead").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort") ]);
+  let profL=[]; if(lv<=3){ const {data}=await sb.from("profiles").select("name,level,active").eq("branch_id",S.branch); profL=(data||[]).filter(x=>x.active!==false); }
   if(gr.error||ur.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(gr.error||ur.error))}</div></div>`; return; }
   const own=n=>seeAll()||n===S.me.name; /* 4등급 직원은 본인 연차만 */
   const grants=(gr.data||[]).filter(g=>own(g.staff_name)), uses=(ur.data||[]).filter(u=>own(u.staff_name)), staff=sr.data||[];
@@ -3356,19 +3362,24 @@ async function renderLeave(){
   const asOf=kstToday();
   let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
-    .sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return (a.g?.sort??1e6)-(b.g?.sort??1e6)||o(a.dept)-o(b.dept)||a.name.localeCompare(b.name); });
+    .sort((a,b)=>{ /* 부서 순 → 등급 높은 순 → 입사일 빠른 순 (새 직원도 자동으로 제자리) */
+      const o=d=>{ const i=LEAVE_DEPT_ORD.indexOf(d); return i<0?50+Math.max(0,STAFF_DEPTS.indexOf(d)):i; };
+      const rk=p=>{ const nm=p.name.replace(/\s+/g,""); const pr=profL.find(x=>String(x.name||"").replace(/\s+/g,"")===nm); if(pr) return +pr.level===5?1.5:+pr.level; return staff.find(x=>x.name===p.name)?.lead?3.5:9; };
+      const hd=p=>p.g?.hire_date||"9999-12-31";
+      return o(a.dept)-o(b.dept)||rk(a)-rk(b)||hd(a).localeCompare(hd(b))||a.name.localeCompare(b.name,"ko"); });
+  const RET=new Set(await retiredList()); const nRet=people.filter(p=>RET.has(p.name)).length; if(!st.showRet) people=people.filter(p=>!RET.has(p.name));
   const allPeople=people.slice(); people.splice(0,people.length,...allPeople.filter(p=>st.dept==="전체"||p.dept===st.dept));
-  const depts=[...new Set(allPeople.map(p=>p.dept))].filter(Boolean).sort((a,b)=>{ const o=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; }; return o(a)-o(b); });
+  const depts=[...new Set(allPeople.map(p=>p.dept))].filter(Boolean).sort((a,b)=>{ const o=d=>{ const i=LEAVE_DEPT_ORD.indexOf(d); return i<0?50+Math.max(0,STAFF_DEPTS.indexOf(d)):i; }; return o(a)-o(b); });
   const lq=(st.lq||"").trim(); const list=lq?uses.filter(u=>u.staff_name.includes(lq)).slice().reverse():st.who?uses.filter(u=>u.staff_name===st.who).slice().reverse():uses.slice(-40).reverse();
   const dOrder=d=>{ const i=STAFF_DEPTS.indexOf(d); return i<0?99:i; };
-  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
+  const myStaff = (seeAll() ? staff : staff.filter(s=>s.name===S.me.name)).filter(s=>!PLACEHOLDER.test(s.name)&&!RET.has(s.name)).sort((a,b)=>dOrder(a.dept)-dOrder(b.dept)||a.sort-b.sort);
   const myDepts=[...new Set(myStaff.map(s=>s.dept))]; st.fdept = myDepts.includes(st.fdept) ? st.fdept : (myDepts.includes(S.me.dept)?S.me.dept:myDepts[0]);
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>연차관리</h2><div class="meta">${st.year}년 · 잔여 = 발생 − 사용 · 병가는 무급이라 연차에서 빠집니다 · 직원이 신청하면 부서장이 확인</div></div>
       <div style="display:flex;gap:8px;align-items:center"><button class="btn ghost sm" id="lcsv">CSV 받기</button><div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${st.year}</b><button class="btn ghost sm" id="yn" aria-label="다음 해">▶</button></div></div></div>
     <div class="chips">${["전체",...depts].map(d=>`<button class="fchip" data-ld="${esc(d)}" aria-pressed="${st.dept===d}">${esc(d)}</button>`).join("")}</div>
-    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}</span></h3><div class="tbl-box"><table><thead><tr>${lv<=3?`<th style="width:56px">순서</th>`:""}<th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="무급 · 연차 사용·잔여에 들어가지 않음">병가 <small>(무급·연차 제외)</small></th><th>확인 전</th></tr></thead><tbody>
-      ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}">${lv<=3?`<td class="lmv"><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="-1" aria-label="${esc(p.name)} 위로" ${ix===0?"disabled":""}>▲</button><button class="nmbtn" data-lmv="${esc(p.name)}" data-dir="1" aria-label="${esc(p.name)} 아래로" ${ix===people.length-1?"disabled":""}>▼</button></td>`:""}<td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button></td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
+    <section class="panel"><h3>직원별 연차 <span>입사일이 있으면 오늘까지 만근한 달 수로 자동 계산 · 1년 되는 날 15일 (2년마다 +1, 최대 25일)${lv<=3?" · 입사일이 없는 직원은 발생 일수를 직접 적습니다":""}${retToggle(st,nRet,lv)}</span></h3><div class="tbl-box"><table><thead><tr><th>부서</th><th>이름</th><th>입사일</th><th>발생</th><th>계산 근거</th><th>사용</th><th>잔여</th><th title="무급 · 연차 사용·잔여에 들어가지 않음">병가 <small>(무급·연차 제외)</small></th><th>확인 전</th></tr></thead><tbody>
+      ${people.map((p,ix)=>`<tr class="${st.who===p.name?"cur":""}"><td>${esc(p.dept)}</td><td><button class="linkbtn" data-lw="${esc(p.name)}">${esc(p.name)}</button>${RET.has(p.name)?` <span class="pill off">퇴사</span>`:""}${retUi(RET,p.name,lv)}</td><td class="num">${lv<=3?`<input type="date" data-lh="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${esc(p.g?.hire_date||"")}" style="height:28px;padding:0 4px">`:(p.g?.hire_date?esc(p.g.hire_date):"")}</td>
         <td class="num">${p.L?`<b>${p.grant}</b><small class="meta"> 자동</small>`:lv<=3?`<input data-lg="${esc(p.name)}" data-dept="${esc(p.dept)}" value="${p.grant}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right">`:p.grant}</td>
         <td class="lwhy">${p.L?`${esc(p.L.why)}${p.L.nextTxt?` <span class="meta">· ${esc(p.L.nextTxt)}</span>`:""}`:`<span class="meta">입사일을 넣으면 자동 계산</span>`}</td><td class="num">${p.used}</td><td class="num"><b style="color:${p.left<0?"var(--bad)":p.left<=1?"var(--warn)":"inherit"}">${p.left}</b></td><td class="num">${p.sick||""}</td><td class="num">${p.pend?`<span class="pill wait">${p.pend}</span>`:""}</td></tr>`).join("")||`<tr><td colspan="10" class="meta">자료가 없습니다.</td></tr>`}
     </tbody></table></div>
@@ -3388,6 +3399,7 @@ async function renderLeave(){
       </tbody></table></div></section></div></div>`;
   $("yp").onclick=()=>{ st.year--; renderLeave(); }; $("yn").onclick=()=>{ st.year++; renderLeave(); };
   document.querySelectorAll("[data-ld]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.ld; renderLeave(); });
+  bindRet(st,()=>renderLeave());
   document.querySelectorAll("[data-lw]").forEach(b=>b.onclick=()=>{ st.who=st.who===b.dataset.lw?null:b.dataset.lw; renderLeave(); });
   if($("lwx")) $("lwx").onclick=()=>{ st.who=null; renderLeave(); };
   $("l_k").onchange=()=>{ $("l_n").value=LEAVE_KINDS[$("l_k").value]; };
@@ -3588,6 +3600,9 @@ async function renderOrg(){
       renderOrg(); }; });
 }
 
+// 담당 칸 "최다해 #3 (1/2)" → "최다해" (회차·메모 떼고 이름만) · 줄임 이름("다해")은 같은 끝 이름으로 합침
+function staffBase(v){ return String(v||"").replace(/\(.*?\)/g," ").split("#")[0].replace(/[0-9]/g,"").replace(/\s+/g," ").trim(); }
+function mergeStaff(by,mk){ const keys=Object.keys(by); keys.forEach(k=>{ if(k.length!==2) return; const full=keys.find(x=>x!==k&&x.length>=3&&x.endsWith(k)); if(!full) return; const a=by[full], b=by[k]; Object.keys(b).forEach(f=>{ if(typeof b[f]==="number") a[f]=(a[f]||0)+b[f]; }); delete by[k]; }); return by; }
 // 원장별 신환 재방문: visits(날짜·차트번호·원장·초/재진)로 계산
 function revisitStats(V,from,to){ const today=kstToday(); const by={}; const tot={n:0,same:0,s30:0,e30:0,other:0}; const ch={};
   V.forEach(v=>{ (ch[v.chart_no] ||= []).push(v); }); Object.values(ch).forEach(L=>L.sort((a,b)=>a.visit_date.localeCompare(b.visit_date)));
@@ -3648,11 +3663,11 @@ async function renderPerf(){
   else if(st.tab==="pt"||st.tab==="emg"){
     const pr=res.price; const L=res.cur.filter(liveA), PL=res.prev.filter(liveA); const amt=X=>X.reduce((s,a)=>s+(pr[a.item]||0),0);
     const xr=res.cur.length?(res.cur.length-L.length)/res.cur.length:0;
-    const by={}; L.forEach(a=>{ const k=a.staff||"(미지정)"; const o=by[k] ||= {n:0,dosu:0,shock:0,cons:0,other:0,nw:0,amt:0}; o.n++; o.amt+=pr[a.item]||0; if(a.is_new) o.nw++; if(st.tab==="pt"){ if(isDosu(a.item)) o.dosu++; else if(isShock(a.item)) o.shock++; else if(a.item==="도수상담") o.cons++; else o.other++; } });
+    const by={}; L.forEach(a=>{ const k=staffBase(a.staff)||"(미지정)"; const o=by[k] ||= {n:0,dosu:0,shock:0,cons:0,other:0,nw:0,amt:0}; o.n++; o.amt+=pr[a.item]||0; if(a.is_new) o.nw++; if(st.tab==="pt"){ if(isDosu(a.item)) o.dosu++; else if(isShock(a.item)) o.shock++; else if(a.item==="도수상담") o.cons++; else o.other++; } });
     res.cur.filter(a=>!liveA(a)).forEach(a=>{ const k=a.staff||"(미지정)"; (by[k] ||= {n:0,dosu:0,shock:0,cons:0,other:0,nw:0,amt:0}).x=(by[k].x||0)+1; });
     const pby={}; PL.forEach(a=>{ const k=a.staff||"(미지정)"; pby[k]=(pby[k]||0)+1; });
     const items={}; L.forEach(a=>{ const o=items[a.item] ||= {n:0,amt:0}; o.n++; o.amt+=pr[a.item]||0; });
-    const staffs=Object.keys(by).sort((a,b)=>by[b].n-by[a].n);
+    mergeStaff(by); const staffs=Object.keys(by).sort((a,b)=>by[b].n-by[a].n);
     const cnt=X=>X.filter(a=>st.tab==="pt"?isDosu(a.item):true).length;
     const kp = st.tab==="pt"
       ? [{k:"총 치료 건수",v:won(L.length),u:"건",d:cmpPrev(L.length,PL.length),lead:true},{k:"도수",v:won(L.filter(a=>isDosu(a.item)).length),u:"건",d:cmpPrev(L.filter(a=>isDosu(a.item)).length,PL.filter(a=>isDosu(a.item)).length)},{k:"충격파",v:won(L.filter(a=>isShock(a.item)).length),u:"건",d:cmpPrev(L.filter(a=>isShock(a.item)).length,PL.filter(a=>isShock(a.item)).length)},{k:"예상 매출",v:wonMan(amt(L)),u:"",d:cmpPrev(amt(L),amt(PL),wonMan)},{k:"취소·노쇼",v:(xr*100).toFixed(1),u:"%",d:`${res.cur.length-L.length}건 / 전체 ${res.cur.length}건`}]
@@ -4168,6 +4183,14 @@ const ALERT_DEFS=[
   {k:"pace",label:"지금 속도면 월말에 목표의 ○% 미만",th:90,u:"%"},
   {k:"notice",label:"필독 공지를 ○일 넘게 안 읽은 직원이 있음",th:3,u:"일"},
   {k:"pending",label:"연차·연장근무 확인 대기가 ○건 이상 (부서장에게)",th:1,u:"건"}];
+// 퇴사 직원: 연차·연장근무 목록에서 숨김 (기록은 그대로, 2등급 이상은 "퇴사자 보기"로 확인)
+async function retiredList(){ if(!FX.retire) return []; try{ const d=(await loadBranchSettings()).raw; return Array.isArray(d.retired)?d.retired:[]; }catch(e){ return []; } }
+async function setRetired(name,on){ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); const L=new Set(d.retired||[]); on?L.add(name):L.delete(name); d.retired=[...L];
+  const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); if(error){ toast(errMsg(error)); return false; } toast(on?`${name} 님을 퇴사 처리했습니다 (목록에서 숨김 · 기록은 남아 있음)`:`${name} 님을 다시 목록에 보입니다`); return true; }
+function retUi(RET,n,lv){ if(!FX.retire||lv>3) return ""; const on=RET.has(n); return ` <button class="nmbtn retb" data-ret="${esc(n)}" data-on="${on?0:1}" title="${on?"다시 목록에 보이기":"퇴사 처리 (목록에서 숨김, 기록은 남음)"}" style="opacity:.7;font-size:11px;width:auto;padding:0 6px">${on?"복직":"퇴사"}</button>`; }
+function retToggle(st,nRet,lv,re){ if(!FX.retire||lv>2||!nRet) return ""; return ` <button class="linkbtn" id="retshow" style="font-size:12px">${st.showRet?"퇴사자 숨기기":`퇴사자 보기 (${nRet}명)`}</button>`; }
+function bindRet(st,re){ document.querySelectorAll("[data-ret]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const on=b.dataset.on==="1"; if(on&&!confirm(`${b.dataset.ret} 님을 퇴사 처리할까요?\n목록에서만 숨기고 연차·연장근무 기록은 그대로 남습니다.`)) return; if(await setRetired(b.dataset.ret,on)) re(); });
+  if($("retshow")) $("retshow").onclick=()=>{ st.showRet=!st.showRet; re(); }; }
 async function loadBranchSettings(branch=S.branch){
   const {data}=await sb.from("branch_settings").select("data").eq("branch_id",branch).maybeSingle();
   const d=data?.data||{}; const alerts={}; ALERT_DEFS.forEach(a=>{ const s=(d.alerts||{})[a.k]||{}; alerts[a.k]={on:s.on!==false, th:s.th??a.th}; });
@@ -5021,9 +5044,18 @@ async function renderLog(){
   if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
   const nm=id=>(users||[]).find(u=>u.user_id===id)?.name||"-";
   const A={appt_insert:"예약 추가",appt_update:"예약 수정",appt_delete:"예약 삭제",set_perms:"권한 변경",insert:"마감일지 입력",update:"마감일지 수정",create_user:"계정 생성",update_user:"계정 수정",reset_password:"비밀번호 재설정"};
-  main.innerHTML=`<div class="wrap"><div class="page-h"><h2>변경 기록</h2><span class="meta">최근 100건</span></div>
+  let delHtml=""; if(FX.delLog){ const {data:D,error:de}=await sb.from("deleted_rows").select("*").or(`branch_id.eq.${S.branch},branch_id.is.null`).order("at",{ascending:false}).limit(300);
+    const TB={appointments:"스케줄 예약",shifts:"근무 스케줄",staff:"직원",leave_uses:"연차 사용",leave_grants:"연차 발생",overtime:"연장근무",register_rows:"업무 기록부 줄",registers:"업무 기록부",dept_docs:"게시판 글",inv_items:"물품",inv_logs:"재고 기록",reservations:"예약관리",daily_close:"마감일지",carm_counts:"C-arm 카운트",mtx_counts:"수기치료 카운트",org_people:"조직도",doctors:"원장",sched_items:"치료 항목",sched_lanes:"방",sched_blocks:"막은 시간",sched_day_notes:"스케줄 메모",pt_consults:"도수상담",shift_codes:"근무 코드",fin_entries:"수입·지출",visits:"환자별 진료",profiles:"계정"};
+    const sum=r=>{ const o=r.row||{}; const d=o.data&&typeof o.data==="object"?Object.values(o.data).filter(x=>typeof x==="string"||typeof x==="number").slice(0,4).join(" · "):""; return [o.appt_date||o.work_date||o.use_date||o.close_date||o.resv_date||o.row_date||o.log_date||o.cdate||"",o.staff_name||o.name||o.patient_name||o.title||"",o.chart_no||"",o.item||o.value||o.kind||"",d].filter(x=>x!==""&&x!=null).map(String).join(" · ").slice(0,140); };
+    const q=(S.delQ||"").trim(); const L=(D||[]).filter(r=>!q||(TB[r.tbl]||r.tbl).includes(q)||sum(r).includes(q));
+    delHtml=`<section class="panel"><h3>🗑 삭제된 기록 <span>지운 내용도 여기 남습니다 (최근 300건) · 2등급 이상만 보임${S.me.level===1?" · 1등급은 [되살리기] 가능":""}</span></h3>
+      <input id="delq" placeholder="찾기 (예: 근무 스케줄, 이름, 차트번호)" value="${esc(q)}" style="height:32px;padding:0 10px;width:260px;margin-bottom:8px">
+      ${de?`<p class="meta">${esc(errMsg(de))}</p>`:L.length?`<div class="tbl-box" style="max-height:520px"><table><thead><tr><th>지운 시각</th><th>누가</th><th>어디서</th><th>내용</th><th></th></tr></thead><tbody>${L.map(r=>`<tr><td class="num">${esc(new Date(r.at).toLocaleString("ko-KR"))}</td><td>${esc(nm(r.user_id))}</td><td>${esc(TB[r.tbl]||r.tbl)}</td><td>${esc(sum(r))}</td><td>${r.restored_at?`<span class="pill ok">되살림</span>`:S.me.level===1?`<button class="btn ghost sm" data-undel="${r.id}">되살리기</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">삭제된 기록이 없습니다.</p>`}</section>`; }
+  main.innerHTML=`<div class="wrap"><div class="page-h"><h2>변경 기록</h2><span class="meta">최근 100건</span></div>${delHtml}
     ${(logs||[]).length?`<section class="panel"><div class="tbl-box"><table><thead><tr><th>시각</th><th>누가</th><th>무엇을</th><th>대상</th></tr></thead><tbody>
     ${logs.map(l=>`<tr><td class="num">${esc(new Date(l.at).toLocaleString("ko-KR"))}</td><td>${esc(nm(l.user_id))}</td><td>${esc(A[l.action]||l.action)}</td><td class="num">${esc((l.target||"").replace("daily_close:",""))}</td></tr>`).join("")}</tbody></table></div></section>`:`<div class="empty">아직 기록이 없습니다.</div>`}</div>`;
+  if(FX.delLog){ bindSearch("delq",v=>{ S.delQ=v; return renderLog(); });
+    document.querySelectorAll("[data-undel]").forEach(b=>b.onclick=async()=>{ if(!confirm("이 기록을 원래 자리로 되살릴까요?")) return; const {error}=await sb.rpc("restore_deleted",{p_id:+b.dataset.undel}); if(error) return toast(errMsg(error)); toast("되살렸습니다"); renderLog(); }); }
 }
 })();
 </script>
