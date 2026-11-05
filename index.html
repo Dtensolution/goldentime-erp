@@ -86,6 +86,7 @@ nav.side button:disabled{color:var(--muted);cursor:default;opacity:.6}
 nav.side .soon{font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px}
 nav.side .subnav{display:flex;flex-direction:column;gap:1px;margin:0 0 4px 12px;border-left:2px solid var(--line);padding-left:4px}nav.side .subnav button{padding:6px 10px;font-size:13px}
 nav.side button.sep{display:flex;justify-content:space-between;width:100%;border:none;cursor:pointer;text-align:left}nav.side button.sep:hover{filter:brightness(.97)}
+nav.side .sep.dragging{opacity:.4}nav.side .sep.dropb{box-shadow:0 -3px 0 var(--navy)}nav.side .sep.dropa{box-shadow:0 3px 0 var(--navy)}nav.side .navreset{margin-top:14px;font-size:12px;color:var(--muted);background:none;border:none;text-align:left;padding:4px 12px;cursor:pointer}nav.side .navreset:hover{color:var(--ink);text-decoration:underline}
 nav.side .sep{font-size:14px;font-weight:700;letter-spacing:.02em;padding:10px 12px;margin-top:6px;border-radius:8px;background:color-mix(in srgb,var(--c) 12%,var(--surface));color:color-mix(in srgb,var(--c) 68%,var(--ink))}
 nav.side .sep .t{display:flex;align-items:center;gap:8px}nav.side .ico{display:inline-block;width:1.3em;text-align:center;margin-right:6px}nav.side .sep .ico{margin-right:0}nav.side .sep .ar{font-size:10px;opacity:.7}
 nav.side button[data-grp]{border-left:3px solid color-mix(in srgb,var(--c) 45%,transparent);margin-left:12px;width:calc(100% - 12px);border-radius:0 6px 6px 0}
@@ -476,6 +477,7 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 @media (max-width:860px){.doc-shell,.doc-edit{grid-template-columns:1fr}.doc-list{max-height:none}}
 
 .shtab td.sh.sel{outline:2.5px solid var(--navy)!important;outline-offset:-2px;z-index:1}
+.shtab td.sh.rsel{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--navy) 16%,transparent);outline:1px solid color-mix(in srgb,var(--navy) 55%,transparent);outline-offset:-1px}
 .shtab td.sh.over{outline:2.5px dashed var(--accent)!important;outline-offset:-3px}
 .shtab td.sh.dragging{opacity:.45}
 .shtab td.sh input.shq{position:absolute;inset:0;z-index:2;width:100%;min-width:0;height:100%;box-sizing:border-box;border:none;outline:none;background:var(--surface);font:inherit;font-weight:600;text-align:center;padding:0 2px;color:var(--ink)}
@@ -793,12 +795,19 @@ function installHelp(){ const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
 sb.auth.onAuthStateChange((_e, session) => { const u=session?.user||null; if((u&&u.id)!==(S.user&&S.user.id)){ S.user=u; setTimeout(boot,0); } });
 sb.auth.getSession().then(({data})=>{ S.user=data.session?.user||null; boot(); });
 
+// 내 화면 설정 (메뉴 순서 등) — 계정마다 서버에 저장, 이 기기에도 복사해 둠
+async function loadPrefs(){ const k="gt-prefs-"+S.user.id; try{ S.prefs=JSON.parse(localStorage.getItem(k)||"{}")||{}; }catch(e){ S.prefs={}; }
+  try{ const {data,error}=await sb.from("user_prefs").select("data").eq("user_id",S.user.id).maybeSingle(); if(!error&&data?.data){ S.prefs=data.data; try{ localStorage.setItem(k,JSON.stringify(S.prefs)); }catch(e){} } }catch(e){} }
+async function savePrefs(patch){ S.prefs={...(S.prefs||{}),...patch}; Object.keys(patch).forEach(k=>{ if(patch[k]==null) delete S.prefs[k]; });
+  try{ localStorage.setItem("gt-prefs-"+S.user.id,JSON.stringify(S.prefs)); }catch(e){}
+  const {error}=await sb.from("user_prefs").upsert({user_id:S.user.id,data:S.prefs,updated_at:new Date().toISOString()},{onConflict:"user_id"}); if(error) toast("메뉴 순서를 서버에 저장하지 못했습니다 (이 기기에서만 유지): "+errMsg(error)); }
 async function boot(){
   bumpIdle();
   if(!S.user){ S.me=null; return renderLogin(); }
   const {data:me, error} = await sb.from("profiles").select("*").eq("user_id",S.user.id).maybeSingle();
   if(error || !me || !me.active){ return renderNoProfile(error); }
   S.me = me;
+  await loadPrefs();
   const {data:brs} = await sb.from("branches").select("*").order("sort");
   S.branches = (brs||[]).filter(b=>b.active || b.id===me.branch_id);
   if(me.level===1){ const saved=lsGet("gt-branch"); S.branch = (saved==="__hq"||S.branches.find(b=>b.id===saved)) ? saved : null; }
@@ -905,6 +914,8 @@ function render(){
   if(mgmtOk()) grp("경영지원",g=>{ add("docs",{dept:"회의록",label:"주간 회의록",grp:g}); deptTools("경영지원",g); });
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
   grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
+  { const ord=S.prefs?.navOrd||[]; if(ord.length){ const head=[], ch=[]; let cur=null; items.forEach(i=>{ if(i.sep){ cur={k:i.sep,L:[i]}; ch.push(cur); } else if(cur) cur.L.push(i); else head.push(i); });
+      const pos=c=>{ const i=ord.indexOf(c.k); return i<0?1e3+ch.indexOf(c):i; }; ch.sort((a,b)=>pos(a)-pos(b)); items.splice(0,items.length,...head,...ch.flatMap(c=>c.L)); } }
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept,sec:()=>S.secSel};
   const baseV=S.view==="spts"?"spt":S.view==="semgs"?"semg":S.view==="price"?(S.priceKind==="emg"?"semg":"spt"):S.view;
   const isCur=i=>i.id===baseV&&(!i.dept||!stDept[i.id]||stDept[i.id]()===i.dept);
@@ -912,7 +923,7 @@ function render(){
   let navClosed; try{ const raw=localStorage.getItem("gt-navclosed2"); navClosed=new Set(raw?JSON.parse(raw):items.filter(i=>i.sep&&!/공용|공통/.test(i.sep)).map(i=>i.sep)); }catch(_){ navClosed=new Set(); }
   if(lv>=2&&!fullMenu()&&S.menuFor!==S.branch){ S.menuFor=S.branch; loadBranchSettings().then(d=>{ const m=d.raw?.menus||null; if(JSON.stringify(m)!==JSON.stringify(S.menuCfg||null)){ S.menuCfg=m; render(); } }).catch(()=>{}); }
   { const ok=new Set(items.map(i=>i.id)); if(!ok.has(baseV)) S.view="me"; }
-  const curItem=items.find(i=>i.id&&isCur(i)); $("app").innerHTML = topbar()+`<div class="shell"><button type="button" class="navbtn" id="navbtn" aria-controls="sidenav" aria-expanded="false">☰ 메뉴${curItem?` · <b>${esc(curItem.label)}</b>`:""}</button><div class="navback" id="navback"></div><nav class="side" id="sidenav" aria-label="메뉴">${items.map(i=>i.sep?`<button type="button" class="sep" data-navg="${esc(i.sep)}" style="--c:${navSt(i.sep)[1]}" aria-expanded="${!navClosed.has(i.sep)||i.sep===curGrp}"><span class="t"><span class="ico" aria-hidden="true">${navSt(i.sep)[0]}</span>${esc(i.sep)}</span><span class="ar" aria-hidden="true">${navClosed.has(i.sep)&&i.sep!==curGrp?"▸":"▾"}</span></button>`:
+  const curItem=items.find(i=>i.id&&isCur(i)); $("app").innerHTML = topbar()+`<div class="shell"><button type="button" class="navbtn" id="navbtn" aria-controls="sidenav" aria-expanded="false">☰ 메뉴${curItem?` · <b>${esc(curItem.label)}</b>`:""}</button><div class="navback" id="navback"></div><nav class="side" id="sidenav" aria-label="메뉴">${items.map(i=>i.sep?`<button type="button" class="sep" draggable="true" title="끌어서 메뉴 순서를 바꿀 수 있습니다" data-navg="${esc(i.sep)}" style="--c:${navSt(i.sep)[1]}" aria-expanded="${!navClosed.has(i.sep)||i.sep===curGrp}"><span class="t"><span class="ico" aria-hidden="true">${navSt(i.sep)[0]}</span>${esc(i.sep)}</span><span class="ar" aria-hidden="true">${navClosed.has(i.sep)&&i.sep!==curGrp?"▸":"▾"}</span></button>`:
     `<button data-v="${i.id}" ${i.dept?`data-dept="${esc(i.dept)}"`:""} ${i.grp?`data-grp="${esc(i.grp)}" style="--c:${navSt(i.grp)[1]}" ${navClosed.has(i.grp)&&i.grp!==curGrp?"hidden":""}`:""} ${isCur(i)?'aria-current="page"':""}>${!i.grp&&NAV_TOP[i.id]?`<span><span class="ico" aria-hidden="true">${NAV_TOP[i.id]}</span>${esc(i.label)}</span>`:esc(i.label)}</button>`).join("")}</nav><main class="gut" id="main"></main></div>`;
   document.body.classList.remove("navopen"); const setNav=o=>{ document.body.classList.toggle("navopen",o); $("navbtn").setAttribute("aria-expanded",o); }; $("navbtn").onclick=()=>setNav(!document.body.classList.contains("navopen")); $("navback").onclick=()=>setNav(false);
   $("logout").onclick=()=>doLogout(); if($("appInstall")) $("appInstall").onclick=installHelp;
@@ -927,6 +938,17 @@ function render(){
     if(d&&v==="sec"){ S.secSel=d; if(S.regSec){ S.regSec.id=null; S.regSec.q=""; } }
     if(d&&v==="inv"){ const st=S.invV ||= {dept:d,cat:"전체",q:"",count:false,cdate:kstToday(),low:false}; st.dept=d; st.cat="전체"; st.count=false; }
     S.view=v; render(); });
+  // 메뉴 묶음 끌어서 순서 바꾸기 (내 계정에만 적용)
+  { const seps=()=>[...document.querySelectorAll("nav.side [data-navg]")].map(x=>x.dataset.navg); const clr=()=>document.querySelectorAll("nav.side .sep.dropb,nav.side .sep.dropa").forEach(x=>x.classList.remove("dropb","dropa"));
+    document.querySelectorAll("nav.side [data-navg]").forEach(b=>{
+      b.addEventListener("dragstart",e=>{ e.dataTransfer.setData("text/gt-navg",b.dataset.navg); e.dataTransfer.effectAllowed="move"; b.classList.add("dragging"); });
+      b.addEventListener("dragend",()=>{ b.classList.remove("dragging"); clr(); });
+      b.addEventListener("dragover",e=>{ if(!e.dataTransfer.types.includes("text/gt-navg")) return; e.preventDefault(); const r=b.getBoundingClientRect(); clr(); b.classList.add(e.clientY<r.top+r.height/2?"dropb":"dropa"); });
+      b.addEventListener("dragleave",()=>b.classList.remove("dropb","dropa"));
+      b.addEventListener("drop",async e=>{ const src=e.dataTransfer.getData("text/gt-navg"); const after=b.classList.contains("dropa"); clr(); if(!src||src===b.dataset.navg) return; e.preventDefault();
+        const L=seps().filter(x=>x!==src); let i=L.indexOf(b.dataset.navg)+(after?1:0); L.splice(i,0,src); const old=S.prefs?.navOrd||[]; const rest=old.filter(x=>!L.includes(x));
+        await savePrefs({navOrd:[...L,...rest]}); render(); toast("메뉴 순서를 바꿨습니다 · 내 계정에만 적용됩니다"); }); });
+    const nav=$("sidenav"); if(nav&&(S.prefs?.navOrd||[]).length){ nav.insertAdjacentHTML("beforeend",`<button type="button" class="navreset" id="navreset" title="끌어서 바꾼 메뉴 순서를 처음대로 되돌립니다">↺ 메뉴 순서 처음대로</button>`); $("navreset").onclick=async()=>{ await savePrefs({navOrd:null}); render(); }; } }
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
   const v=S.view;
@@ -1775,7 +1797,7 @@ async function renderSched(kind,keep){
 
 function apptDialog(ctx, a, preset){
   const {kind,lanes,items,itemBy,docNames,staffNames,canEdit,cfg}=ctx; const dlg=$("dlg");
-  const v = a || {appt_date:preset.date,start_min:preset.start,lane_id:preset.lane,minutes:kind==="emg"?30:((items.find(i=>i.active)?.minutes)||30),item:(items.find(i=>i.active)?.name)||"",status:"예약"};
+  const v = a || {appt_date:preset.date,start_min:preset.start,lane_id:preset.lane,minutes:kind==="emg"?30:((items.find(i=>i.active)?.minutes)||30),item:kind==="emg"?"-":((items.find(i=>i.active)?.name)||""),status:"예약"};
   const ct=v.contact||{};
   const timeOpts=(lid,cur)=>{ const step=laneStep(kind,lanes.find(l=>l.id===+lid)); const times=[]; for(let m=cfg.from-60;m<=cfg.to;m+=step) times.push(m); if(cur!=null&&!times.includes(cur)){ times.push(cur); times.sort((x,y)=>x-y); } return times.map(m=>`<option value="${m}" ${m===cur?"selected":""}>${hhmm(m)}</option>`).join(""); };
   const ro=canEdit?"":"disabled";
@@ -1784,7 +1806,7 @@ function apptDialog(ctx, a, preset){
       <div class="field"><label for="a_d">날짜</label><input id="a_d" type="date" value="${v.appt_date}" ${ro}></div>
       <div class="field"><label for="a_t">시작</label><select id="a_t" ${ro}>${timeOpts(v.lane_id,v.start_min)}</select></div>
       <div class="field"><label for="a_l">방</label><select id="a_l" ${ro}>${lanes.map(l=>`<option value="${l.id}" ${l.id===v.lane_id?"selected":""}>${esc(l.name)}</option>`).join("")}</select></div>
-      <div class="field"><label for="a_i">치료</label><select id="a_i" ${ro}>${items.filter(i=>i.active||i.name===v.item).map(i=>`<option ${i.name===v.item?"selected":""}>${esc(i.name)}</option>`).join("")}${v.item&&!itemBy[v.item]&&v.item!=="-"?`<option selected>${esc(v.item)}</option>`:""}${kind==="emg"?`<option value="-" ${v.item==="-"?"selected":""}>- (미정)</option>`:""}</select></div>
+      <div class="field"><label for="a_i">치료</label><select id="a_i" ${ro}>${kind==="emg"?`<option value="-" ${v.item==="-"?"selected":""}>- (미정)</option>`:""}${items.filter(i=>i.active||i.name===v.item).map(i=>`<option ${i.name===v.item?"selected":""}>${esc(i.name)}</option>`).join("")}${v.item&&!itemBy[v.item]&&v.item!=="-"?`<option selected>${esc(v.item)}</option>`:""}</select></div>
       <div class="field"><label for="a_c">차트번호</label><input id="a_c" value="${esc(v.chart_no||"")}" inputmode="numeric" ${ro}></div>
       <div class="field"><label for="a_n">환자 이름</label><input id="a_n" value="${esc(v.patient_name||"")}" autocomplete="off" ${ro}></div>
       <div class="field"><label for="a_s">담당자 ${kind==="emg"?"":"(치료사)"}</label><select id="a_s" ${ro}><option value="">-</option>${staffNames.map(n=>`<option ${n===v.staff?"selected":""}>${esc(n)}</option>`).join("")}${v.staff&&!staffNames.includes(v.staff)?`<option value="${esc(v.staff)}" selected>${esc(v.staff)} (퇴사)</option>`:""}</select></div>
@@ -2048,7 +2070,7 @@ async function renderStaff(){
         ${off.length?`<p class="meta" style="margin:8px 0 0">${off.map(x=>`${esc(x.s.name)}${x.h?`(${esc(x.h.value)})`:""}`).join(", ")}</p>`:""}</section>`; }).join("")}</div>`;
   }
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>전직원 근무 스케줄</h2><div class="meta">${title} · ${shown.length}명${anyEdit?" · 칸을 눌러 선택 → 바로 입력·Delete로 삭제 · 끌어다 놓으면 이동(Ctrl 누르면 복사) · 이름을 끌면 순서·부서 이동":" · 보기 전용"}</div></div>
+    <div class="page-h"><div><h2>전직원 근무 스케줄</h2><div class="meta">${title} · ${shown.length}명${anyEdit?" · 칸을 눌러 선택 → 바로 입력·Delete로 삭제 · 여러 칸을 마우스로 끌어 한꺼번에 선택(입력·삭제·Ctrl+C/V) · 선택한 칸을 끌어다 놓으면 이동(Ctrl 누르면 복사) · 이름을 끌면 순서·부서 이동":" · 보기 전용"}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <div class="seg" role="group" aria-label="보기">${[["month","월별"],["week","주별"],["day","일별"]].map(([k,l])=>`<button data-shm="${k}" aria-pressed="${st.mode===k}">${l}</button>`).join("")}</div>
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
@@ -2107,9 +2129,20 @@ async function renderStaff(){
     toast(r.fail?`${r.fail}칸은 저장하지 못했습니다: ${r.msg} — 다시 눌러 주세요`:r.n?`${r.n}칸 저장했습니다 · 새로고침해도 그대로 남아 있습니다`:"저장할 칸이 없습니다 (모두 저장됨)"); };
   setTimeout(()=>{ try{ shStat(); }catch(e){} },0);
   floatScroll(document.querySelector(".sh-wrap"));
-  if(!window.__shUp){ window.__shUp=1; document.addEventListener("mouseup",()=>{ window.__shDrag=false; window.__shStroke=null; }); }
+  if(!window.__shUp){ window.__shUp=1; document.addEventListener("mouseup",()=>{ window.__shDrag=false; window.__shStroke=null; if(window.__shRg){ window.__shRgJust=window.__shRg.moved; window.__shRg=null; setTimeout(()=>{ window.__shRgJust=false; },0); } }); }
   document.querySelectorAll("[data-shc]").forEach(b=>b.onclick=()=>{ st.color=b.dataset.shc; lsSet("gt-shcolor",st.color); renderStaff(); });
   const tdOf=k=>{ const [s,d]=k.split("|"); return document.querySelector(`td.sh[data-s="${s}"][data-d="${d}"]`); };
+  // 여러 칸 선택 (마우스로 끌어서 네모 범위)
+  const rowsEl=()=>[...document.querySelectorAll("table.shtab tbody tr")].filter(r=>r.querySelector("td.sh"));
+  const posOf=td=>td?{r:rowsEl().indexOf(td.parentElement),c:days.indexOf(td.dataset.d)}:null;
+  const tdAt=(R,r,c)=>R[r]&&days[c]?R[r].querySelector(`td.sh[data-d="${days[c]}"]`):null;
+  const rngCells=()=>{ if(!st.rng) return []; const a=posOf(tdOf(st.rng.a)), b=posOf(tdOf(st.rng.b)); if(!a||!b||a.r<0||b.r<0) return []; const R=rowsEl(), out=[];
+    for(let r=Math.min(a.r,b.r);r<=Math.max(a.r,b.r);r++) for(let c=Math.min(a.c,b.c);c<=Math.max(a.c,b.c);c++){ const t=tdAt(R,r,c); if(t) out.push(t); } return out; };
+  const drawRng=()=>{ document.querySelectorAll("td.sh.rsel").forEach(x=>x.classList.remove("rsel")); rngCells().forEach(t=>t.classList.add("rsel")); };
+  const clearRng=()=>{ if(st.rng){ st.rng=null; drawRng(); } };
+  const keyOf=t=>t.dataset.s+"|"+t.dataset.d;
+  const inRng=t=>!!st.rng&&rngCells().includes(t);
+  const fillRng=async v=>{ const g="r"+Date.now(); for(const t of rngCells()){ if(t.dataset.ro) continue; const k=keyOf(t); if((map[k]?.value||"")!==(v||"")) await setVal(+t.dataset.s,t.dataset.d,v||null,v?map[k]?.note||null:null,{group:g,nolast:true}); } drawRng(); };
   const drawCell=(td,v,note)=>{ drawCell0(td,v,note); td.classList.toggle("dirty",!!shQueue()[td.dataset.s+"|"+td.dataset.d]); };
   const drawCell0=(td,v,note)=>{ const sid=+td.dataset.s, s=staff.find(x=>x.id===sid), d=td.dataset.d;
     if(v==null){ td.className="sh e"+(d===today?" td":"")+(st.sel===sid+"|"+d?" sel":"")+(st.last===sid+"|"+d?" last":""); td.removeAttribute("style"); td.removeAttribute("draggable"); td.innerHTML=""; return; }
@@ -2141,7 +2174,9 @@ async function renderStaff(){
   const quickEdit=(td,initial)=>{ if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다");
     const sid=+td.dataset.s, d=td.dataset.d, key=sid+"|"+d; const inp=document.createElement("input"); inp.className="shq"; inp.value=initial??(map[key]?.value||""); inp.setAttribute("list","shcodes"); inp.setAttribute("aria-label","근무 입력");
     td.appendChild(inp); inp.focus(); if(initial==null) inp.select();
-    let done=false; const fin=async(save,viaKey)=>{ if(done) return; done=true; const v=inp.value.trim(); if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); if(viaKey) focusProxy(); };
+    let done=false; const fin=async(save,viaKey)=>{ if(done) return; done=true; const v=inp.value.trim();
+      if(save&&inRng(td)){ await fillRng(v); if(inp.isConnected) drawCell(td,map[key]?.value??null,map[key]?.note); drawRng(); }
+      else if(save&&v!==(map[key]?.value||"")) await setVal(sid,d,v||null,map[key]?.note||null); else drawCell(td,map[key]?.value??null,map[key]?.note); select(key); drawRng(); if(viaKey) focusProxy(); };
     inp.onkeydown=e=>{ e.stopPropagation(); const nav=navOf(e); if(nav){ e.preventDefault(); afterIme(e,inp,()=>fin(true,true).then(()=>moveSel(...nav))); } else if(e.key==="Escape"){ fin(false,true); } };
     inp.onblur=()=>fin(true); };
   const allTd=()=>[...document.querySelectorAll("td.sh")];
@@ -2153,27 +2188,36 @@ async function renderStaff(){
   const focusProxy=()=>{ if(!fine||S.view!=="staff"||!st.sel) return; if(document.activeElement!==proxy) proxy.focus({preventScroll:true}); };
   const pOff=()=>{ proxy.classList.remove("on"); proxy.value=""; proxy.removeAttribute("style"); delete proxy.dataset.k; };
   const pCommit=async(nav,refocus)=>{ const k=proxy.dataset.k; if(!k) return pOff(); const v=proxy.value.trim(); pOff(); const [sid,d]=k.split("|");
-    if(v!==(map[k]?.value||"")) await setVal(+sid,d,v||null,map[k]?.note||null); select(k); if(nav) moveSel(...nav); if(refocus) focusProxy(); };
+    const t0=tdOf(k); if(t0&&inRng(t0)) await fillRng(v); else if(v!==(map[k]?.value||"")) await setVal(+sid,d,v||null,map[k]?.note||null); select(k); if(nav) moveSel(...nav); if(refocus) focusProxy(); };
   proxy.__h.cs=()=>{ if(S.view!=="staff"||!st.sel||proxy.classList.contains("on")) return; const td=tdOf(st.sel); if(!td||td.dataset.ro) return;
     const r=td.getBoundingClientRect(); proxy.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px`; proxy.dataset.k=st.sel; proxy.classList.add("on"); };
   proxy.onkeydown=e=>{ if(!proxy.classList.contains("on")) return; e.stopPropagation(); const nav=navOf(e);
     if(nav){ e.preventDefault(); afterIme(e,proxy,()=>pCommit(nav,true)); } else if(e.key==="Escape"){ e.preventDefault(); pOff(); } };
   proxy.onblur=()=>{ if(proxy.classList.contains("on")) pCommit(null,false); };
-  const moveSel=(dx,dy)=>{ if(!st.sel) return; const td=tdOf(st.sel); if(!td) return; const tr=td.parentElement; const ci=[...tr.children].indexOf(td);
+  const moveSel=(dx,dy)=>{ clearRng(); if(!st.sel) return; const td=tdOf(st.sel); if(!td) return; const tr=td.parentElement; const ci=[...tr.children].indexOf(td);
     if(dx){ let n=td; do{ n=dx>0?n.nextElementSibling:n.previousElementSibling; }while(n&&!n.matches("td.sh")); if(n) select(n.dataset.s+"|"+n.dataset.d); focusProxy(); return; }
     let r=tr; do{ r=dy>0?r.nextElementSibling:r.previousElementSibling; }while(r&&!r.querySelector("td.sh")); if(r){ const n=r.children[ci]; if(n&&n.matches("td.sh")) select(n.dataset.s+"|"+n.dataset.d); } focusProxy(); };
   let clip=null;
   document.querySelectorAll("td.sh").forEach(td=>{
-    td.addEventListener("mousedown",e=>{ if(!st.brush) return; e.preventDefault(); window.__shDrag=true; window.__shStroke="s"+Date.now(); paint(td); });
-    td.addEventListener("mouseenter",()=>{ if(window.__shDrag&&st.brush) paint(td); });
-    td.addEventListener("click",()=>{ const k0=td.dataset.s+"|"+td.dataset.d; markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); focusProxy(); });
+    td.addEventListener("mousedown",e=>{ if(!st.brush){ if(e.button!==0||td.querySelector("input")) return; const k=keyOf(td); if(inRng(td)||(!st.rng&&st.sel===k&&td.getAttribute("draggable")==="true")) return; /* 선택된 칸은 끌어서 이동 */
+        const ae=document.activeElement; if(ae&&ae.classList?.contains("shq")) ae.blur(); e.preventDefault(); window.__shRg={a:k,moved:false}; return; }
+      e.preventDefault(); window.__shDrag=true; window.__shStroke="s"+Date.now(); paint(td); });
+    td.addEventListener("mouseenter",()=>{ if(window.__shDrag&&st.brush) return paint(td); const G=window.__shRg; if(G&&!st.brush){ const k=keyOf(td); if(k===G.a&&!G.moved) return; G.moved=true; st.rng={a:G.a,b:k}; if(st.sel!==G.a) select(G.a); drawRng(); } });
+    td.addEventListener("click",()=>{ if(window.__shRgJust){ focusProxy(); return; } const k0=td.dataset.s+"|"+td.dataset.d; clearRng(); markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); focusProxy(); });
     td.addEventListener("dblclick",()=>{ if(st.brush||td.dataset.ro) return; shiftDialog(td,map,codesL,staff,()=>renderStaff(),setVal); });
-    td.addEventListener("dragstart",e=>{ if(td.dataset.ro||st.brush) return e.preventDefault(); e.dataTransfer.setData("text/gt-shift",td.dataset.s+"|"+td.dataset.d); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); });
+    td.addEventListener("dragstart",e=>{ if(td.dataset.ro||st.brush) return e.preventDefault(); if(inRng(td)){ const p0=posOf(td); window.__shBlk={p0,cells:rngCells().map(t=>({t,p:posOf(t)}))}; e.dataTransfer.setData("text/gt-shift","__blk"); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); return; } window.__shBlk=null; e.dataTransfer.setData("text/gt-shift",td.dataset.s+"|"+td.dataset.d); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); });
     td.addEventListener("dragend",()=>td.classList.remove("dragging"));
     td.addEventListener("dragover",e=>{ if(td.dataset.ro||!e.dataTransfer.types.includes("text/gt-shift")) return; e.preventDefault(); e.dataTransfer.dropEffect=(e.ctrlKey||e.metaKey||e.altKey)?"copy":"move"; td.classList.add("over"); });
     td.addEventListener("dragleave",()=>td.classList.remove("over"));
     td.addEventListener("drop",async e=>{ td.classList.remove("over"); const src=e.dataTransfer.getData("text/gt-shift"); if(!src) return; e.preventDefault();
-      const dst=td.dataset.s+"|"+td.dataset.d; if(src===dst) return; const h=map[src]; if(!h) return; const copy=e.ctrlKey||e.metaKey||e.altKey;
+      const dst=td.dataset.s+"|"+td.dataset.d; const copy=e.ctrlKey||e.metaKey||e.altKey;
+      if(src==="__blk"){ const B=window.__shBlk; window.__shBlk=null; if(!B) return; const p1=posOf(td), dr=p1.r-B.p0.r, dc=p1.c-B.p0.c; if(!dr&&!dc) return; const R=rowsEl();
+        const plan=B.cells.map(x=>({from:x.t,to:tdAt(R,x.p.r+dr,x.p.c+dc)})); if(plan.some(x=>!x.to)) return toast("옮길 자리가 표 밖으로 나갑니다"); if(plan.some(x=>x.to.dataset.ro)) return toast("고칠 권한이 없는 부서 칸이 있습니다");
+        const snap=plan.map(x=>({...x,h:map[keyOf(x.from)]?{...map[keyOf(x.from)]}:null})); const toK=new Set(plan.map(x=>keyOf(x.to))); const grp="b"+Date.now();
+        if(!copy) for(const x of snap) if(!toK.has(keyOf(x.from))&&x.h&&!x.from.dataset.ro) await setVal(+x.from.dataset.s,x.from.dataset.d,null,null,{group:grp,nolast:true});
+        for(const x of snap) await setVal(+x.to.dataset.s,x.to.dataset.d,x.h?.value??null,x.h?.note??null,{group:grp,nolast:true});
+        const a=plan[0].to, b=plan[plan.length-1].to; st.rng={a:keyOf(a),b:keyOf(b)}; select(keyOf(td)); drawRng(); toast(`${plan.length}칸 ${copy?"복사":"이동"}했습니다`); return; }
+      if(src===dst) return; const h=map[src]; if(!h) return;
       const [ss,sd]=src.split("|"); const grp="m"+Date.now(); const ok=await setVal(+td.dataset.s,td.dataset.d,h.value,h.note,{group:grp}); if(ok&&!copy) await setVal(+ss,sd,null,null,{group:grp,nolast:true}); select(dst); toast(copy?"복사했습니다":"옮겼습니다"); });
   });
   if(window.__shKey) document.removeEventListener("keydown",window.__shKey);
@@ -2181,12 +2225,17 @@ async function renderStaff(){
     if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==="z"){ e.preventDefault(); undo(); return; }
     if(!st.sel) return;
     const td=tdOf(st.sel); if(!td) return; const [sid,d]=st.sel.split("|");
-    if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다"); setVal(+sid,d,null); }
+    if((e.key==="Delete"||e.key==="Backspace")&&st.rng){ e.preventDefault(); fillRng(null); }
+    else if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다"); setVal(+sid,d,null); }
     else if(e.key.startsWith("Arrow")){ e.preventDefault(); moveSel(e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0, e.key==="ArrowDown"?1:e.key==="ArrowUp"?-1:0); }
     else if(e.key==="Enter"||e.key==="F2"){ e.preventDefault(); quickEdit(td); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&st.rng){ const L=rngCells(), P=L.map(posOf); const r0=Math.min(...P.map(p=>p.r)), c0=Math.min(...P.map(p=>p.c)); clip={cells:L.map((t,i)=>({dr:P[i].r-r0,dc:P[i].c-c0,h:map[keyOf(t)]?{...map[keyOf(t)]}:null}))}; toast(`${L.length}칸 복사 · 붙여 넣을 칸을 누르고 Ctrl+V`); }
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){ clip=map[st.sel]?{...map[st.sel]}:null; if(clip) toast(`"${clip.value}" 복사`); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&clip?.cells){ e.preventDefault(); const R=rowsEl(); let p0=posOf(td); if(st.rng){ const P=rngCells().map(posOf); p0={r:Math.min(...P.map(p=>p.r)),c:Math.min(...P.map(p=>p.c))}; }
+      (async()=>{ const g="p"+Date.now(); let n=0; for(const x of clip.cells){ const t=tdAt(R,p0.r+x.dr,p0.c+x.dc); if(!t||t.dataset.ro) continue; await setVal(+t.dataset.s,t.dataset.d,x.h?.value??null,x.h?.note??null,{group:g,nolast:true}); n++; } const L=clip.cells; const last=L.reduce((m,x)=>({dr:Math.max(m.dr,x.dr),dc:Math.max(m.dc,x.dc)}),{dr:0,dc:0}); const a=tdAt(R,p0.r,p0.c), b=tdAt(R,p0.r+last.dr,p0.c+last.dc)||a; if(a&&b){ st.rng={a:keyOf(a),b:keyOf(b)}; drawRng(); } toast(`${n}칸 붙여 넣었습니다`); })(); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&clip&&st.rng){ e.preventDefault(); fillRng(clip.value); }
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"){ if(clip&&!td.dataset.ro){ e.preventDefault(); setVal(+sid,d,clip.value,clip.note).then(()=>moveSel(1,0)); } }
-    else if(e.key==="Escape"){ select(null); }
+    else if(e.key==="Escape"){ if(st.rng) clearRng(); else select(null); }
     else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey){ e.preventDefault(); quickEdit(td,e.key); } };
   document.addEventListener("keydown",window.__shKey);
   // 직원 행 끌어서 순서·부서 이동
@@ -2215,7 +2264,7 @@ async function renderStaff(){
     g.addEventListener("drop",e=>{ g.parentElement.classList.remove("over-row"); const src=+e.dataTransfer.getData("text/gt-staff"); if(!src) return; e.preventDefault(); const first=staff.filter(x=>x.dept===g.dataset.gd).sort((a,b)=>a.sort-b.sort)[0]; reorder(src,g.dataset.gd,first?.id); });
   });
   document.querySelectorAll("[data-sedit]").forEach(b=>b.onclick=e=>{ e.stopPropagation(); staffDialog(staff.find(x=>x.id===+b.dataset.sedit),()=>renderStaff()); });
-  if(st.sel) select(st.sel); if(st.last) markLast(st.last);
+  if(st.sel) select(st.sel); if(st.last) markLast(st.last); drawRng();
   // 관리
   if($("sadd")) $("sadd").onclick=async()=>{ const name=$("sn").value.trim(); if(!name) return; const dept=$("sdp").value; const maxs=Math.max(0,...(sr.data||[]).filter(s=>s.dept===dept).map(s=>s.sort));
     const {error}=await sb.from("staff").insert({branch_id:S.branch,name,dept,memo:$("sm").value.trim()||null,sort:maxs+1}); if(error) return toast(errMsg(error)); toast(`${name} 추가됨`); renderStaff(); };
@@ -3301,8 +3350,9 @@ async function renderLeave(){
     sb.from("leave_uses").select("*").eq("branch_id",S.branch).gte("use_date",`${st.year}-01-01`).lte("use_date",`${st.year}-12-31`).order("use_date"),
     sb.from("staff").select("id,name,dept,sort,active").eq("branch_id",S.branch).neq("dept",BILL_DEPT).eq("active",true).order("sort") ]);
   if(gr.error||ur.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(gr.error||ur.error))}</div></div>`; return; }
-  const grants=gr.data||[], uses=ur.data||[], staff=sr.data||[];
-  const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name),...staff.filter(s=>s.dept!=="의료진"&&!PLACEHOLDER.test(s.name)).map(s=>s.name)])]; /* 연차 기록이 아직 없는 직원(원무·임상병리 등)도 표에 나오게 */
+  const own=n=>seeAll()||n===S.me.name; /* 4등급 직원은 본인 연차만 */
+  const grants=(gr.data||[]).filter(g=>own(g.staff_name)), uses=(ur.data||[]).filter(u=>own(u.staff_name)), staff=sr.data||[];
+  const names=[...new Set([...grants.map(g=>g.staff_name),...uses.map(u=>u.staff_name),...staff.filter(s=>s.dept!=="의료진"&&!PLACEHOLDER.test(s.name)&&own(s.name)).map(s=>s.name)])]; /* 연차 기록이 아직 없는 직원(원무·임상병리 등)도 표에 나오게 */
   const asOf=kstToday();
   let people=names.map(n=>{ const g=grants.find(x=>x.staff_name===n); const L=legalLeave(g?.hire_date,st.year,asOf); const u=uses.filter(x=>x.staff_name===n); const used=u.filter(x=>x.approved&&x.kind!=="병가").reduce((s,x)=>s+(+x.days),0); const sick=u.filter(x=>x.approved&&x.kind==="병가").reduce((s,x)=>s+(+x.days),0);
     const grant=L?L.days:(g?+g.days:0); return {name:n,dept:g?.dept||u[0]?.dept||staff.find(s=>s.name===n)?.dept||"",g,L,grant,used,sick,pend:u.filter(x=>!x.approved).length,left:grant-used}; })
