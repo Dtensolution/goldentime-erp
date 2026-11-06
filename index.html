@@ -732,6 +732,7 @@ function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>
 const FX = {};
 const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
 const NIGHT_BR = ["gt-os","gt-cs"];
+const OT_END850_BR = ["gt-os"];   // 연장근무 끝 시간: 기본 08:50, 목록도 08:50부터
 const EMG_LINE2_BR = ["gt-os"];
 const NEW_SPLIT_BR = ["gt-os"];   // 도수·충격파 통계: 신환을 도수 / 충격파로 나눠 보기    // 근전도 카드 둘째 줄: 담당 · 원장 · 니들링 원장 · 메모      // 스케줄 19시 이후 야간 색
 const OT_TIME_BR = ["gt-os","gt-cs"];    // 연장근무 시간 칸: 22 → 오후 10:00
@@ -2790,8 +2791,8 @@ async function renderOvertime(){
           ${otDepts.length>1?`<div class="field" style="grid-column:1/-1;margin:0"><label>부서</label><div class="chips" style="margin:0">${otDepts.map(d=>`<button type="button" class="fchip" data-ofd="${esc(d)}" aria-pressed="${d===st.fdept}">${esc(d)}</button>`).join("")}</div></div>`:""}
           <div class="field"><label for="o_s">직원</label><select id="o_s">${otOpts()||`<option value="">${esc(S.me.name)}</option>`}</select></div>
           <div class="field"><label for="o_d">날짜</label><input type="date" id="o_d" value="${kstToday()}" required></div>
-          <div class="field"><label for="o_a">시작</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_a" class="otime" list="otimes" value="오전 08:30" required autocomplete="off" inputmode="numeric" placeholder="예: 18 또는 1830 → 오후 06:30"><datalist id="otimes">${Array.from({length:(1440-360)/10+1},(_,i)=>360+i*10).map(x=>{ const h=Math.floor(x/60), m=x%60; return `<option value="${x===1440?"자정 12:00 (24시)":`${h<12?"오전":"오후"} ${String(h%12||12).padStart(2,"0")}:${String(m).padStart(2,"0")}`}">`; }).join("")}</datalist>`:`<input type="time" id="o_a" value="08:30" required>`}</div>
-          <div class="field"><label for="o_b">끝</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_b" class="otime" list="otimes" value="오전 09:00" required autocomplete="off" inputmode="numeric" placeholder="예: 22 → 오후 10:00, 24 → 자정">`:`<input type="time" id="o_b" value="09:00" required>`}</div>
+          <div class="field"><label for="o_a">시작</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_a" class="otime" list="otimes" value="오전 08:30" required autocomplete="off" inputmode="numeric" placeholder="예: 18 또는 1830 → 오후 06:30"><datalist id="otimes">${Array.from({length:(1440-360)/10+1},(_,i)=>360+i*10).map(x=>{ const h=Math.floor(x/60), m=x%60; return `<option value="${x===1440?"자정 12:00 (24시)":`${h<12?"오전":"오후"} ${String(h%12||12).padStart(2,"0")}:${String(m).padStart(2,"0")}`}">`; }).join("")}</datalist><datalist id="otimes2">${Array.from({length:(1440-530)/10+1},(_,i)=>530+i*10).map(x=>{ const h=Math.floor(x/60), m=x%60; return `<option value="${x===1440?"자정 12:00 (24시)":`${h<12?"오전":"오후"} ${String(h%12||12).padStart(2,"0")}:${String(m).padStart(2,"0")}`}">`; }).join("")}</datalist>`:`<input type="time" id="o_a" value="08:30" required>`}</div>
+          <div class="field"><label for="o_b">끝</label>${OT_TIME_BR.includes(S.branch)?`<input id="o_b" class="otime" list="${OT_END850_BR.includes(S.branch)?"otimes2":"otimes"}" value="${OT_END850_BR.includes(S.branch)?"오전 08:50":"오전 09:00"}" required autocomplete="off" inputmode="numeric" placeholder="예: 22 → 오후 10:00, 24 → 자정">`:`<input type="time" id="o_b" value="09:00" required>`}</div>
           <div class="field"><label for="o_k">구분</label><select id="o_k">${OT_KINDS.map(k=>`<option>${k}</option>`).join("")}</select></div>
           <div class="field"><label for="o_n">메모</label><input id="o_n" placeholder="예: 인계, 교육, 수술 연장"></div>
           <p class="meta" id="o_m" style="grid-column:1/-1;margin:0"></p>
