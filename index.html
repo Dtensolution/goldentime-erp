@@ -332,6 +332,8 @@ dialog.wide{width:min(1200px,96vw)!important;max-height:94vh}
 table.sbt{width:auto;min-width:60%}table.sbt th{white-space:nowrap;font-size:12.5px}table.sbt td{padding:2px 4px}table.sbt input.sbin{width:100%;min-width:64px;height:28px;border:1px solid transparent;background:transparent;padding:0 6px;border-radius:5px;font:inherit}
 table.sbt input.sbin:hover{border-color:var(--line)}table.sbt input.sbin:focus{border-color:var(--navy);background:#fff;outline:none}table.sbt td.sbd,table.sbt th.sbd{width:76px;background:color-mix(in srgb,var(--navy) 4%,transparent)}table.sbt td.sbd input{min-width:56px;text-align:right}
 table.sbt td:nth-child(2) input.sbin{min-width:170px}
+table.sbt tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--navy) 3.5%,transparent)}table.sbt tbody td{border-bottom:1px solid #d5dde8}
+table.sbt tr.sbl td{border-bottom:1.5px solid #b9c6d8;padding-top:5px;padding-bottom:5px}table.sbt tr.sbl td:first-child input{font-weight:600}table.sbt tr.sbg td{border-top:3px solid color-mix(in srgb,var(--navy) 55%,transparent)}
 .sc-body .night{position:absolute;left:0;right:0;background:color-mix(in srgb,#5b4fa8 9%,transparent);border-top:2px solid color-mix(in srgb,#5b4fa8 45%,transparent);pointer-events:none;z-index:0}
 .sc-time .sc-body .night{background:color-mix(in srgb,#5b4fa8 14%,transparent)}.sc-body .night span{position:absolute;right:4px;top:2px;font-size:10.5px;color:#5b4fa8;font-weight:600}
 .sc-col:last-child{border-right:none}
@@ -2856,7 +2858,7 @@ const SHEET_BOOKS = { "gt-os": { "수술": [
     {key:"use", title:"약품 사용분", cols:["번호","이름","규격","기준 수량","비고","유효기한","메모"], carry:true, dated:true, autoNum:true},
     {key:"emg", title:"응급 물품 (기도·카트)", cols:["번호","이름","규격","수량","비고","유효기한"], carry:true, dated:true, autoNum:true} ]},
   {id:"nonpay", name:"비급여 재료", mode:"month", day:true, tables:[
-    {key:"t", title:"비급여 재료", cols:["품목","코드","규격","단위","기준"], carry:true, dated:true} ]},
+    {key:"t", title:"비급여 재료", cols:["품목","코드","규격","단위","기준"], carry:true, dated:true, lines:true} ]},
   {id:"stock", name:"재고", mode:"month", day:true, tables:[
     {key:"t", title:"재고 (소모품 · 재료)", cols:["번호","품목","코드","규격","단위","기준"], carry:true, dated:true, autoNum:true} ]},
   {id:"order", name:"발주 장부", mode:"date", tables:[
@@ -2901,7 +2903,7 @@ async function mountSheetBook(host,book,dept,opt={}){
         ${ed&&book.mode!=="set"?`<button class="btn ghost sm" id="sbdel" style="color:var(--bad)">이 시트 지우기</button>`:""}</div>
       ${book.tables.map((T,ti)=>{ const t=tabOf(T); const auto=T.autoNum&&T.cols[0]==="번호"; return `<div class="sbtbl" data-ti="${ti}" style="margin-bottom:18px">${book.tables.length>1?`<h4 style="margin:6px 0">${esc(T.title)}</h4>`:""}
         <div class="tbl-box" style="max-height:620px"><table class="sbt"><thead><tr>${T.cols.map(c=>`<th>${esc(c)}</th>`).join("")}${T.dated?t.dates.map(d=>`<th class="sbd">${mdLab(d)}${ed?` <button class="nmbtn" data-sbdx="${ti}:${d}" title="이 날짜 칸 지우기" aria-label="날짜 칸 지우기">×</button>`:""}</th>`).join(""):""}${ed?"<th></th>":""}</tr></thead><tbody>
-        ${t.rows.map((r,ri)=>`<tr>${T.cols.map((c,ci)=>auto&&ci===0?`<td class="num meta">${ri+1}</td>`:`<td>${ed?`<input class="sbin" data-sb="${ti}:${ri}:c:${ci}" value="${esc(r.c?.[ci]??"")}">`:esc(r.c?.[ci]??"")}</td>`).join("")}${T.dated?t.dates.map(d=>`<td class="sbd">${ed?`<input class="sbin num" data-sb="${ti}:${ri}:d:${d}" value="${esc(r.d?.[d]??"")}">`:esc(r.d?.[d]??"")}</td>`).join(""):""}${ed?`<td class="rx"><button class="nmbtn" data-sbrx="${ti}:${ri}" title="줄 지우기" aria-label="줄 지우기">×</button></td>`:""}</tr>`).join("")||`<tr><td colspan="99" class="meta">줄이 없습니다${ed?" · 아래 [+ 줄 추가]로 적으세요":""}</td></tr>`}
+        ${t.rows.map((r,ri)=>{ const gk=x=>String(x?.c?.[auto?1:0]||"").trim().split(/\s+/)[0].toLowerCase(); const ng=T.lines&&ri>0&&gk(r)!==gk(t.rows[ri-1]); return `<tr class="${T.lines?"sbl":""}${ng?" sbg":""}">${T.cols.map((c,ci)=>auto&&ci===0?`<td class="num meta">${ri+1}</td>`:`<td>${ed?`<input class="sbin" data-sb="${ti}:${ri}:c:${ci}" value="${esc(r.c?.[ci]??"")}">`:esc(r.c?.[ci]??"")}</td>`).join("")}${T.dated?t.dates.map(d=>`<td class="sbd">${ed?`<input class="sbin num" data-sb="${ti}:${ri}:d:${d}" value="${esc(r.d?.[d]??"")}">`:esc(r.d?.[d]??"")}</td>`).join(""):""}${ed?`<td class="rx"><button class="nmbtn" data-sbrx="${ti}:${ri}" title="줄 지우기" aria-label="줄 지우기">×</button></td>`:""}</tr>`; }).join("")||`<tr><td colspan="99" class="meta">줄이 없습니다${ed?" · 아래 [+ 줄 추가]로 적으세요":""}</td></tr>`}
         </tbody></table></div>${ed?`<button class="btn ghost sm" data-sbadd="${ti}" style="margin-top:6px">+ 줄 추가</button>`:""}</div>`; }).join("")}`}`;
     setDirty(dirty);
     host.querySelectorAll("[data-sbym]").forEach(b=>b.onclick=()=>{ if(!leaveOk()) return; st.ym=b.dataset.sbym; st.skey=keys.find(k=>k.slice(0,7)===st.ym); dirty=false; mountSheetBook(host,book,dept,opt); });
