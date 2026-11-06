@@ -329,6 +329,9 @@ dialog.wide{width:min(1200px,96vw)!important;max-height:94vh}
 .sc-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .sc-grid{display:grid;min-width:max-content}
 .sc-col{border-right:1px solid var(--line);min-width:0}
+table.sbt{width:auto;min-width:60%}table.sbt th{white-space:nowrap;font-size:12.5px}table.sbt td{padding:2px 4px}table.sbt input.sbin{width:100%;min-width:64px;height:28px;border:1px solid transparent;background:transparent;padding:0 6px;border-radius:5px;font:inherit}
+table.sbt input.sbin:hover{border-color:var(--line)}table.sbt input.sbin:focus{border-color:var(--navy);background:#fff;outline:none}table.sbt td.sbd,table.sbt th.sbd{width:76px;background:color-mix(in srgb,var(--navy) 4%,transparent)}table.sbt td.sbd input{min-width:56px;text-align:right}
+table.sbt td:nth-child(2) input.sbin{min-width:170px}
 .sc-body .night{position:absolute;left:0;right:0;background:color-mix(in srgb,#5b4fa8 9%,transparent);border-top:2px solid color-mix(in srgb,#5b4fa8 45%,transparent);pointer-events:none;z-index:0}
 .sc-time .sc-body .night{background:color-mix(in srgb,#5b4fa8 14%,transparent)}.sc-body .night span{position:absolute;right:4px;top:2px;font-size:10.5px;color:#5b4fa8;font-weight:600}
 .sc-col:last-child{border-right:none}
@@ -941,6 +944,7 @@ function render(){
   $("homeBtn").onclick=()=>{ S.view=canDash()?"dash":defaultView(); render(); };
   const bsel=$("bsel"); if(bsel) bsel.onchange=()=>{ S.branch=bsel.value||null; lsSet("gt-branch",S.branch||""); render(); };
   document.querySelectorAll("nav.side button[data-v]").forEach(b=>b.onclick=async()=>{ if(window.__entryFlush){ window.__entryFlush(); window.__entryFlush=null; }
+    if(window.__sbDirty){ if(!confirm("시트 장부에 저장하지 않은 내용이 있습니다. 저장하지 않고 이동할까요?")) return; window.__sbDirty=null; }
     if(S.view==="staff"&&b.dataset.v!=="staff"&&shDirtyN()>0){ if(confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다.\n[확인] 저장하고 이동 · [취소] 저장하지 않고 이동 (고친 내용은 지워집니다)`)){ const r=await shFlush(); toast(r.fail?`${r.fail}칸 저장 실패: ${r.msg}`:`${r.n}칸 저장했습니다`); } }
     const d=b.dataset.dept, v=b.dataset.v;
     if(d&&v==="docs"){ const st=S.docV ||= {dept:d,id:null,q:"",edit:false}; st.dept=d; st.id=null; st.q=""; }
@@ -2841,15 +2845,101 @@ const INV_DEPTS=["간호","병동","수술","원무","물리치료","영상의�
 const INV_NOLOW=["간호","수술"]; // '기준보다 적음' 표시를 쓰지 않는 파트
 const INV_ORDER_ONLY=["수술"]; const INV_LED="📦 "; // 제목이 이걸로 시작하는 게시판 글 = 물품·재고 안의 장부 // 재고 입력 없이 발주만 적는 파트 (날짜 칸에 발주량을 그대로 표시)
 function canEditInv(dept){ const me=S.me; return me.level<=3 || me.dept===dept || (me.level===3 && ["간호","병동","수술"].includes(dept) && ["간호","병동","수술"].includes(me.dept)); }
+// ── 시트 장부: 연·월(또는 날짜·세트)마다 시트 · 줄 추가 · [저장] 버튼으로 확실히 저장 ──
+// tables[].carry=새 시트에 품목 줄을 그대로 가져옴 · dated=그 달 안에서 날짜 칸을 골라 추가 · autoNum=첫 칸 번호 자동
+const SHEET_BOOKS = { "gt-os": { "수술": [
+  {id:"narc", name:"마약·향정 관리 장부", mode:"month", tables:[
+    {key:"in", title:"마약·향정 보유 현황 (입고)", cols:["입고 날짜","이름","용량","수량","일련 번호","메모"]},
+    {key:"daily", title:"마약 장부 (매일 진행)", cols:["날짜","바스캄 5ml","사인"]} ]},
+  {id:"drug", name:"약품 관리 장부", mode:"month", day:true, tables:[
+    {key:"use", title:"약품 사용분", cols:["번호","이름","규격","기준 수량","비고","유효기한","메모"], carry:true, dated:true, autoNum:true},
+    {key:"emg", title:"응급 물품 (기도·카트)", cols:["번호","이름","규격","수량","비고","유효기한"], carry:true, dated:true, autoNum:true} ]},
+  {id:"nonpay", name:"비급여 재료", mode:"month", day:true, tables:[
+    {key:"t", title:"비급여 재료", cols:["품목","코드","규격","단위","기준"], carry:true, dated:true} ]},
+  {id:"stock", name:"재고", mode:"month", day:true, tables:[
+    {key:"t", title:"재고 (소모품 · 재료)", cols:["번호","품목","코드","규격","단위","기준"], carry:true, dated:true, autoNum:true} ]},
+  {id:"order", name:"발주 장부", mode:"date", tables:[
+    {key:"t", title:"발주", cols:["품목","규격","단위","기준","수량"]} ]},
+  {id:"kit", name:"수술 기구 세트", mode:"set", sets:["osset","tumur","pinning","dillset","PRN","말렛세트 대","말렛세트 소"], tables:[
+    {key:"t", title:"세트 구성 기구", cols:["이름","크기","개수"]} ]} ] } };
+const sheetBooksOf=dept=>((SHEET_BOOKS[S.branch]||{})[dept]||[]).filter(b=>b.mode!=="set");
+const sheetBook=(dept,id)=>((SHEET_BOOKS[S.branch]||{})[dept]||[]).find(b=>b.id===id);
+const SB_HIDE_CATS = { "gt-os": { "수술": ["비급여 재료","소모품","재료","발주 장부"] } };   // 시트 장부로 옮긴 물품 분류 (예전 자료는 그대로 남음)
+const SB_HIDE_LEDS = { "gt-os": { "수술": ["약품 관리 장부","마약·향정 관리 장부"] } };
+const sbSkLabel=(b,k)=>b.mode==="month"?`${k.slice(0,4)}년 ${+k.slice(5,7)}월`:b.mode==="date"?`${+k.slice(5,7)}/${+k.slice(8)} (${WD[new Date(k+"T00:00:00Z").getUTCDay()]})`:k;
+window.__sbDirty=null; window.addEventListener("beforeunload",e=>{ if(window.__sbDirty){ e.preventDefault(); e.returnValue=""; } });
+async function mountSheetBook(host,book,dept,opt={}){
+  const stAll=S.sbV ||= {}; const st=stAll[book.id] ||= {};
+  host.innerHTML=`<p class="meta">불러오는 중…</p>`;
+  const {data,error}=await sb.from("ledger_sheets").select("skey,data,updated_at").eq("branch_id",S.branch).eq("book",book.id);
+  if(error){ host.innerHTML=`<div class="empty">${esc(errMsg(error))}</div>`; return; }
+  const sheets={}; (data||[]).forEach(r=>sheets[r.skey]=r);
+  if(book.mode==="set") book.sets.forEach(k=>{ sheets[k] ||= {skey:k,data:{tables:{}},updated_at:null,_new:true}; });
+  const keys=Object.keys(sheets).sort((a,b)=>book.mode==="set"?book.sets.indexOf(a)-book.sets.indexOf(b):b.localeCompare(a));
+  const cm=kstToday().slice(0,7);
+  if(!st.skey||!sheets[st.skey]) st.skey=book.mode==="set"?(opt.set||keys[0]):book.mode==="month"?(sheets[cm]?cm:keys[0]):(keys.find(k=>k.slice(0,7)===(st.ym||cm))||keys[0]);
+  if(book.mode==="date") st.ym ||= (st.skey||kstToday()).slice(0,7);
+  const ed=canEditDoc(dept);
+  let cur=st.skey?sheets[st.skey]:null; let M=cur?JSON.parse(JSON.stringify(cur.data||{tables:{}})):null; let dirty=false;
+  const tabOf=T=>{ const t=(M.tables[T.key] ||= {rows:[],dates:[]}); t.rows ||= []; t.dates ||= []; return t; };
+  const setDirty=v=>{ dirty=v; const s=host.querySelector("#sbst"); if(s){ s.textContent=v?"● 저장 안 됨":"저장됨 ✓"; s.style.color=v?"var(--bad)":"var(--good)"; } window.__sbDirty=v?()=>true:null; };
+  const leaveOk=()=>!dirty||confirm("저장하지 않은 내용이 있습니다. 저장하지 않고 다른 시트로 갈까요?");
+  const nRows=k=>{ const T=sheets[k]?.data?.tables||{}; return Object.values(T).reduce((n,t)=>n+((t&&t.rows)||[]).length,0); };
+  const mdLab=iso=>`${+iso.slice(5,7)}/${+iso.slice(8)}(${WD[new Date(iso+"T00:00:00Z").getUTCDay()]})`;
+  const draw=()=>{
+    const monthsD=book.mode==="date"?[...new Set(keys.map(k=>k.slice(0,7)))].sort().reverse():[];
+    const chipKeys=book.mode==="date"?keys.filter(k=>k.slice(0,7)===st.ym):keys;
+    host.innerHTML=`${opt.title?`<h3 style="margin:0 0 8px">${opt.title}</h3>`:""}
+      ${book.mode==="date"?`<div class="chips" style="margin:0 0 6px">${monthsD.map(m=>`<button class="fchip" data-sbym="${m}" aria-pressed="${st.ym===m}">${m.slice(0,4)}년 ${+m.slice(5)}월</button>`).join("")}</div>`:""}
+      ${opt.noChips?"":`<div class="chips" style="margin:0 0 8px;align-items:center">`}${opt.noChips?"":chipKeys.map(k=>`<button class="fchip" data-sbk="${esc(k)}" aria-pressed="${st.skey===k}">${esc(sbSkLabel(book,k))} <small>${nRows(k)||""}</small></button>`).join("")||`<span class="meta">아직 시트가 없습니다</span>`}
+        ${ed&&book.mode!=="set"?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="${book.mode==="month"?"month":"date"}" id="sbnew" value="${book.mode==="month"?(sheets[cm]?shiftMonth(keys[0]||cm,1):cm):kstToday()}" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="sbadd">${book.mode==="month"?"+ 년·월 추가":"+ 연·월·일 추가"}</button></span>`:""}${opt.noChips?"":"</div>"}
+      ${!cur?`<div class="empty">${ed?"위에서 년·월을 고르고 [추가]를 누르세요.":"시트가 없습니다."}</div>`:`
+      <div style="display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><b style="font-size:15px">${esc(sbSkLabel(book,st.skey))}</b>
+        ${ed?`<button class="btn sm" id="sbsave">💾 저장</button><b id="sbst" class="meta"></b>`:""}
+        ${ed&&book.day?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:auto"><span class="meta">재고 쓴 날</span><select id="sbday" style="height:30px">${Array.from({length:new Date(Date.UTC(+st.skey.slice(0,4),+st.skey.slice(5,7),0)).getUTCDate()},(_,i)=>i+1).map(d=>`<option value="${d}" ${st.skey===cm&&+kstToday().slice(8)===d?"selected":""}>${d}일</option>`).join("")}</select><button class="btn ghost sm" id="sbdayadd">+ 이 날짜 칸 추가</button></span>`:""}
+        ${ed&&book.mode!=="set"?`<button class="btn ghost sm" id="sbdel" style="color:var(--bad)">이 시트 지우기</button>`:""}</div>
+      ${book.tables.map((T,ti)=>{ const t=tabOf(T); const auto=T.autoNum&&T.cols[0]==="번호"; return `<div class="sbtbl" data-ti="${ti}" style="margin-bottom:18px">${book.tables.length>1?`<h4 style="margin:6px 0">${esc(T.title)}</h4>`:""}
+        <div class="tbl-box" style="max-height:620px"><table class="sbt"><thead><tr>${T.cols.map(c=>`<th>${esc(c)}</th>`).join("")}${T.dated?t.dates.map(d=>`<th class="sbd">${mdLab(d)}${ed?` <button class="nmbtn" data-sbdx="${ti}:${d}" title="이 날짜 칸 지우기" aria-label="날짜 칸 지우기">×</button>`:""}</th>`).join(""):""}${ed?"<th></th>":""}</tr></thead><tbody>
+        ${t.rows.map((r,ri)=>`<tr>${T.cols.map((c,ci)=>auto&&ci===0?`<td class="num meta">${ri+1}</td>`:`<td>${ed?`<input class="sbin" data-sb="${ti}:${ri}:c:${ci}" value="${esc(r.c?.[ci]??"")}">`:esc(r.c?.[ci]??"")}</td>`).join("")}${T.dated?t.dates.map(d=>`<td class="sbd">${ed?`<input class="sbin num" data-sb="${ti}:${ri}:d:${d}" value="${esc(r.d?.[d]??"")}">`:esc(r.d?.[d]??"")}</td>`).join(""):""}${ed?`<td class="rx"><button class="nmbtn" data-sbrx="${ti}:${ri}" title="줄 지우기" aria-label="줄 지우기">×</button></td>`:""}</tr>`).join("")||`<tr><td colspan="99" class="meta">줄이 없습니다${ed?" · 아래 [+ 줄 추가]로 적으세요":""}</td></tr>`}
+        </tbody></table></div>${ed?`<button class="btn ghost sm" data-sbadd="${ti}" style="margin-top:6px">+ 줄 추가</button>`:""}</div>`; }).join("")}`}`;
+    setDirty(dirty);
+    host.querySelectorAll("[data-sbym]").forEach(b=>b.onclick=()=>{ if(!leaveOk()) return; st.ym=b.dataset.sbym; st.skey=keys.find(k=>k.slice(0,7)===st.ym); dirty=false; mountSheetBook(host,book,dept,opt); });
+    host.querySelectorAll("[data-sbk]").forEach(b=>b.onclick=()=>{ if(!leaveOk()) return; st.skey=b.dataset.sbk; dirty=false; mountSheetBook(host,book,dept,opt); });
+    if(!ed) return;
+    if(host.querySelector("#sbadd")) host.querySelector("#sbadd").onclick=async()=>{ const v=host.querySelector("#sbnew").value; if(!(book.mode==="month"?/^\d{4}-\d{2}$/:/^\d{4}-\d{2}-\d{2}$/).test(v)) return toast("날짜를 고르세요"); if(sheets[v]){ st.skey=v; st.ym=v.slice(0,7); return mountSheetBook(host,book,dept,opt); } if(!leaveOk()) return;
+      const prev=keys.filter(k=>k<v)[0]||keys[keys.length-1]; const P=prev?sheets[prev].data?.tables||{}:{}; const tables={};
+      book.tables.forEach(T=>{ tables[T.key]={rows:T.carry&&P[T.key]?(P[T.key].rows||[]).map(r=>({c:(r.c||[]).slice()})):[],dates:[]}; });
+      const {error}=await sb.from("ledger_sheets").insert({branch_id:S.branch,book:book.id,dept,skey:v,data:{tables}}); if(error) return toast(errMsg(error));
+      toast(`${sbSkLabel(book,v)} 시트를 만들었습니다${book.tables.some(T=>T.carry)?" · 지난 시트의 품목 목록을 그대로 가져왔습니다":" · 머리글만 있는 빈 시트입니다"}`); st.skey=v; st.ym=v.slice(0,7); dirty=false; mountSheetBook(host,book,dept,opt); };
+    if(!cur) return;
+    host.querySelectorAll("input.sbin").forEach(inp=>{ inp.oninput=()=>{ const [ti,ri,kd,x]=inp.dataset.sb.split(":"); const T=book.tables[+ti], r=tabOf(T).rows[+ri]; if(kd==="c"){ (r.c ||= [])[+x]=inp.value; } else { (r.d ||= {})[inp.dataset.sb.split(":").slice(3).join(":")]=inp.value; } setDirty(true); };
+      inp.onkeydown=e=>{ if(e.key==="Enter"||e.key==="ArrowDown"||e.key==="ArrowUp"){ e.preventDefault(); const td=inp.closest("td"), tr=td.parentElement, i=[...tr.children].indexOf(td); const nr=e.key==="ArrowUp"?tr.previousElementSibling:tr.nextElementSibling; nr?.children[i]?.querySelector("input")?.focus(); }
+        if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){ e.preventDefault(); save(); } }; });
+    host.querySelectorAll("[data-sbadd]").forEach(b=>b.onclick=()=>{ const T=book.tables[+b.dataset.sbadd]; tabOf(T).rows.push({c:[],d:{}}); setDirty(true); draw(); const L=[...host.querySelectorAll(`.sbtbl[data-ti="${b.dataset.sbadd}"] tbody tr`)].pop(); L?.querySelector("input")?.focus(); });
+    host.querySelectorAll("[data-sbrx]").forEach(b=>b.onclick=()=>{ const [ti,ri]=b.dataset.sbrx.split(":").map(Number); const r=tabOf(book.tables[ti]).rows[ri]; if([...(r.c||[]),...Object.values(r.d||{})].some(v=>String(v||"").trim())&&!confirm("이 줄을 지울까요?")) return; tabOf(book.tables[ti]).rows.splice(ri,1); setDirty(true); draw(); });
+    host.querySelectorAll("[data-sbdx]").forEach(b=>b.onclick=()=>{ const [ti,...rest]=b.dataset.sbdx.split(":"); const d=rest.join(":"); if(!confirm(`${mdLab(d)} 칸을 지울까요? 이 날짜에 적은 수량도 함께 지워집니다.`)) return; const t=tabOf(book.tables[+ti]); t.dates=t.dates.filter(x=>x!==d); t.rows.forEach(r=>{ if(r.d) delete r.d[d]; }); setDirty(true); draw(); });
+    if(host.querySelector("#sbdayadd")) host.querySelector("#sbdayadd").onclick=()=>{ const d=`${st.skey}-${String(host.querySelector("#sbday").value).padStart(2,"0")}`; let n=0; book.tables.forEach(T=>{ if(!T.dated) return; const t=tabOf(T); if(!t.dates.includes(d)){ t.dates.push(d); t.dates.sort(); n++; } }); if(!n) return toast("이미 있는 날짜입니다"); setDirty(true); draw(); toast(`${mdLab(d)} 칸을 만들었습니다 · 다 적고 [💾 저장]`); };
+    if(host.querySelector("#sbdel")) host.querySelector("#sbdel").onclick=async()=>{ if(!confirm(`${sbSkLabel(book,st.skey)} 시트를 지울까요? (안에 적은 내용도 모두 지워집니다)`)) return; const {error}=await sb.from("ledger_sheets").delete().eq("branch_id",S.branch).eq("book",book.id).eq("skey",st.skey); if(error) return toast(errMsg(error)); st.skey=null; dirty=false; window.__sbDirty=null; mountSheetBook(host,book,dept,opt); };
+    const save=async()=>{ const b=host.querySelector("#sbsave"); if(b) b.disabled=true;
+      try{ const {data:fr}=await sb.from("ledger_sheets").select("updated_at").eq("branch_id",S.branch).eq("book",book.id).eq("skey",st.skey).maybeSingle();
+        if(fr&&cur.updated_at&&fr.updated_at!==cur.updated_at&&!confirm("다른 분이 이 시트를 먼저 저장했습니다. 내 화면 내용으로 덮어쓸까요?\n[취소]를 누르면 저장하지 않습니다.")) return;
+        const now=new Date().toISOString(); const {error}=await sb.from("ledger_sheets").upsert({branch_id:S.branch,book:book.id,dept,skey:st.skey,data:M,updated_at:now,updated_by:S.user.id},{onConflict:"branch_id,book,skey"});
+        if(error) return toast("저장 실패: "+errMsg(error)); cur.updated_at=now; cur.data=JSON.parse(JSON.stringify(M)); setDirty(false); toast("저장했습니다"); }
+      finally{ if(b) b.disabled=false; } };
+    if(host.querySelector("#sbsave")) host.querySelector("#sbsave").onclick=save;
+  };
+  draw();
+}
 async function renderInventory(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.invV ||= {dept: INV_DEPTS.includes(S.me.dept)?S.me.dept:"간호", cat:"전체", q:"", count:false, cdate:kstToday(), low:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||["간호"])[0]; st.cat="전체"; }
   const ir=await sb.from("inv_items").select("*").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",true).order("category").order("sort").order("id");
   if(ir.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ir.error))}</div></div>`; return; }
-  const items=ir.data||[]; const ids=items.map(i=>i.id);
+  const HC=(SB_HIDE_CATS[S.branch]||{})[st.dept]||[], HL=(SB_HIDE_LEDS[S.branch]||{})[st.dept]||[]; const books=sheetBooksOf(st.dept); const book=st.book?books.find(b=>b.id===st.book):null; if(!book) st.book=null;
+  const items=(ir.data||[]).filter(i=>!HC.includes((i.category||"기타").split(" · ")[0])); const ids=items.map(i=>i.id);
   const lr=await sb.from("dept_docs").select("id,title,body,updated_at,updated_by,dept").eq("branch_id",S.branch).eq("dept",st.dept).like("title",INV_LED+"%").order("sort").order("id");
-  const leds=lr.data||[]; const led=st.led?leds.find(d=>d.id===st.led):null; if(!led) st.led=null;
+  const leds=(lr.data||[]).filter(d=>!HL.includes(d.title.slice(INV_LED.length))); const led=book?null:st.led?leds.find(d=>d.id===st.led):null; if(!led) st.led=null;
   let logs=[]; for(let i=0;i<ids.length;i+=300){ const r=await sb.from("inv_logs").select("id,item_id,log_date,kind,qty,note").in("item_id",ids.slice(i,i+300)).gte("log_date",addDays(kstToday(),-400)).order("log_date"); if(r.data) logs=logs.concat(r.data); }
   const L={}; logs.forEach(l=>{ (L[l.item_id] ||= []).push(l); });
   const OO=INV_ORDER_ONLY.includes(st.dept); const hasStock=!OO&&logs.some(l=>l.kind==="재고");
@@ -2874,14 +2964,15 @@ async function renderInventory(){
     <div class="page-h"><div><h2>물품·재고</h2><div class="meta">${esc(st.dept)} · ${items.length}품목${st.q?` · "${esc(st.q)}" 찾은 결과 ${shown.length}개 (분류 상관없이)`:""} · 재고조사한 날짜별 수량 (작은 글씨: +발주 / 입고)</div></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <span style="display:inline-flex;align-items:center"><input id="iq" placeholder="품목·코드·업체 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:220px"></span>${st.q?`<button class="btn ghost sm" id="iqx">지우기</button>`:""}
-        ${ed?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button><button class="btn ${st.edit?"":"ghost"} sm" id="iedit" title="기준 수량 고치기 · 쓰지 않는 물품 삭제">${st.edit?"편집 끝":"✏️ 기준·삭제 편집"}</button>`:""}
-        <button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button><button class="btn ghost sm" id="iprint" title="목록만 인쇄">🖨 인쇄</button></div></div>
+        ${ed&&!book?`<button class="btn ${st.count?"":"ghost"} sm" id="icount">${st.count?(OO?"발주 입력 닫기":"재고조사 닫기"):(OO?"발주 입력":"재고조사 입력")}</button><button class="btn ghost sm" id="iadd">+ 품목</button><button class="btn ${st.edit?"":"ghost"} sm" id="iedit" title="기준 수량 고치기 · 쓰지 않는 물품 삭제">${st.edit?"편집 끝":"✏️ 기준·삭제 편집"}</button>`:""}
+        ${book?"":`<button class="btn ${st.ledger?"":"ghost"} sm" id="ileg" title="발주일·발주량과 입고일·입고량 비교">📒 발주·입고 비교</button><button class="btn ghost sm" id="icsv">CSV 받기</button><button class="btn ghost sm" id="iprint" title="목록만 인쇄">🖨 인쇄</button>`}</div></div>
     <div class="chips">${INV_DEPTS.filter(toolOk).map(d=>`<button class="fchip" data-idp="${d}" aria-pressed="${st.dept===d}">${d}</button>`).join("")}</div>
-    <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&st.cat===c}">${esc(c)}</button>`).join("")}
+    <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&!book&&st.cat===c}">${esc(c)}</button>`).join("")}
+      ${books.map(b=>`<button class="fchip ledchip" data-isb="${b.id}" aria-pressed="${book?.id===b.id}">📗 ${esc(b.name)}</button>`).join("")}
       ${leds.map(d=>`<button class="fchip ledchip" data-iled="${d.id}" aria-pressed="${led?.id===d.id}">📒 ${esc(d.title.slice(INV_LED.length))}</button>`).join("")}${canEditDoc(st.dept)?`<button class="fchip" id="iledadd" title="이 파트 물품·재고에 장부 추가">+ 장부</button>`:""}
-      ${useLow&&!led?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
+      ${useLow&&!led&&!book?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
     ${st.count?`<div class="brushes"><b>${OO?"발주":"재고조사"}</b><label class="meta" for="icd">날짜</label><input type="date" id="icd" value="${st.cdate}" style="height:30px;padding:0 6px"><span class="meta">${OO?"발주 칸에 주문할 수량을 적고 저장하세요. 그 날짜 칸에 발주량이 그대로 나옵니다.":"수량 칸에 현재 재고를, 발주 칸에 주문할 수량을 적고 저장하세요. 빈칸은 저장하지 않습니다."}</span><button class="btn sm" id="isave">저장</button></div>`:""}
-    ${led?`<section class="panel"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><h3 style="margin:0">📒 ${esc(led.title.slice(INV_LED.length))}</h3>${canEditDoc(st.dept)?`<span class="meta noprint">표 칸을 누르면 바로 고칩니다 · Enter 저장 · Tab·화살표 이동</span> <b id="mdst" class="noprint"></b><button class="btn ghost sm noprint" id="ledren">이름 바꾸기</button><button class="btn ghost sm noprint" id="ledfull">전체 수정</button>`:""}</div>
+    ${book?`<section class="panel" id="sbhost"></section>`:led?`<section class="panel"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><h3 style="margin:0">📒 ${esc(led.title.slice(INV_LED.length))}</h3>${canEditDoc(st.dept)?`<span class="meta noprint">표 칸을 누르면 바로 고칩니다 · Enter 저장 · Tab·화살표 이동</span> <b id="mdst" class="noprint"></b><button class="btn ghost sm noprint" id="ledren">이름 바꾸기</button><button class="btn ghost sm noprint" id="ledfull">전체 수정</button>`:""}</div>
       <div class="md${canEditDoc(st.dept)?" mded":""}" id="mdv">${mdRender(led.body,{edit:canEditDoc(st.dept)})}</div></section>`:`
     <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 300px)"><table class="inv"><thead><tr><th class="inm">품목</th><th class="isp">규격</th><th>단위</th><th title="기준치">기준</th>${OO?"":`<th title="가장 최근 재고조사 수량">현재</th><th title="현재 − 기준">±</th>`}${dates.map(d=>`<th>${+d.slice(5,7)}/${+d.slice(8)}</th>`).join("")}${st.count?(OO?`<th>발주</th>`:`<th>재고 입력</th><th>발주</th>`):""}<th></th></tr></thead><tbody>
       ${shown.map(i=>{ const c=(i.category||"기타"); let g=""; if(c!==grp){ grp=c; g=`<tr class="grp"><td colspan="${(OO?6:8)+dates.length+(st.count?(OO?1:2):0)}">${esc(c)}${st.edit&&ed?` <button type="button" class="btn ghost sm" data-icatdel="${esc(c)}" style="margin-left:10px;color:var(--bad);border-color:var(--bad)">이 분류 ${shown.filter(x=>(x.category||"기타")===c).length}개 한꺼번에 삭제</button>`:""}</td></tr>`; }
@@ -2908,9 +2999,12 @@ async function renderInventory(){
             ${ed?`<td>${o?`<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" data-rdt="${o.id}" value="${kstToday()}" style="height:28px"><input data-rqt="${o.id}" inputmode="decimal" value="${df!=null&&df<0?fmtQ(-df):!R.length?fmtQ(o.qty):""}" placeholder="수량" style="height:28px;width:60px;padding:0 6px;text-align:right"><button class="btn ghost sm" data-radd="${o.id}" data-it="${it.id}">입고</button></span>`:""}</td>`:""}</tr>`; }).join("")||`<tr><td colspan="8" class="meta">발주 기록이 없습니다. [재고조사 입력]의 발주 칸에 수량을 적으면 여기 나옵니다.</td></tr>`}
         </tbody></table></div></section>`; })():""}
   </div>`;
-  document.querySelectorAll("[data-idp]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.idp; st.cat="전체"; renderInventory(); });
-  document.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.ic; st.led=null; renderInventory(); });
-  document.querySelectorAll("[data-iled]").forEach(b=>b.onclick=()=>{ st.led=+b.dataset.iled; renderInventory(); });
+  document.querySelectorAll("[data-idp]").forEach(b=>b.onclick=()=>{ if(!sbLeave()) return; window.__sbDirty=null; st.book=null; st.dept=b.dataset.idp; st.cat="전체"; renderInventory(); });
+  const sbLeave=()=>!window.__sbDirty||confirm("저장하지 않은 내용이 있습니다. 저장하지 않고 나갈까요?");
+  document.querySelectorAll("[data-ic]").forEach(b=>b.onclick=()=>{ if(!sbLeave()) return; window.__sbDirty=null; st.cat=b.dataset.ic; st.led=null; st.book=null; renderInventory(); });
+  document.querySelectorAll("[data-iled]").forEach(b=>b.onclick=()=>{ if(!sbLeave()) return; window.__sbDirty=null; st.led=+b.dataset.iled; st.book=null; renderInventory(); });
+  document.querySelectorAll("[data-isb]").forEach(b=>b.onclick=()=>{ if(!sbLeave()) return; window.__sbDirty=null; st.book=b.dataset.isb; st.led=null; renderInventory(); });
+  if(book){ if($("sbhost")) mountSheetBook($("sbhost"),book,st.dept,{title:`📗 ${esc(book.name)}`}); bindSearch("iq",v=>{ st.q=v; st.book=null; return renderInventory(); }); return; }
   if($("iledadd")) $("iledadd").onclick=async()=>{ const nm=(prompt("장부 이름 (예: 약품 관리 장부)")||"").trim(); if(!nm) return;
     const {data,error}=await sb.from("dept_docs").insert({branch_id:S.branch,dept:st.dept,title:INV_LED+nm,body:"| 날짜 | 품목 | 수량 | 사인 | 메모 |\n| --- | --- | --- | --- | --- |\n|  |  |  |  |  |"}).select("id").single(); if(error) return toast(errMsg(error)); st.led=data.id; renderInventory(); };
   if(led){ if(canEditDoc(st.dept)) bindMdEdit($("mdv"),led,()=>renderInventory()); bindMdMonths($("mdv"),led.id);
@@ -3168,7 +3262,7 @@ async function renderRegisters(opts={}){
       <section class="panel" style="min-width:0">${cur?`
         <div style="display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;margin-bottom:8px"><h3 style="margin:0;font-size:16px">${esc(shortN(cur.name))}</h3>
           ${edDef?`<div style="display:flex;gap:6px"><button class="btn ghost sm" id="rcol">열 편집</button><button class="btn ghost sm" id="rdel" style="color:var(--bad)">목록 숨기기</button></div>`:""}</div>
-        ${cur.date_col&&!noMon&&(months.length||ed)?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${!st.day&&st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month&&!st.day}">전체</button><span class="rdaybox" style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><b class="meta">하루 보기</b><button class="btn ghost sm" id="rdp" aria-label="전날" ${st.day?"":"hidden"}>◀</button><input type="date" id="rday" value="${st.day||""}" aria-label="날짜 고르기" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rdn" aria-label="다음날" ${st.day?"":"hidden"}>▶</button><button class="btn ghost sm" id="rdt">오늘</button></span>${ed?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="month" id="rmnew" value="${shiftMonth(months[0]?.[0]||kstToday().slice(0,7),1)}" aria-label="추가할 년·월" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rmgo">+ 년·월 추가</button></span>`:""}</div>`:""}
+        ${cur.date_col&&!noMon&&(months.length||ed)?`<div class="chips" style="margin:0 0 8px">${months.map(([m,n])=>`<button class="fchip" data-rmo="${m}" aria-pressed="${!st.day&&st.month===m}">${m.slice(0,4)}년 ${+m.slice(5)}월 <small>${n}</small></button>`).join("")}<button class="fchip" data-rmo="" aria-pressed="${!st.month&&!st.day}">전체</button><span class="rdaybox" style="display:${(cols.find(c=>c.key===cur.date_col)||{}).noday?"none":"inline-flex"};gap:4px;align-items:center;margin-left:6px"><b class="meta">하루 보기</b><button class="btn ghost sm" id="rdp" aria-label="전날" ${st.day?"":"hidden"}>◀</button><input type="date" id="rday" value="${st.day||""}" aria-label="날짜 고르기" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rdn" aria-label="다음날" ${st.day?"":"hidden"}>▶</button><button class="btn ghost sm" id="rdt">오늘</button></span>${ed?`<span style="display:inline-flex;gap:4px;align-items:center;margin-left:6px"><input type="month" id="rmnew" value="${shiftMonth(months[0]?.[0]||kstToday().slice(0,7),1)}" aria-label="추가할 년·월" style="height:30px;padding:0 6px"><button class="btn ghost sm" id="rmgo">+ 년·월 추가</button></span>`:""}</div>`:""}
         ${cur.memo?`<details style="margin-bottom:8px"><summary class="meta">안내 문구 보기</summary><pre class="memo">${esc(cur.memo)}</pre></details>`:""}
         ${tcol?`<div class="seg" role="group" aria-label="${esc(tcol.label)}" style="margin:0 0 8px">${[...tcol.opts,"전체"].map(o=>`<button data-rtab="${esc(o)}" aria-pressed="${tv===o}">${esc(o)} <small>${o==="전체"?rows.length:tabCnt[o]}</small></button>`).join("")}</div>`:""}
         ${regSum()}
@@ -3194,6 +3288,12 @@ async function renderRegisters(opts={}){
     const columns=lab.map((l,i)=>({key:"c"+i,label:l})); const dk=lab.findIndex(l=>/날짜|일자/.test(l));
     const {data,error}=await sb.from("registers").insert({branch_id:S.branch,dept:st.dept,name,columns,date_col:dk>=0?"c"+dk:null,sort:regs.length}).select("id").single(); if(error) return toast(errMsg(error)); st.id=data.id; renderRegisters(opts); };
   if(!cur) return;
+  // 수술 기구: 전체 목록 + 세트별 구성 기구 (세트를 누르면 이름·크기·개수 목록)
+  { const kitB=sheetBook(cur.dept,"kit"); if(kitB&&cur.name==="수술 기구"){ st.kit ??= null; const box=document.querySelector(".reg-box");
+    if(box){ const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="0 0 8px"; bar.innerHTML=`<button class="fchip" data-kit="" aria-pressed="${!st.kit}">전체 기구 목록</button>`+kitB.sets.map(k=>`<button class="fchip" data-kit="${esc(k)}" aria-pressed="${st.kit===k}">🧰 ${esc(k)}</button>`).join("");
+      const sec=box.parentElement; const first=sec.querySelector(".regsum")||box; first.before(bar);
+      bar.querySelectorAll("[data-kit]").forEach(b=>b.onclick=()=>{ if(window.__sbDirty&&!confirm("저장하지 않은 내용이 있습니다. 저장하지 않고 넘어갈까요?")) return; window.__sbDirty=null; st.kit=b.dataset.kit||null; renderRegisters(opts); });
+      if(st.kit){ sec.querySelectorAll(".regsum,.reg-box,#rmore").forEach(x=>x.style.display="none"); if($("radd")) $("radd").style.display="none"; const host=document.createElement("div"); bar.after(host); (S.sbV ||= {}).kit=Object.assign((S.sbV.kit||{}),{skey:st.kit}); if(kitB.sets.includes(st.kit)) mountSheetBook(host,kitB,cur.dept,{set:st.kit,noChips:true}); } } } }
   const dateOf=data=>{ if(!cur.date_col) return null; const v=String(data[cur.date_col]||"").trim(); return parseDateCell(v,(st.month||kstToday()).slice(0,4)); };
   if($("radd")) $("radd").onclick=async()=>{ const data={}; if(tcol&&tv!=="전체") data[tcol.key]=tv; if(cur.date_col){ const cm=kstToday().slice(0,7), m=st.month||cm; const lab=(cols.find(c=>c.key===cur.date_col)||{}).label||"";
     data[cur.date_col]= /^월$/.test(lab.trim()) ? m.replace("-",".") : st.day ? st.day : (m===cm ? kstToday() : `${+m.slice(5)}/1`); } let srt=-1; if(!cur.date_col){ const ss=rows.map(r=>+r.sort||0).sort((x,y)=>x-y); const la=st.lastAdd; const prev=la&&la.reg===cur.id&&Date.now()-la.at<15*60e3?ss.find(x=>x===la.sort):undefined;
