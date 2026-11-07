@@ -2525,11 +2525,13 @@ function bindMdEdit(box,doc,rerender){
   box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").map((x,i)=>b.hasAttribute("data-mk")&&i>0?"[ ]":x).join(" | ")+" |"); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } lines.splice(+b.dataset.mdel,1); dirty=true; await save(); rerender(); });
 }
+// 글마다 다른 부서도 고칠 수 있게 (dept_docs.edit_depts) — 예: 운정 간호 '폐기물 관리'는 임상병리도 수정
+const canEditCur=d=>!!d&&(canEditDoc(d.dept)||(Array.isArray(d.edit_depts)&&d.edit_depts.includes(S.me?.dept)));
 async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)&&!docAll()){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
-  const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
+  const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body,edit_depts").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
   if(dr.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(dr.error))}</div></div>`; return; }
@@ -2538,7 +2540,7 @@ async function renderDocs(){
   const list = q ? docs.filter(d=>(d.title+" "+d.body).toLowerCase().includes(q)) : docs.filter(d=>d.dept===st.dept);
   if(!q&&st.dept==="회의록") list.sort((a,b)=>mtKey(b.title)-mtKey(a.title)||String(b.updated_at).localeCompare(String(a.updated_at)));
   let cur = docs.find(d=>d.id===st.id); if(!cur || (!q && cur.dept!==st.dept)) cur=list[0]||null; st.id=cur?.id||null;
-  const ed=canEditDoc(q?(cur?.dept||st.dept):st.dept);
+  const ed=canEditDoc(q?(cur?.dept||st.dept):st.dept)||(cur?canEditCur(cur):false);
   const counts=Object.fromEntries(DOC_DEPTS.map(d=>[d,docs.filter(x=>x.dept===d).length]));
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>업무게시판</h2><div class="meta">부서별 업무 정리 · 고칠 때마다 이전 내용이 기록됩니다 · 비밀번호·환자 개인정보는 적지 마세요</div></div>
@@ -2549,15 +2551,15 @@ async function renderDocs(){
         ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${d.dept==="회의록"&&mtKey(d.title)?esc(mtSub(d.title)):esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))+" "+esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
       </aside>
       <article class="panel doc-view" id="dv">${cur?`<div class="page-h" style="margin-bottom:10px"><div><h3 style="margin:0;font-size:18px">${esc(cur.title)}</h3><div class="meta">${esc(cur.dept)} · 마지막 수정 ${esc(new Date(cur.updated_at).toLocaleString("ko-KR"))} ${esc(nm(cur.updated_by))}</div></div>
-        <div style="display:flex;gap:8px">${isMt(cur)?`<button class="btn ghost sm" id="mtprint">🖨 인쇄</button>`:""}${canEditDoc(cur.dept)?`<button class="btn ghost sm" id="dhist">이전 기록</button><button class="btn sm" id="dedit">수정</button>`:""}</div></div>
-        ${cur.notice?noticeBar(cur,readSet.has(cur.id)):""}${isMt(cur)?`<div id="mdv">${mtView(cur.body)}</div>`:`${canEditDoc(cur.dept)?`<p class="meta" style="margin:0 0 6px">✏️ 표 칸이나 글 줄을 누르면 바로 고칩니다 · Enter 저장 · Tab 옆 칸 · Esc 취소 <b id="mdst" style="margin-left:6px"></b></p>`:""}<div class="md${canEditDoc(cur.dept)?" mded":""}" id="mdv">${mdRender(cur.body,{edit:canEditDoc(cur.dept)})}</div>`}`:`<div class="empty">왼쪽에서 글을 고르거나 새 글을 쓰세요.</div>`}</article>
+        <div style="display:flex;gap:8px">${isMt(cur)?`<button class="btn ghost sm" id="mtprint">🖨 인쇄</button>`:""}${canEditCur(cur)?`<button class="btn ghost sm" id="dhist">이전 기록</button><button class="btn sm" id="dedit">수정</button>`:""}</div></div>
+        ${cur.notice?noticeBar(cur,readSet.has(cur.id)):""}${isMt(cur)?`<div id="mdv">${mtView(cur.body)}</div>`:`${canEditCur(cur)?`<p class="meta" style="margin:0 0 6px">✏️ 표 칸이나 글 줄을 누르면 바로 고칩니다 · Enter 저장 · Tab 옆 칸 · Esc 취소 <b id="mdst" style="margin-left:6px"></b></p>`:""}<div class="md${canEditCur(cur)?" mded":""}" id="mdv">${mdRender(cur.body,{edit:canEditCur(cur)})}</div>`}`:`<div class="empty">왼쪽에서 글을 고르거나 새 글을 쓰세요.</div>`}</article>
     </div></div>`;
   document.querySelectorAll("[data-dd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dd; st.q=""; st.id=null; renderDocs(); });
   if(cur&&cur.notice) bindNoticeBar(cur,()=>renderDocs());
   window.__mtCur=cur&&isMt(cur)?cur:null;
   if(cur&&isMt(cur)){ bindMtView($("mdv")); mtAutoSync($("mdv"),cur); if($("mtprint")) $("mtprint").onclick=()=>mtPrint(cur); }
-  if(cur&&canEditDoc(cur.dept)&&!isMt(cur)) bindMdEdit($("mdv"),cur,()=>renderDocs());
-  const tabEd=cur&&canEditDoc(cur.dept); let curTab="__all";
+  if(cur&&canEditCur(cur)&&!isMt(cur)) bindMdEdit($("mdv"),cur,()=>renderDocs());
+  const tabEd=cur&&canEditCur(cur); let curTab="__all";
   if(cur) bindMdMonths($("mdv"),cur.id); if(cur) bindMdTabs($("mdv"),cur.id,{ onChange:t=>{ curTab=t; if($("dedit")) $("dedit").textContent=t==="__all"?"수정":`'${t}' 탭 수정`; },
     onAdd:tabEd?async names=>{ const n=(prompt("새 탭 이름")||"").trim(); if(!n) return; if(names.includes(n)) return toast("같은 이름의 탭이 있습니다");
       try{ if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); } const fresh=await mdDocFresh(cur.id); await mdDocPut(cur,mdTrim(fresh.split(/\r?\n/)).join("\n")+`\n\n# 탭: ${n}\n${MD_EMPTY}\n`); (window.__mdTab ||= {})[cur.id]=n; toast(`'${n}' 탭을 만들었습니다`); }catch(e){ toast(errMsg(e)); } renderDocs(); }:null });
