@@ -734,6 +734,8 @@ function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>
 const FX = {};
 const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
 const NIGHT_BR = ["gt-os","gt-cs"];
+const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
+const RESV_2000_BR = ["gt-cs"];    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
 const OT_END850_BR = ["gt-os"];   // 연장근무 끝 시간: 기본 08:50, 목록도 08:50부터
 const EMG_LINE2_BR = ["gt-os"];
 const NEW_SPLIT_BR = ["gt-os"];   // 도수·충격파 통계: 신환을 도수 / 충격파로 나눠 보기    // 근전도 카드 둘째 줄: 담당 · 원장 · 니들링 원장 · 메모      // 스케줄 19시 이후 야간 색
@@ -3354,7 +3356,8 @@ async function renderResv(keep){
     if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
     const all=data||[]; const c=k=>all.filter(r=>r.visit===k).length; const none=all.filter(r=>!r.visit).length;
     const real=all.length-c("변경"); const q=st.q.toLowerCase();
-    const list=all.filter(r=>(st.f==="전체"||(st.f==="확인 전"?!r.visit:r.visit===st.f))&&(!q||[r.chart_no,r.patient_name,r.memo,r.subject].join(" ").toLowerCase().includes(q)));
+    const CNT=RESV_CNT_BR.includes(S.branch), F2K=RESV_2000_BR.includes(S.branch); const is2k=r=>r.visit!=="내원"&&(parseInt(String(r.chart_no||"").replace(/\D/g,""),10)||0)>=2000;
+    const list=all.filter(r=>(st.f==="전체"||(st.f==="미내원 2000~"?is2k(r):st.f==="확인 전"?!r.visit:r.visit===st.f))&&(!q||[r.chart_no,r.patient_name,r.memo,r.subject].join(" ").toLowerCase().includes(q)));
     const d=new Date(st.date+"T00:00:00Z");
     main.innerHTML=`<div class="wrap">
       <div class="page-h"><div><h2>예약관리</h2><div class="meta">${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${WD[d.getUTCDay()]}) · EMR 예약 목록을 올린 뒤 내원 여부만 체크하세요 · 예약율 = 내원 ÷ (전체 − 변경)</div></div>
@@ -3370,17 +3373,18 @@ async function renderResv(keep){
         <div class="kpi"><span class="k">변경</span><span class="v num">${c("변경")}</span></div>
         <div class="kpi"><span class="k">취소·노쇼</span><span class="v num" style="color:var(--bad)">${c("취소")}</span></div>
       </section>
-      <div class="sh-tools"><div class="chips">${["전체","확인 전",...VISITS].map(k=>`<button class="fchip" data-vf="${k}" aria-pressed="${st.f===k}">${k}</button>`).join("")}</div>
+      <div class="sh-tools"><div class="chips">${["전체","확인 전",...VISITS,...(F2K?["미내원 2000~"]:[])].map(k=>`<button class="fchip" data-vf="${k}" aria-pressed="${st.f===k}" ${k==="미내원 2000~"?`title="내원하지 않은 예약 중 차트번호 2000번 이후만"`:""}>${k==="미내원 2000~"?`미내원 · 차트 2000번~ <small>${all.filter(is2k).length}</small>`:k}</button>`).join("")}</div>
         <div style="display:flex;gap:8px"><input id="vq" placeholder="차트번호·이름·메모" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:170px"><button class="btn ghost sm" id="vadd">+ 예약 추가</button></div></div>
-      <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 330px)"><table class="resv"><thead><tr><th>시간</th><th>차트</th><th>환자명</th><th>주치의</th><th>예약메모</th><th>내원 여부</th><th>사유·비고</th><th></th></tr></thead><tbody>
-        ${list.map(r=>`<tr data-v="${r.id}" class="${r.visit==="내원"?"v-ok":r.visit==="취소"?"v-x":r.visit==="변경"?"v-b":""}"><td class="num">${esc(r.resv_time||"")}</td><td class="num">${esc(r.chart_no||"")}</td><td><b>${esc(r.patient_name||"")}</b></td><td>${esc(r.doctor||"")}</td><td>${esc(r.memo||"")}</td>
+      <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 330px)"><table class="resv"><thead><tr><th>시간</th><th>차트</th><th>환자명</th>${CNT?"<th>내원횟수</th>":""}<th>주치의</th><th>예약메모</th><th>내원 여부</th><th>사유·비고</th><th></th></tr></thead><tbody>
+        ${list.map(r=>`<tr data-v="${r.id}" class="${r.visit==="내원"?"v-ok":r.visit==="취소"?"v-x":r.visit==="변경"?"v-b":""}"><td class="num">${esc(r.resv_time||"")}</td><td class="num">${esc(r.chart_no||"")}</td><td><b>${esc(r.patient_name||"")}</b></td>${CNT?`<td><input data-vcnt="${r.id}" value="${esc(r.visit_cnt||"")}" placeholder="회" inputmode="numeric" style="height:28px;width:64px;padding:0 6px;text-align:right" title="내원횟수 (적고 Enter 또는 다른 칸 누르면 저장)"></td>`:""}<td>${esc(r.doctor||"")}</td><td>${esc(r.memo||"")}</td>
           <td><div class="vbtns">${VISITS.map(k=>`<button class="vb ${k}" data-vs="${k}" aria-pressed="${r.visit===k}">${k==="취소"?"취소·노쇼":k}</button>`).join("")}</div></td>
           <td>${r.visit==="취소"||r.visit==="변경"?`<select data-vw="${r.id}" style="height:28px;max-width:150px"><option value="">사유 선택</option>${RESV_WHY.map(w=>`<option ${r.reason===w?"selected":""}>${w}</option>`).join("")}${r.reason&&!RESV_WHY.includes(r.reason)?`<option selected>${esc(r.reason)}</option>`:""}</select>`:""}${r.note?` <small class="meta">${esc(r.note)}</small>`:""}</td>
-          <td style="white-space:nowrap"><button class="nmbtn" data-ve="${r.id}" aria-label="수정" title="수정">⋯</button> <button class="btn ghost sm rdel" data-vx="${r.id}" title="삭제">삭제</button></td></tr>`).join("")||`<tr><td colspan="8" class="empty">이 날 예약이 없습니다. EMR 예약 목록 엑셀을 올려주세요.</td></tr>`}
+          <td style="white-space:nowrap"><button class="nmbtn" data-ve="${r.id}" aria-label="수정" title="수정">⋯</button> <button class="btn ghost sm rdel" data-vx="${r.id}" title="삭제">삭제</button></td></tr>`).join("")||`<tr><td colspan="${CNT?9:8}" class="empty">이 날 예약이 없습니다. EMR 예약 목록 엑셀을 올려주세요.</td></tr>`}
       </tbody></table></div></section></div>`;
     const go=n=>{ st.date=addDays(st.date,n); renderResv(); };
     $("vp").onclick=()=>go(-1); $("vn").onclick=()=>go(1); $("vt").onclick=()=>{ st.date=kstToday(); renderResv(); }; $("vd").onchange=()=>{ if($("vd").value){ st.date=$("vd").value; renderResv(); } };
     document.querySelectorAll("[data-vf]").forEach(b=>b.onclick=()=>{ st.f=b.dataset.vf; renderResv(); });
+    document.querySelectorAll("[data-vcnt]").forEach(i=>{ i.onkeydown=e=>{ if(e.key==="Enter") i.blur(); }; i.onchange=async()=>{ const {error}=await sb.from("reservations").update({visit_cnt:i.value.trim()||null}).eq("id",i.dataset.vcnt); if(error) toast(errMsg(error)); else toast("내원횟수 저장"); }; });
     bindSearch("vq",v=>{ st.q=v; return renderResv(); });
     document.querySelectorAll("[data-vs]").forEach(b=>b.onclick=async()=>{ const tr=b.closest("tr"), id=+tr.dataset.v; const r=all.find(x=>x.id===id); const v=r.visit===b.dataset.vs?null:b.dataset.vs;
       const {error}=await sb.from("reservations").update({visit:v,reason:v==="내원"||!v?null:r.reason}).eq("id",id); if(error) return toast(errMsg(error)); renderResv(true); });
