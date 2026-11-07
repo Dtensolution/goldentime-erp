@@ -722,6 +722,8 @@ MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK
 const NAV_ST={"근무 · 인사 (공용)":["🗓️","#3a6ea5"],"공통":["📢","#64748b"],"원무":["🧾","#d17a12"],"물리치료":["💪","#2f8f4e"],"간호":["💉","#d0457a"],"병동":["🛏️","#7656b8"],"수술":["🩼","#1c8c8c"],"영상의학":["🩻","#5b6fd6"],"임상병리":["🧪","#a35b2a"],"청구":["💰","#b8860b"],"경영지원":["💼","#6b7785"],"의료진":["👨‍⚕️","#1858a8"],"보안":["🔒","#c0392b"],"경영 · 관리":["📊","#334155"]};
 const navSt=g=>NAV_ST[g]||["📁","#64748b"]; const NAV_TOP={me:"🏠",dash:"📈"};
 // 지점별로 업무게시판·업무 기록부·물품재고를 쓰는 부서 (없으면 전부) — 철산은 간호만
+const DOC_ALL_USERS={"gt-cs":["hwan","seol"]}; // 이 지점의 모든 부서 게시물을 볼 수 있는 아이디
+const docAll=()=>(DOC_ALL_USERS[S.branch]||[]).includes(S.me?.login_id);
 const TOOL_DEPTS={"gt-cs":["간호"]}; const toolOk=d=>!TOOL_DEPTS[S.branch]||TOOL_DEPTS[S.branch].includes(d)||d==="공통"||d==="회의록";
 const SEC_TABS=["업체관련 일괄","직원인사명부","경리시트"];
 const MENU_DEPTS=["2등급","팀장","원무","영상의학","물리치료","간호","임상병리","병동","수술","경영지원","의사"];
@@ -2526,7 +2528,7 @@ function bindMdEdit(box,doc,rerender){
 async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
+  const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)&&!docAll()){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
   const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
@@ -2541,7 +2543,7 @@ async function renderDocs(){
   main.innerHTML=`<div class="wrap">
     <div class="page-h"><div><h2>업무게시판</h2><div class="meta">부서별 업무 정리 · 고칠 때마다 이전 내용이 기록됩니다 · 비밀번호·환자 개인정보는 적지 마세요</div></div>
       <input id="dq" placeholder="전체 검색 (제목·내용)" value="${esc(st.q)}" style="height:34px;padding:0 10px;width:min(260px,100%)"></div>
-    <div class="chips">${DOC_DEPTS.filter(toolOk).filter(d=>d!=="회의록"||mgmtOk()).map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
+    <div class="chips">${DOC_DEPTS.filter(d=>toolOk(d)||(docAll()&&counts[d])).filter(d=>d!=="회의록"||mgmtOk()).map(d=>`<button class="fchip" data-dd="${d}" aria-pressed="${!q&&st.dept===d}">${d}${counts[d]?` <small>${counts[d]}</small>`:""}</button>`).join("")}</div>
     <div class="doc-shell">
       <aside class="panel doc-list">${!q&&canEditDoc(st.dept)?`<button class="btn block docnew" id="dnew">${st.dept==="회의록"?"+ 이번 주 회의록":"+ 새 글"}</button>`:""}${q?`<p class="meta" style="margin:0 0 8px">"${esc(st.q)}" 검색 결과 ${list.length}건</p>`:""}
         ${list.map(d=>`<button class="doc-item" data-doc="${d.id}" aria-current="${cur&&d.id===cur.id}">${d.pinned?'<span class="pin">고정</span>':""}${d.notice?`<span class="pin" style="background:${readSet.has(d.id)?"var(--sunk)":"color-mix(in srgb,var(--bad) 14%,transparent)"};color:${readSet.has(d.id)?"var(--muted)":"var(--bad)"}">${readSet.has(d.id)?"필독 · 확인함":"필독"}</span>`:""}<b>${esc(d.title)}</b><small>${q?esc(d.dept)+" · ":""}${d.dept==="회의록"&&mtKey(d.title)?esc(mtSub(d.title)):esc(new Date(d.updated_at).toLocaleDateString("ko-KR"))+" "+esc(nm(d.updated_by))}</small></button>`).join("")||`<p class="meta">아직 글이 없습니다.</p>`}
