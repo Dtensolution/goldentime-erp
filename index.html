@@ -1081,7 +1081,7 @@ async function renderDash(){
   const B=bucketize(rows,bm,mode==="range"); const T=aggRows(rows);
   const nav = mode==="day" ? monthNav() : mode==="year" ? "" : mode==="range" ? `<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="drf" value="${start}" max="${today}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="drt" value="${end}" max="${today}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-drq="${k}">${t}</button>`).join("")}</span>` :
     `<div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${S.year}년</b><button class="btn ghost sm" id="yn" aria-label="다음 해" ${S.year>=today.slice(0,4)?"disabled":""}>▶</button></div>`;
-  const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · ${title}</h2><div class="meta">${T.days?`${T.days}일 마감 반영${rows.some(r=>r.source)?" · 3~10월은 구글시트 전광판에서 이관":""}`:"마감 자료 없음"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
+  const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · ${title}</h2><div class="meta">${T.days?`${T.days}일 마감 반영${rows.some(r=>r.source)?" · 3~10월은 구글시트 전광판에서 이관":""}`:"마감 자료 없음"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}${S.me.level<=2?`<button class="btn ghost sm" id="dxls" title="일별·주별·월별·도수충격파·원장별·C-arm·치료사별 자료를 엑셀로">📥 엑셀</button>`:""}</div></div>`;
   if(!T.days){ main.innerHTML=`<div class="wrap">${head}<div class="empty">이 기간에 입력된 마감일지가 없습니다.</div></div>`; bindDash(); return; }
   // KPI
   const R=monthRange(S.month); const isCurMonth = mode==="day" && S.month===today.slice(0,7);
@@ -1148,7 +1148,7 @@ async function renderDashOne(seg){
   const d=S.oneDate, dd=new Date(d+"T00:00:00Z"); const r=rows.find(x=>x.close_date===d);
   rows.sort((x,y)=>x.close_date<y.close_date?-1:1); const prevR=rows.filter(x=>x.close_date<d&&+x.total>0).at(-1), wkR=rows.find(x=>x.close_date===addDays(d,-7)&&+x.total>0);
   const nav=`<div class="monthnav"><button class="btn ghost sm" id="op" aria-label="전날">◀</button><b class="num" style="min-width:130px">${d.slice(0,4)}. ${+d.slice(5,7)}. ${+d.slice(8)} (${WD[dd.getUTCDay()]})</b><button class="btn ghost sm" id="on" aria-label="다음날" ${d>=today?"disabled":""}>▶</button></div><input type="date" id="od" value="${d}" max="${today}" aria-label="날짜 선택" style="height:30px;padding:0 6px">`;
-  const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}</div></div>`;
+  const head=handoverSlot()+goalSlot()+`<div class="page-h"><div><h2>전광판 · 당일</h2><div class="meta">${r?(+r.total>0?"이 날 하루 마감 자료만 보여줍니다":`<span class="pill wait">작성 중</span> 마감 전 · 지금까지 입력된 칸만 보입니다 (도수·충격파는 스케줄 기준)`):"이 날은 마감일지가 없습니다"}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">${seg}${nav}${S.me.level<=2?`<button class="btn ghost sm" id="dxls" title="일별·주별·월별·도수충격파·원장별·C-arm·치료사별 자료를 엑셀로">📥 엑셀</button>`:""}</div></div>`;
   const bind=()=>{ if(!$("op")) return; bindDash(); const go=x=>{ S.oneDate=x; renderDash(); }; $("op").onclick=()=>go(addDays(d,-1)); $("on").onclick=()=>go(addDays(d,1)); $("od").onchange=()=>{ if($("od").value) go($("od").value); }; };
   if(!r){ main.innerHTML=`<div class="wrap">${head}<div class="empty">${d===today?"오늘은 아직 마감일지가 입력되지 않았습니다. 마감 후 입력하면 여기에 바로 나옵니다.":`${+d.slice(5,7)}월 ${+d.slice(8)}일 마감일지가 입력되지 않았습니다.`}${prevR?` <button class="linkbtn" data-one="${prevR.close_date}">가장 가까운 이전 마감(${+prevR.close_date.slice(5,7)}/${+prevR.close_date.slice(8)}) 보기</button>`:""}</div><div id="ceBox1" style="margin-top:14px"></div></div>`; bind(); fillCarmEmg("ceBox1",addDays(d,-29),d,"day",true,"최근 30일 · ").catch(()=>{}); return; }
   const A=aggRows([r]), P=prevR?aggRows([prevR]):null, W=wkR?aggRows([wkR]):null;
@@ -3138,6 +3138,52 @@ const UP_TYPES={
   inv:{label:"물품 재고조사", help:"한 줄에 품목 하나. 품목명이 물품·재고 목록과 같아야 합니다(규격까지 같으면 더 정확). 날짜는 위에서 고릅니다.", cols:["품목명","규격","재고","발주"]},
   close:{label:"마감일지", help:"한 줄에 하루. 같은 날짜가 이미 있으면 덮어씁니다. 금액은 원 단위 숫자.", cols:["날짜","총진료비","비급여","외래","입원","수술건수","카드","현금","계좌","미수","비고"]}
 };
+// ── 데이터 엑셀 내보내기 (2등급 이상) : 일별 마감·주별·월별·도수충격파·원장별·C-arm·치료사별 ──
+async function exportDataDialog(){
+  const lv=S.me.level; const brs=lv===1?S.branches:S.branches.filter(b=>b.id===S.branch); const dlg=$("dlg");
+  dlg.innerHTML=`<form method="dialog" style="min-width:min(520px,92vw)"><h3 style="margin:0 0 6px">📥 데이터 엑셀 받기</h3><p class="meta" style="margin:0 0 10px">마감일지·전광판·도수충격파·원장별·C-arm·치료사별 자료를 엑셀 한 파일로 받습니다 (환자 이름·연락처는 넣지 않습니다)</p>
+    <div class="field"><label>지점</label><div class="chips">${brs.map(b=>`<label class="fchip" style="cursor:pointer"><input type="checkbox" data-xb="${b.id}" ${b.id===S.branch||lv===1?"checked":""} style="margin-right:4px">${esc(b.name)}</label>`).join("")}</div></div>
+    <div class="row2"><div class="field"><label for="xs">시작일</label><input type="date" id="xs" value="2026-01-01"></div><div class="field"><label for="xe">끝일</label><input type="date" id="xe" value="${kstToday()}"></div></div>
+    <p class="meta" id="xmsg" style="min-height:1.2em"></p>
+    <menu style="display:flex;gap:8px;justify-content:flex-end;padding:0;margin:12px 0 0"><button class="btn ghost" value="cancel">닫기</button><button class="btn" type="button" id="xgo">엑셀 만들기</button></menu></form>`;
+  dlg.showModal();
+  $("xgo").onclick=async()=>{ const ids=[...dlg.querySelectorAll("[data-xb]:checked")].map(x=>x.dataset.xb); const s=$("xs").value, e=$("xe").value; if(!ids.length||!s||!e) return toast("지점과 기간을 고르세요");
+    const msg=t=>$("xmsg").textContent=t; $("xgo").disabled=true;
+    try{ msg("자료 불러오는 중…"); const X=await loadXLSX(); const bn=id=>S.branches.find(b=>b.id===id)?.name||id;
+      const all=async(q)=>{ const out=[]; for(let f=0;;f+=1000){ const {data,error}=await q().range(f,f+999); if(error) throw error; out.push(...(data||[])); if(!data||data.length<1000) break; } return out; };
+      const dc=await all(()=>sb.from("daily_close").select("*").in("branch_id",ids).gte("close_date",s).lte("close_date",e).order("branch_id").order("close_date"));
+      const its=await all(()=>sb.from("sched_items").select("branch_id,kind,name,price,active").in("branch_id",ids));
+      const cc=await all(()=>sb.from("carm_counts").select("branch_id,cdate,kind,name,cnt").in("branch_id",ids).gte("cdate",s).lte("cdate",e).order("cdate"));
+      msg("스케줄 자료 불러오는 중…"); const ap=await all(()=>sb.from("appointments").select("branch_id,appt_date,kind,item,staff,is_new,status").in("branch_id",ids).gte("appt_date",s).lte("appt_date",e).order("appt_date"));
+      const price={}; its.forEach(i=>{ price[i.branch_id+"|"+i.kind+"|"+i.name]=+i.price||0; }); const pp=(b,k)=>price[b+"|pt|"+k]??Object.entries(price).find(([key])=>key.startsWith(b+"|pt|")&&ptKey(key.split("|")[2])===ptKey(k))?.[1]??0;
+      const isPt=k=>!/상담/.test(k)&&(/^도수/.test(k)||/충격파|^E\d|^ES\d|^F$/.test(k)); const isD=k=>/^도수/.test(k);
+      const ptOf=r=>Object.entries(r.pt||{}).filter(([k,v])=>k!=="_m"&&isFinite(+v)&&+v);
+      const day=r=>{ const dn=(r.doctors||[]).reduce((t,d)=>t+(+d.new||0),0), dr=(r.doctors||[]).reduce((t,d)=>t+(+d.re||0),0); const P=ptOf(r).filter(([k])=>isPt(k));
+        const dC=P.filter(([k])=>isD(k)).reduce((t,[,v])=>t+ +v,0), sC=P.filter(([k])=>!isD(k)).reduce((t,[,v])=>t+ +v,0), dA=P.filter(([k])=>isD(k)).reduce((t,[k,v])=>t+ +v*pp(r.branch_id,k),0), sA=P.filter(([k])=>!isD(k)).reduce((t,[k,v])=>t+ +v*pp(r.branch_id,k),0);
+        return {"지점":bn(r.branch_id),"날짜":r.close_date,"요일":WD[new Date(r.close_date+"T00:00:00Z").getUTCDay()],"총진료비":+r.total||0,"비급여":+r.nonpay||0,"외래":+r.outpatient||0,"입원":+r.inpatient||0,"수술":+r.surgery_cnt||0,"카드":+r.pay_card||0,"현금":+r.pay_cash||0,"계좌":+r.pay_account||0,"미수":+r.unpaid||0,"미수입금":+r.unpaid_in||0,
+          "신환":dn,"재진":dr,"총진료":dn+dr,"건당":dn+dr?Math.round((+r.total||0)/(dn+dr)):0,"도수(건)":dC,"도수 금액":dA,"충격파(건)":sC,"충격파 금액":sA,"도수상담":+(r.pt?.["도수상담"]||0),"실예약":+(r.resv?.real||0),"방문":+(r.resv?.visit||0),
+          ...Object.fromEntries(Object.entries(r.extra?.carm||{}).map(([k,v])=>["C-arm "+k,+v||0])),"근전도":+(r.extra?.emg_cnt??r.extra?.emg??0)||0}; };
+      const D=dc.filter(r=>+r.total>0).map(day);
+      const keysAll=[...new Set(D.flatMap(o=>Object.keys(o)))];
+      const D2=D.map(o=>Object.fromEntries(keysAll.map(k=>[k,o[k]??0])));
+      const sumBy=(arr,keyf,label)=>{ const m=new Map(); arr.forEach(o=>{ const k=o["지점"]+"|"+keyf(o["날짜"]); const t=m.get(k)||{"지점":o["지점"],[label]:keyf(o["날짜"]),"일수":0}; t["일수"]++; keysAll.forEach(c=>{ if(typeof o[c]==="number"&&!["건당"].includes(c)) t[c]=(t[c]||0)+o[c]; }); m.set(k,t); });
+        return [...m.values()].map(t=>{ t["건당"]=t["총진료"]?Math.round(t["총진료비"]/t["총진료"]):0; t["비급여 비중(%)"]=t["총진료비"]?Math.round(t["비급여"]/t["총진료비"]*1000)/10:0; t["이행률(%)"]=t["실예약"]?Math.round(t["방문"]/t["실예약"]*1000)/10:0; return t; }); };
+      const mon=d=>{ const x=new Date(d+"T00:00:00Z"); const k=(x.getUTCDay()+6)%7; x.setUTCDate(x.getUTCDate()-k); return x.toISOString().slice(0,10)+" 주"; };
+      const W=sumBy(D2,mon,"주(월요일)"), M=sumBy(D2,d=>d.slice(0,7),"월");
+      const PT=[]; dc.forEach(r=>ptOf(r).forEach(([k,v])=>{ const p=pp(r.branch_id,k); PT.push({"지점":bn(r.branch_id),"날짜":r.close_date,"치료":k,"구분":isD(k)?"도수":isPt(k)?"충격파":"기타","건수":+v,"단가":p,"금액":+v*p}); }));
+      const DR=[]; dc.forEach(r=>(r.doctors||[]).forEach(d=>{ if(+d.new||+d.re||+d.amt) DR.push({"지점":bn(r.branch_id),"날짜":r.close_date,"원장":d.name,"신환":+d.new||0,"재진":+d.re||0,"진료비":+d.amt||0}); }));
+      const CA=cc.filter(c=>+c.cnt).map(c=>({"지점":bn(c.branch_id),"날짜":c.cdate,"구분":{doc:"원장",tech:"방사선사",tech_s:"방사선사(보조)"}[c.kind]||c.kind,"이름":c.name,"건수":+c.cnt}));
+      const TM=new Map(); ap.forEach(a=>{ const st=a.status||"예약"; const k=[a.branch_id,a.appt_date.slice(0,7),a.kind,staffBase(a.staff)||"(미지정)",a.item||"",a.is_new?1:0,st].join("|"); TM.set(k,(TM.get(k)||0)+1); });
+      const TH=[...TM.entries()].map(([k,n])=>{ const [b,m,kind,stf,item,nw,st]=k.split("|"); return {"지점":bn(b),"월":m,"스케줄":kind==="pt"?"도수·충격파":kind==="emg"?"근전도":kind,"담당":stf,"치료":item,"신환":nw==="1"?"신환":"재진","상태":st,"건수":n,"예상 금액(완료·예약)":/취소|노쇼/.test(st)?0:n*(price[b+"|"+kind+"|"+item]||0)}; });
+      const IT=its.map(i=>({"지점":bn(i.branch_id),"스케줄":i.kind==="pt"?"도수·충격파":i.kind==="emg"?"근전도":i.kind,"치료":i.name,"단가":+i.price||0,"사용":i.active?"사용":"안 씀"}));
+      const wb=X.utils.book_new(); const add=(name,rows,widths)=>{ const ws=X.utils.json_to_sheet(rows.length?rows:[{"안내":"자료 없음"}]); const cols=Object.keys(rows[0]||{"안내":1}); ws["!cols"]=cols.map(c=>({wch:Math.max(8,Math.min(28,(widths?.[c])||String(c).length*2+2))})); ws["!autofilter"]={ref:ws["!ref"]}; X.utils.book_append_sheet(wb,ws,name); };
+      add("월별 요약",M); add("주별 요약",W); add("일별 마감",D2); add("도수충격파 일별",PT); add("원장별 일별",DR); add("C-arm 일별",CA); add("치료사별 월별",TH,{"담당":12,"치료":14}); add("치료 단가",IT);
+      const info=[{"항목":"지점","내용":ids.map(bn).join(", ")},{"항목":"기간","내용":`${s} ~ ${e}`},{"항목":"만든 날","내용":new Date().toLocaleString("ko-KR")},{"항목":"금액 계산","내용":"도수·충격파 금액 = 마감일지 건수 × 현재 치료 단가 (지난 기간도 지금 단가로 계산)"},{"항목":"치료사별","내용":"스케줄 예약 기준 · 담당 칸의 #회차·(1/2) 표기는 떼고 이름으로 묶음"},{"항목":"개인정보","내용":"환자 이름·차트번호·연락처는 넣지 않음"}];
+      const wi=X.utils.json_to_sheet(info); wi["!cols"]=[{wch:12},{wch:80}]; X.utils.book_append_sheet(wb,wi,"안내");
+      X.writeFile(wb,`ERP_데이터_${ids.map(bn).join("_").replace(/[\\/:*?"<>|\s]/g,"")}_${s}_${e}.xlsx`); msg(`완료 · 일별 ${D2.length}일 · 스케줄 ${ap.length}건`); toast("엑셀 파일을 받았습니다"); }
+    catch(err){ msg("실패: "+errMsg(err)); } finally{ $("xgo").disabled=false; } };
+}
+document.addEventListener("click",e=>{ if(e.target?.id==="dxls") exportDataDialog(); });
 async function loadXLSX(){ if(window.XLSX) return window.XLSX; await new Promise((ok,no)=>{ const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"; s.onload=ok; s.onerror=()=>no(new Error("엑셀 읽기 도구를 불러오지 못했습니다")); document.head.appendChild(s); }); return window.XLSX; }
 function parseDateCell(v,year){ if(v instanceof Date) return ymd(new Date(Date.UTC(v.getFullYear(),v.getMonth(),v.getDate())));
   if(typeof v==="number"&&v>30000&&v<60000){ const d=new Date(Date.UTC(1899,11,30)+v*864e5); return ymd(d); }
