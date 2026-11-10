@@ -1348,7 +1348,7 @@ async function renderParts(){
   main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const all=[]; { const q=f=>sb.from("visit_parts").select("visit_date,chart_no,nr,dx,carm").eq("branch_id",S.branch).order("visit_date").order("chart_no").range(f,f+999);
     const {count,error:ce}=await sb.from("visit_parts").select("id",{count:"exact",head:true}).eq("branch_id",S.branch); if(ce){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ce))}</div></div>`; return; }
-    const R=await Promise.all(Array.from({length:Math.max(1,Math.ceil((count||0)/1000))},(_,k)=>q(k*1000))); const bad=R.find(r=>r.error); if(bad){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(bad.error))}</div></div>`; return; } R.forEach(r=>all.push(...r.data)); }
+    let R; if(typeof count==="number") R=await Promise.all(Array.from({length:Math.max(1,Math.ceil(count/1000))},(_,k)=>q(k*1000))); else { R=[]; for(let f=0;;f+=1000){ const r=await q(f); R.push(r); if(r.error||(r.data||[]).length<1000) break; } } const bad=R.find(r=>r.error); if(bad){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(bad.error))}</div></div>`; return; } R.forEach(r=>all.push(...r.data)); }
   const set=await loadBranchSettings().catch(()=>({raw:{}})); const pmap=(set.raw||{}).partMap||{};
   const L=all.filter(v=>v.nr!=="진찰료산정안함"||true).map(v=>({...v,part:partOf(v.dx,pmap)}));
   const LN=st.nr==="전체"?L:L.filter(v=>st.nr==="신환"?v.nr==="신환":v.nr!=="신환");
