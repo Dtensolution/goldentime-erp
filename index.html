@@ -1371,8 +1371,8 @@ async function renderParts(){
       <span class="meta" style="margin-left:12px">기준일</span><input type="date" id="pbase" value="${esc(st.base)}" style="height:30px;padding:0 6px" title="가격 변경일 등 — 앞뒤 4주 비교"></div>
     <p class="meta" id="pmsg"></p>
     ${!bk.length?`<div class="empty">아직 자료가 없습니다. 원무에서 매일 EMR <b>환자별 소모통계</b>(그날 하루)를 뽑아 위 [📤 소모통계 엑셀 올리기]로 올려 주세요. 지난 달 파일을 올리면 그 기간도 채워집니다.</div>`:`
-    <div class="grid2"><section class="panel"><h3>부위별 환자 수 <span>하루 평균 · ${st.nr}</span></h3><div class="cbox"><canvas id="pc1"></canvas></div></section>
-      <section class="panel"><h3>C-arm 부위별 <span>하루 평균</span></h3><div class="cbox"><canvas id="pc2"></canvas></div></section></div>
+    <div class="grid2"><section class="panel"><h3>부위별 환자 수 <span>${st.by==="day"?"굵은 선 = 7일 평균 · 옅은 선 = 그날":"하루 평균"} · ${st.nr}</span></h3><div class="cbox"><canvas id="pc1"></canvas></div></section>
+      <section class="panel"><h3>C-arm 부위별 <span>${st.by==="day"?"굵은 선 = 7일 평균 · 옅은 선 = 그날":"하루 평균"}</span></h3><div class="cbox"><canvas id="pc2"></canvas></div></section></div>
     ${cmp}
     <section class="panel"><h3>${st.by==="month"?"월별":st.by==="day"?"일별":"주별 (월~일)"} 표 <span>건수 (작은 글씨: 하루 평균) · C-arm</span></h3><div class="tbl-box"><table><thead><tr><th>${st.by==="month"?"월":st.by==="day"?"날짜":"주"}</th><th class="num">일수</th>${PART_KEYS.map(p=>`<th class="num" style="color:${PART_COL[p]}">${p}</th>`).join("")}<th class="num">합계</th>${PART_KEYS.slice(0,4).map(p=>`<th class="num">C-arm ${p}</th>`).join("")}<th class="num">C-arm 계</th></tr></thead><tbody>
       ${bk.slice().reverse().map(b=>`<tr><td>${lab(b.k)}</td><td class="num">${b.days.size}</td>${PART_KEYS.map(p=>`<td class="num">${b.n[p]||0}<small class="meta" style="display:block">${avg(b.n[p]||0,b)}${st.nr==="전체"&&b.nw[p]?` · 신환 ${b.nw[p]}`:""}</small></td>`).join("")}<td class="num"><b>${b.tot}</b><small class="meta" style="display:block">${avg(b.tot,b)}</small></td>${PART_KEYS.slice(0,4).map(p=>`<td class="num">${b.c[p]||0}</td>`).join("")}<td class="num"><b>${b.ctot}</b></td></tr>`).join("")}</tbody></table></div></section>
@@ -1393,8 +1393,12 @@ async function renderParts(){
     catch(e){ msg("실패: "+errMsg(e)); } };
   if(!bk.length) return;
   const labels=bk.map(b=>lab(b.k));
-  mkChart("pc1",{type:"line",data:{labels,datasets:PART_KEYS.slice(0,4).map(p=>({label:p,data:bk.map(b=>avg(b.n[p]||0,b)),borderColor:PART_COL[p],backgroundColor:PART_COL[p],tension:.25,pointRadius:3}))},options:{plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}});
-  mkChart("pc2",{type:"line",data:{labels,datasets:PART_KEYS.slice(0,4).map(p=>({label:p,data:bk.map(b=>avg(b.c[p]||0,b)),borderColor:PART_COL[p],backgroundColor:PART_COL[p],tension:.25,pointRadius:3}))},options:{plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true}}}});
+  const pChart=(id,f)=>{ const day=st.by==="day"; const ser=p=>bk.map(b=>avg(f(b)[p]||0,b));
+    const ma=a=>a.map((_,i)=>{ const w=a.slice(Math.max(0,i-6),i+1); return Math.round(w.reduce((x,y)=>x+y,0)/w.length*10)/10; });
+    const ds=day?PART_KEYS.slice(0,4).flatMap(p=>{ const r=ser(p); return [{label:p,data:ma(r),borderColor:PART_COL[p],backgroundColor:PART_COL[p],borderWidth:2.5,tension:.4,pointRadius:0,pointHoverRadius:4},{label:p+" (그날)",data:r,borderColor:PART_COL[p]+"33",backgroundColor:PART_COL[p]+"33",borderWidth:1,tension:.3,pointRadius:0,pointHoverRadius:3,_raw:1}]; })
+      :PART_KEYS.slice(0,4).map(p=>({label:p,data:ser(p),borderColor:PART_COL[p],backgroundColor:PART_COL[p],borderWidth:2.5,tension:.3,pointRadius:3}));
+    mkChart(id,{type:"line",data:{labels,datasets:ds},options:{interaction:{mode:"index",intersect:false},plugins:{legend:{position:"bottom",labels:{filter:i=>!/\(그날\)$/.test(i.text)},onClick:(e,it,lg)=>{ const c=lg.chart; c.data.datasets.forEach((d,i)=>{ if(d.label===it.text||d.label===it.text+" (그날)") c.setDatasetVisibility(i,!c.isDatasetVisible(i)); }); c.update(); }}},scales:{x:{grid:{display:false},ticks:{maxRotation:0,autoSkip:true,maxTicksLimit:day?10:16}},y:{beginAtZero:true}}}}); };
+  pChart("pc1",b=>b.n); pChart("pc2",b=>b.c);
 }
 async function renderPaths(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`; killCharts();
