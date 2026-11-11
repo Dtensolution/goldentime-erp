@@ -475,7 +475,8 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .mded [data-ci],.mded .mdt{cursor:text}.mded tr[data-ln] [data-ci]:hover,.mded .mdt:hover{outline:1px dashed var(--accent);outline-offset:-1px}
 .md td.mdck{text-align:center}.md td.mdck input{width:18px;height:18px;cursor:pointer}
 .mded td.mdx{width:28px;padding:0 2px;border-left:none}.mded tr .mdx .nmbtn{opacity:0}.mded tr:hover .mdx .nmbtn{opacity:.6}
-.mded .mdin{width:100%;font:inherit;resize:vertical}.mded .mdadd{margin:-2px 0 10px}
+.mded .mdin{width:100%;font:inherit;resize:vertical}
+.inv td.exp-over{background:#fde8e8;color:#b42318;font-weight:600}.inv td.exp-soon{background:#fff4e0;color:#b54708}.mded .mdadd{margin:-2px 0 10px}
 .md td,.md th{text-align:left!important}
 .md li:has(>input[type=checkbox]){list-style:none;margin-left:-18px}
 .doc-edit{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -736,6 +737,10 @@ function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>
 const FX = {};
 const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
 const NIGHT_BR = ["gt-os","gt-cs"];
+const INV_EXP_BR = ["gt-os"];   // 물품·재고 약제: 유효기간 칸 (inv_items.exp_date)
+const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=false)과 같은 목록 · 팀장(3등급)도 처리·확인
+const MD_ENTER_ADD = {"gt-os":/수액/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
+
 const PT_AMT_BR = ["gt-cs"];
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
 const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
@@ -2563,6 +2568,7 @@ function bindMdEdit(box,doc,rerender){
     edit(td,()=>cellsOf(ln)[ci]??"",v=>setCell(ln,ci,v),(e,dir)=>{ let n=null;
       const vis=x=>x&&x.style.display!=="none"; if(dir==="down") n=tr.nextElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="up") n=tr.previousElementSibling?.querySelector(`[data-ci="${ci}"]`); else if(dir==="right"){ n=td.nextElementSibling; while(n&&!vis(n)) n=n.nextElementSibling; } else { n=td.previousElementSibling; while(n&&!vis(n)) n=n.previousElementSibling; }
       if(n&&(n.tagName==="TH"||n.classList.contains("mdck")||n.classList.contains("mdx"))) n=null;
+      if(!n&&dir==="down"&&e&&e.key==="Enter"&&MD_ENTER_ADD[S.branch]?.test(doc.title||"")){ const add=tr.closest(".tbl-box")?.nextElementSibling; if(add&&add.dataset.madd!=null&&+add.dataset.madd===ln){ window.__mdFocus={doc:doc.id,ln:ln+1,ci:0}; add.click(); return; } }
       if(n&&n.dataset.ci!=null) setTimeout(()=>cellEdit(n),0); }); };
   // 근무표처럼 코드 골라 칸 누르기 (끌면 여러 칸)
   const BR=window.__mdBrush ||= {v:null}; let painting=false;
@@ -2619,6 +2625,7 @@ function bindMdEdit(box,doc,rerender){
     if(!labs.length) return toast(`${nm}월 칸이 이미 있습니다`); const sep=lns[0]+1; if(/^\s*\|[\s:|-]+\|\s*$/.test(lines[sep]||"")&&!lns.includes(sep)) lns.splice(1,0,sep);
     const isCk=lns.some(ln=>ln!==lns[0]&&/\[( |x|X)\]/.test(lines[ln]));
     lns.forEach((ln,i)=>{ const c=cellsOf(ln); while(c.length<hd.length) c.push(""); labs.forEach(l=>c.push(i===0?l:(ln===sep?"---":(isCk?"[ ]":"")))); lines[ln]="| "+c.join(" | ")+" |"; }); { let el=b; while(el&&!(el.matches&&el.matches("[data-mdates]"))) el=el.previousElementSibling; const ti=[...box.querySelectorAll("[data-mdates]")].indexOf(el); (window.__mdMon ||= {})[doc.id+":"+Math.max(0,ti)]=nm; } dirty=true; await save(); rerender(); });
+  { const F=window.__mdFocus; if(F&&F.doc===doc.id){ window.__mdFocus=null; const td=box.querySelector(`tr[data-ln="${F.ln}"] [data-ci="${F.ci}"]`); if(td) setTimeout(()=>cellEdit(td),30); } }
   box.querySelectorAll("[data-madd]").forEach(b=>b.onclick=async()=>{ const ln=+b.dataset.madd, w=+b.dataset.mw; lines.splice(ln+1,0,"| "+Array(w).fill("").map((x,i)=>b.hasAttribute("data-mk")&&i>0?"[ ]":x).join(" | ")+" |"); dirty=true; await save(); rerender(); });
   box.querySelectorAll("[data-mdel]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } lines.splice(+b.dataset.mdel,1); dirty=true; await save(); rerender(); });
 }
@@ -3053,7 +3060,10 @@ async function renderInventory(){
   const cats=[...new Set(items.map(i=>(i.category||"기타").split(" · ")[0]))];
   const last=i=>{ const a=(L[i.id]||[]).filter(l=>l.kind==="재고"); return a.length?a[a.length-1]:null; };
   const q=st.q.toLowerCase();
-  const isBrace=i=>(i.category||"").startsWith("보호대"); const useLow=!INV_NOLOW.includes(st.dept); if(!useLow) st.low=false;
+  const isBrace=i=>(i.category||"").startsWith("보호대"); const isDrug=i=>/^약제/.test(i.category||""); let expHide=false; try{ expHide=localStorage.getItem("gt-exphide")==="1"; }catch(e){}
+  const EXA=INV_EXP_BR.includes(S.branch)&&items.some(isDrug)&&items.some(i=>"exp_date" in i); const EX=EXA&&!expHide; const today=kstToday();
+  const expH=i=>{ if(!isDrug(i)) return `<td></td>`; const v=i.exp_date||""; const dd=v?Math.round((Date.parse(v)-Date.parse(today))/864e5):null; const cls=dd==null?"":dd<0?"exp-over":dd<=30?"exp-soon":""; const tip=dd==null?"유효기간 없음":dd<0?`${-dd}일 지남`:dd===0?"오늘까지":`${dd}일 남음`;
+    return `<td class="${cls}" title="${tip}" style="white-space:nowrap">${ed?`<input type="date" data-iexp="${i.id}" value="${esc(v)}" style="height:26px;padding:0 4px;width:128px">`:v?`${v.slice(2).replace(/-/g,".")}`:""}${dd!=null&&dd<=30?` <small>${dd<0?"지남":`D-${dd}`}</small>`:""}</td>`; }; const useLow=!INV_NOLOW.includes(st.dept); if(!useLow) st.low=false;
   const diffOf=i=>{ const lt=last(i); return i.std_qty!=null&&lt?(+lt.qty)-(+i.std_qty):null; };
   const diffH=i=>{ const d=diffOf(i); return d==null?"":`<span style="color:${d<0?"var(--bad)":d>0?"#1a5fd0":"var(--muted)"};font-weight:600">${d>0?"+":""}${fmtQ(d)}</span>`; };
   const ko=(a,b)=>String(a||"").localeCompare(String(b||""),"ko",{numeric:true});
@@ -3076,14 +3086,15 @@ async function renderInventory(){
     <div class="chips" style="margin-top:-4px">${["전체",...cats].map(c=>`<button class="fchip" data-ic="${esc(c)}" aria-pressed="${!led&&!book&&st.cat===c}">${esc(c)}</button>`).join("")}
       ${books.map(b=>`<button class="fchip ledchip" data-isb="${b.id}" aria-pressed="${book?.id===b.id}">📗 ${esc(b.name)}</button>`).join("")}
       ${leds.map(d=>`<button class="fchip ledchip" data-iled="${d.id}" aria-pressed="${led?.id===d.id}">📒 ${esc(d.title.slice(INV_LED.length))}</button>`).join("")}${canEditDoc(st.dept)?`<button class="fchip" id="iledadd" title="이 파트 물품·재고에 장부 추가">+ 장부</button>`:""}
+      ${EXA&&!led&&!book?(()=>{ const n=items.filter(i=>isDrug(i)&&i.exp_date&&(Date.parse(i.exp_date)-Date.parse(today))/864e5<=30).length; return `<button class="fchip" id="iexph" aria-pressed="${!expHide}" title="유효기간 칸 보이기/숨기기" style="${n?"border-color:var(--bad)":""}">${expHide?"유효기간 보기":"유효기간 숨기기"}${n?` <small style="color:var(--bad)">임박·지남 ${n}</small>`:""}</button>`; })():""}
       ${useLow&&!led&&!book?`<button class="fchip" id="ilow" aria-pressed="${st.low}" style="${lowN?"border-color:var(--warn)":""}">기준보다 적음 ${lowN}</button>`:""}</div>
     ${st.count?`<div class="brushes"><b>${OO?"발주":"재고조사"}</b><label class="meta" for="icd">날짜</label><input type="date" id="icd" value="${st.cdate}" style="height:30px;padding:0 6px"><span class="meta">${OO?"발주 칸에 주문할 수량을 적고 저장하세요. 그 날짜 칸에 발주량이 그대로 나옵니다.":"수량 칸에 현재 재고를, 발주 칸에 주문할 수량을 적고 저장하세요. 빈칸은 저장하지 않습니다."}</span><button class="btn sm" id="isave">저장</button></div>`:""}
     ${book?`<section class="panel" id="sbhost"></section>`:led?`<section class="panel"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><h3 style="margin:0">📒 ${esc(led.title.slice(INV_LED.length))}</h3>${canEditDoc(st.dept)?`<span class="meta noprint">표 칸을 누르면 바로 고칩니다 · Enter 저장 · Tab·화살표 이동</span> <b id="mdst" class="noprint"></b><button class="btn ghost sm noprint" id="ledren">이름 바꾸기</button><button class="btn ghost sm noprint" id="ledfull">전체 수정</button>`:""}</div>
       <div class="md${canEditDoc(st.dept)?" mded":""}" id="mdv">${mdRender(led.body,{edit:canEditDoc(st.dept)})}</div></section>`:`
-    <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 300px)"><table class="inv"><thead><tr><th class="inm">품목</th><th class="isp">규격</th><th>단위</th><th title="기준치">기준</th>${OO?"":`<th title="가장 최근 재고조사 수량">현재</th><th title="현재 − 기준">±</th>`}${dates.map(d=>`<th>${+d.slice(5,7)}/${+d.slice(8)}</th>`).join("")}${st.count?(OO?`<th>발주</th>`:`<th>재고 입력</th><th>발주</th>`):""}<th></th></tr></thead><tbody>
-      ${shown.map(i=>{ const c=(i.category||"기타"); let g=""; if(c!==grp){ grp=c; g=`<tr class="grp"><td colspan="${(OO?6:8)+dates.length+(st.count?(OO?1:2):0)}">${esc(c)}${st.edit&&ed?` <button type="button" class="btn ghost sm" data-icatdel="${esc(c)}" style="margin-left:10px;color:var(--bad);border-color:var(--bad)">이 분류 ${shown.filter(x=>(x.category||"기타")===c).length}개 한꺼번에 삭제</button>`:""}</td></tr>`; }
+    <section class="panel" style="padding:0"><div class="tbl-box" style="max-height:calc(100vh - 300px)"><table class="inv"><thead><tr><th class="inm">품목</th><th class="isp">규격</th><th>단위</th><th title="기준치">기준</th>${EX?`<th title="약제만 · 날짜를 고르면 바로 저장">유효기간</th>`:""}${OO?"":`<th title="가장 최근 재고조사 수량">현재</th><th title="현재 − 기준">±</th>`}${dates.map(d=>`<th>${+d.slice(5,7)}/${+d.slice(8)}</th>`).join("")}${st.count?(OO?`<th>발주</th>`:`<th>재고 입력</th><th>발주</th>`):""}<th></th></tr></thead><tbody>
+      ${shown.map(i=>{ const c=(i.category||"기타"); let g=""; if(c!==grp){ grp=c; g=`<tr class="grp"><td colspan="${(OO?6:8)+(EX?1:0)+dates.length+(st.count?(OO?1:2):0)}">${esc(c)}${st.edit&&ed?` <button type="button" class="btn ghost sm" data-icatdel="${esc(c)}" style="margin-left:10px;color:var(--bad);border-color:var(--bad)">이 분류 ${shown.filter(x=>(x.category||"기타")===c).length}개 한꺼번에 삭제</button>`:""}</td></tr>`; }
         const lt=last(i); const low=useLow&&i.std_qty!=null&&lt&&+lt.qty<+i.std_qty;
-        return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${st.edit&&ed?`<input data-istd="${i.id}" value="${i.std_qty!=null?fmtQ(i.std_qty):""}" inputmode="decimal" style="height:26px;width:60px;padding:0 6px;text-align:right">`:i.std_qty!=null?fmtQ(i.std_qty):""}</td>${OO?"":`<td class="num" title="${lt?`${lt.log_date} 재고조사`:"재고조사 기록 없음"}">${lt?fmtQ(lt.qty):""}</td><td class="num">${diffH(i)}</td>`}${dates.map(d=>cell(i,d)).join("")}
+        return g+`<tr class="${low?"low":""}"><td class="inm" title="${esc([i.name,i.code,i.vendor].filter(Boolean).join(" · "))}"><b>${esc(i.name)}</b>${i.code?` <small class="meta">${esc(i.code)}</small>`:""}</td><td class="isp" title="${esc(i.spec||"")}">${i.spec&&i.spec!==i.name?esc(i.spec):""}</td><td>${esc(i.unit||"")}</td><td class="num">${st.edit&&ed?`<input data-istd="${i.id}" value="${i.std_qty!=null?fmtQ(i.std_qty):""}" inputmode="decimal" style="height:26px;width:60px;padding:0 6px;text-align:right">`:i.std_qty!=null?fmtQ(i.std_qty):""}</td>${EX?expH(i):""}${OO?"":`<td class="num" title="${lt?`${lt.log_date} 재고조사`:"재고조사 기록 없음"}">${lt?fmtQ(lt.qty):""}</td><td class="num">${diffH(i)}</td>`}${dates.map(d=>cell(i,d)).join("")}
           ${st.count?`${OO?"":`<td><input data-cq="${i.id}" inputmode="decimal" style="height:28px;width:64px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="재고");return x?fmtQ(x.qty):"";})()}"></td>`}<td><input data-co="${i.id}" inputmode="decimal" style="height:28px;width:56px;padding:0 6px;text-align:right" value="${(()=>{const x=(L[i.id]||[]).find(l=>l.log_date===st.cdate&&l.kind==="발주");return x?fmtQ(x.qty):"";})()}"></td>`:""}
           <td style="white-space:nowrap">${ed?`<button class="nmbtn" style="opacity:.6" data-iedit="${i.id}" aria-label="${esc(i.name)} 수정" title="품목 수정">⋯</button>${st.edit?`<button class="btn ghost sm idel" data-idel="${i.id}" title="쓰지 않는 물품 삭제">삭제</button>`:""}`:""}</td></tr>`; }).join("")||`<tr><td colspan="99" class="empty">품목이 없습니다.</td></tr>`}
     </tbody></table></div></section>`}
@@ -3118,6 +3129,9 @@ async function renderInventory(){
     if($("ledfull")) $("ledfull").onclick=()=>{ const v=$("mdv"); v.id="dv"; docEditor(led,st.dept,()=>renderInventory(),{}); }; }
   $("iprint").onclick=()=>{ document.body.classList.add("printing-list"); const done=()=>{ document.body.classList.remove("printing-list"); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); window.print(); setTimeout(done,60000); };
   if($("ilow")) $("ilow").onclick=()=>{ st.low=!st.low; renderInventory(); };
+  if($("iexph")) $("iexph").onclick=()=>{ try{ localStorage.setItem("gt-exphide",expHide?"0":"1"); }catch(e){} const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); };
+  document.querySelectorAll("[data-iexp]").forEach(el=>el.onchange=async()=>{ const id=+el.dataset.iexp; const v=el.value||null; const {error}=await sb.from("inv_items").update({exp_date:v}).eq("id",id); if(error) return toast(/exp_date/.test(error.message||"")?"유효기간 칸 준비 중입니다 (DB 설정 필요)":errMsg(error)); const it=items.find(x=>x.id===id); if(it) it.exp_date=v;
+    const dd=v?Math.round((Date.parse(v)-Date.parse(today))/864e5):null; const td=el.closest("td"); td.className=dd==null?"":dd<0?"exp-over":dd<=30?"exp-soon":""; const sm=td.querySelector("small"); if(sm) sm.remove(); if(dd!=null&&dd<=30) td.insertAdjacentHTML("beforeend",` <small>${dd<0?"지남":`D-${dd}`}</small>`); toast("유효기간 저장됨"); });
   bindSearch("iq",v=>{ st.q=v; return renderInventory(); }); if($("iqx")) $("iqx").onclick=()=>{ st.q=""; renderInventory(); };
   if($("icount")) $("icount").onclick=()=>{ st.count=!st.count; renderInventory(); };
   if($("icd")) $("icd").onchange=()=>{ st.cdate=$("icd").value||kstToday(); renderInventory(); };
@@ -3812,8 +3826,9 @@ async function renderStaffDir(){
     ${allDepts.filter(d=>show.some(s=>s.dept===d)||(E&&edDepts.includes(d)&&(st.dept==="전체"||st.dept===d)&&!q)).map(d=>`<section class="panel"><h3 style="color:${deptColor(d)}">${esc(d)} <span>${show.filter(s=>s.dept===d).length}명${E&&canEditDept(d)?` <button class="btn ghost sm" data-sdadd="${esc(d)}">+ 직원 추가</button>`:""}</span></h3><div class="tbl-box"><table class="dir${E?" editing":""}"><tbody>
       ${show.filter(s=>s.dept===d).sort((a,b)=>(b.lead-a.lead)||((a.title?0:1)-(b.title?0:1))||a.sort-b.sort).map(s=>`<tr><td style="width:110px">${s.lead?`<span class="pill ok">${esc(s.title||"책임자")}</span>`:esc(s.title||"")}</td><td><b>${esc(s.name)}</b></td><td>${telLink(s.phone)||`<span class="meta">번호 없음</span>`}</td><td style="width:${E?70:40}px">${canEditDept(s.dept)?(E?`<button class="btn ghost sm" data-sde="${s.id}">수정</button>`:`<button class="nmbtn" data-sde="${s.id}" aria-label="${esc(s.name)} 수정" style="opacity:.6">⋯</button>`):""}</td></tr>`).join("")||`<tr><td colspan="4" class="meta">아직 직원이 없습니다.</td></tr>`}
     </tbody></table></div></section>`).join("")||`<div class="empty">찾는 직원이 없습니다.</div>`}
-    ${E?`<section class="panel retp"><h3>퇴사·숨긴 직원 <span>${ret.length}명 · 근무표·연차·연장근무·치료사 선택 목록에서 빠져 있습니다 (지난 기록은 그대로 남음)</span></h3>${ret.length?`<div class="tbl-box"><table><tbody>${ret.map(s=>`<tr class="retired"><td style="width:110px">${esc(s.dept)}</td><td><b>${esc(s.name)}</b> ${esc(s.title||"")}</td><td style="width:90px"><button class="btn ghost sm" data-sdrest="${s.id}">다시 표시</button></td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">없습니다. 직원 줄의 [수정] → [퇴사·숨기기]로 정리할 수 있습니다.</p>`}</section>`:""}</div>`;
+    ${E?`<section class="panel retp"><h3>퇴사·숨긴 직원 <span>${ret.length}명 · 근무표·연차·연장근무·치료사 선택 목록에서 빠져 있습니다 (지난 기록은 그대로 남음)</span></h3>${ret.length?`<div class="tbl-box"><table><tbody>${ret.map(s=>`<tr class="retired"><td style="width:110px">${esc(s.dept)}</td><td><b>${esc(s.name)}</b> ${esc(s.title||"")}</td><td style="width:${RET_STAFF_BR.includes(S.branch)?150:90}px">${RET_STAFF_BR.includes(S.branch)?`<button class="btn ghost sm" data-sdre="${s.id}">수정</button> `:""}<button class="btn ghost sm" data-sdrest="${s.id}">다시 표시</button></td></tr>`).join("")}</tbody></table></div>`:`<p class="meta">없습니다. 직원 줄의 [수정] → [퇴사·숨기기]로 정리할 수 있습니다.</p>`}</section>`:""}</div>`;
   bindInfoTabs();
+  document.querySelectorAll("[data-sdre]").forEach(b=>b.onclick=async()=>{ const {data:x,error}=await sb.from("staff").select("*").eq("id",+b.dataset.sdre).maybeSingle(); if(error||!x) return toast(errMsg(error||{message:"직원을 찾지 못했습니다"})); staffEditDialog(x,()=>{ const y=window.scrollY; return renderStaffDir().then(()=>window.scrollTo(0,y)); }); });
   document.querySelectorAll("[data-sdrest]").forEach(b=>b.onclick=async()=>{ const {error}=await sb.from("staff").update({active:true}).eq("id",+b.dataset.sdrest); if(error) return toast(errMsg(error)); toast("다시 표시했습니다"); const y=window.scrollY; renderStaffDir().then(()=>window.scrollTo(0,y)); });
   document.querySelectorAll("[data-sdd]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.sdd; renderStaffDir(); });
   $("sq2f").onsubmit=e=>{ e.preventDefault(); st.q=$("sq2").value.trim(); renderStaffDir(); };
@@ -4462,11 +4477,17 @@ const ALERT_DEFS=[
   {k:"notice",label:"필독 공지를 ○일 넘게 안 읽은 직원이 있음",th:3,u:"일"},
   {k:"pending",label:"연차·연장근무 확인 대기가 ○건 이상 (부서장에게)",th:1,u:"건"}];
 // 퇴사 직원: 연차·연장근무 목록에서 숨김 (기록은 그대로, 2등급 이상은 "퇴사자 보기"로 확인)
-async function retiredList(){ if(!FX.retire) return []; try{ const d=(await loadBranchSettings()).raw; return Array.isArray(d.retired)?d.retired:[]; }catch(e){ return []; } }
-async function setRetired(name,on){ const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); const L=new Set(d.retired||[]); on?L.add(name):L.delete(name); d.retired=[...L];
+const retOn=()=>FX.retire||RET_STAFF_BR.includes(S.branch);
+async function retiredList(){ if(RET_STAFF_BR.includes(S.branch)){ const {data}=await sb.from("staff").select("name,active").eq("branch_id",S.branch); const on=new Set((data||[]).filter(x=>x.active).map(x=>staffBase(x.name))); return [...new Set((data||[]).filter(x=>!x.active).flatMap(x=>[x.name,staffBase(x.name)]).filter(n=>n&&!on.has(staffBase(n))))]; }
+  if(!FX.retire) return []; try{ const d=(await loadBranchSettings()).raw; return Array.isArray(d.retired)?d.retired:[]; }catch(e){ return []; } }
+async function setRetired(name,on){ if(RET_STAFF_BR.includes(S.branch)){ const {data:sr}=await sb.from("staff").select("id,name,active,dept").eq("branch_id",S.branch); const hit=(sr||[]).filter(x=>x.name===name||staffBase(x.name)===staffBase(name)); const tgt=hit.filter(x=>x.active===on);
+    if(!hit.length){ toast(on?`'${name}' 님이 기본정보·연락망 직원 목록에 없어 퇴사 처리할 수 없습니다`:`'${name}' 님을 찾지 못했습니다`); return false; }
+    if(tgt.length){ const {error}=await sb.from("staff").update({active:!on}).in("id",tgt.map(x=>x.id)); if(error){ toast(errMsg(error)); return false; } }
+    toast(on?`${name} 님을 퇴사 처리했습니다 (근무표·연차·연장근무 목록에서 숨김 · 기록은 남아 있음)`:`${name} 님을 다시 목록에 보입니다`); return true; }
+  const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); const L=new Set(d.retired||[]); on?L.add(name):L.delete(name); d.retired=[...L];
   const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); if(error){ toast(errMsg(error)); return false; } toast(on?`${name} 님을 퇴사 처리했습니다 (목록에서 숨김 · 기록은 남아 있음)`:`${name} 님을 다시 목록에 보입니다`); return true; }
-function retUi(RET,n,lv){ if(!FX.retire||lv>3) return ""; const on=RET.has(n); return ` <button class="nmbtn retb" data-ret="${esc(n)}" data-on="${on?0:1}" title="${on?"다시 목록에 보이기":"퇴사 처리 (목록에서 숨김, 기록은 남음)"}" style="opacity:.7;font-size:11px;width:auto;padding:0 6px">${on?"복직":"퇴사"}</button>`; }
-function retToggle(st,nRet,lv,re){ if(!FX.retire||lv>2||!nRet) return ""; return ` <button class="linkbtn" id="retshow" style="font-size:12px">${st.showRet?"퇴사자 숨기기":`퇴사자 보기 (${nRet}명)`}</button>`; }
+function retUi(RET,n,lv){ if(!retOn()||lv>3) return ""; const on=RET.has(n); return ` <button class="nmbtn retb" data-ret="${esc(n)}" data-on="${on?0:1}" title="${on?"다시 목록에 보이기":"퇴사 처리 (목록에서 숨김, 기록은 남음)"}" style="opacity:.7;font-size:11px;width:auto;padding:0 6px">${on?"복직":"퇴사"}</button>`; }
+function retToggle(st,nRet,lv,re){ if(!retOn()||lv>(RET_STAFF_BR.includes(S.branch)?3:2)||!nRet) return ""; return ` <button class="linkbtn" id="retshow" style="font-size:12px">${st.showRet?"퇴사자 숨기기":`퇴사자 보기 (${nRet}명)`}</button>`; }
 function bindRet(st,re){ document.querySelectorAll("[data-ret]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const on=b.dataset.on==="1"; if(on&&!confirm(`${b.dataset.ret} 님을 퇴사 처리할까요?\n목록에서만 숨기고 연차·연장근무 기록은 그대로 남습니다.`)) return; if(await setRetired(b.dataset.ret,on)) re(); });
   if($("retshow")) $("retshow").onclick=()=>{ st.showRet=!st.showRet; re(); }; }
 async function loadBranchSettings(branch=S.branch){
