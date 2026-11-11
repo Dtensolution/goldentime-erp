@@ -738,6 +738,22 @@ const FX = {};
 const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
 const NIGHT_BR = ["gt-os","gt-cs"];
 const INV_EXP_BR = ["gt-os"];   // 물품·재고 약제: 유효기간 칸 (inv_items.exp_date)
+// 업무 기록부 목록을 다른 부서 업무게시판에 자동 공유 (읽기용 사본 · 최근 7일~앞으로)
+const REG_SHARE = {"gt-os":[{dept:"수술", name:"수술 일정", to:"병동", title:"수술 일정 (수술팀 자동 공유)", drop:["생년월일"]}]};
+const regShareOf=r=>(REG_SHARE[S.branch]||[]).find(x=>r&&x.dept===r.dept&&x.name===r.name);
+const shareTimers={};
+function regShareQ(r){ const sh=regShareOf(r); if(!sh) return; clearTimeout(shareTimers[r.id]); shareTimers[r.id]=setTimeout(()=>regShareSync(r,sh).catch(e=>console.warn("share",e)),1500); }
+async function regShareSync(r,sh){
+  const from=addDays(kstToday(),-7); const {data:rows,error}=await sb.from("register_rows").select("data,row_date,sort").eq("register_id",r.id).gte("row_date",from).order("row_date").order("sort"); if(error){ console.warn("share",error.message||error); return; }
+  const cols=(r.columns||[]).filter(c=>!(sh.drop||[]).includes(c.label)); const cl=v=>String(v??"").replace(/\|/g,"/").replace(/\s*\n\s*/g," ").trim();
+  const tbl=[`| ${cols.map(c=>cl(c.label)).join(" | ")} |`,`| ${cols.map(()=>"---").join(" | ")} |`,...(rows||[]).map(x=>`| ${cols.map(c=>cl(x.data?.[c.key])||" ").join(" | ")} |`)];
+  const body=[`> ${sh.dept}팀 '${sh.name}'에서 자동으로 옮겨옵니다 (지난 7일 ~ 앞으로 · 생년월일 제외). 여기서 고쳐도 다음 동기화 때 덮어씌워지니, 고칠 내용은 ${sh.dept}팀에 알려주세요.`,`> 마지막 동기화: ${new Date().toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})}`,"",...(rows&&rows.length?tbl:["(지난 7일 이후 일정이 없습니다)"])].join("\n");
+  const {data:ex}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",sh.to).eq("title",sh.title).limit(1);
+  const w=ex&&ex[0]?await sb.from("dept_docs").update({body}).eq("id",ex[0].id):await sb.from("dept_docs").insert({branch_id:S.branch,dept:sh.to,title:sh.title,body,pinned:true,edit_depts:[sh.dept]});
+  if(w.error) console.warn("share",w.error.message||w.error);
+}
+async function regShareEnsure(dept){ const sh=(REG_SHARE[S.branch]||[]).find(x=>x.to===dept); if(!sh||!canEditDoc(dept)) return false; const {data:ex}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",sh.title).limit(1); if(ex&&ex.length) return false;
+  const {error}=await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:sh.title,body:`> ${sh.dept}팀에서 '${sh.name}'을 열거나 고치면 여기에 자동으로 채워집니다.`,pinned:true,edit_depts:[sh.dept]}); return !error; }
 const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=false)과 같은 목록 · 팀장(3등급)도 처리·확인
 const MD_ENTER_ADD = {"gt-os":/수액/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
 
@@ -2635,6 +2651,7 @@ async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)&&!docAll()){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
+  try{ await regShareEnsure(st.dept); }catch(e){}
   const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body,edit_depts").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
@@ -3061,7 +3078,9 @@ async function renderInventory(){
   const last=i=>{ const a=(L[i.id]||[]).filter(l=>l.kind==="재고"); return a.length?a[a.length-1]:null; };
   const q=st.q.toLowerCase();
   const isBrace=i=>(i.category||"").startsWith("보호대"); const isDrug=i=>/^약제/.test(i.category||""); let expHide=false; try{ expHide=localStorage.getItem("gt-exphide")==="1"; }catch(e){}
-  const EXA=INV_EXP_BR.includes(S.branch)&&items.some(isDrug)&&items.some(i=>"exp_date" in i); const EX=EXA&&!expHide; const today=kstToday();
+  let EXM=null; if(INV_EXP_BR.includes(S.branch)&&items.some(isDrug)){ const {data:xr,error:xe}=await sb.from("ledger_sheets").select("data").eq("branch_id",S.branch).eq("book","inv_exp").eq("skey",st.dept).maybeSingle(); if(!xe) EXM=xr?.data?.exp||{}; }
+  items.forEach(i=>{ if(EXM&&EXM[i.id]!==undefined) i.exp_date=EXM[i.id]; });
+  const EXA=!!EXM; const EX=EXA&&!expHide; const today=kstToday();
   const expH=i=>{ if(!isDrug(i)) return `<td></td>`; const v=i.exp_date||""; const dd=v?Math.round((Date.parse(v)-Date.parse(today))/864e5):null; const cls=dd==null?"":dd<0?"exp-over":dd<=30?"exp-soon":""; const tip=dd==null?"유효기간 없음":dd<0?`${-dd}일 지남`:dd===0?"오늘까지":`${dd}일 남음`;
     return `<td class="${cls}" title="${tip}" style="white-space:nowrap">${ed?`<input type="date" data-iexp="${i.id}" value="${esc(v)}" style="height:26px;padding:0 4px;width:128px">`:v?`${v.slice(2).replace(/-/g,".")}`:""}${dd!=null&&dd<=30?` <small>${dd<0?"지남":`D-${dd}`}</small>`:""}</td>`; }; const useLow=!INV_NOLOW.includes(st.dept); if(!useLow) st.low=false;
   const diffOf=i=>{ const lt=last(i); return i.std_qty!=null&&lt?(+lt.qty)-(+i.std_qty):null; };
@@ -3130,7 +3149,8 @@ async function renderInventory(){
   $("iprint").onclick=()=>{ document.body.classList.add("printing-list"); const done=()=>{ document.body.classList.remove("printing-list"); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); window.print(); setTimeout(done,60000); };
   if($("ilow")) $("ilow").onclick=()=>{ st.low=!st.low; renderInventory(); };
   if($("iexph")) $("iexph").onclick=()=>{ try{ localStorage.setItem("gt-exphide",expHide?"0":"1"); }catch(e){} const y=window.scrollY; renderInventory().then(()=>window.scrollTo(0,y)); };
-  document.querySelectorAll("[data-iexp]").forEach(el=>el.onchange=async()=>{ const id=+el.dataset.iexp; const v=el.value||null; const {error}=await sb.from("inv_items").update({exp_date:v}).eq("id",id); if(error) return toast(/exp_date/.test(error.message||"")?"유효기간 칸 준비 중입니다 (DB 설정 필요)":errMsg(error)); const it=items.find(x=>x.id===id); if(it) it.exp_date=v;
+  document.querySelectorAll("[data-iexp]").forEach(el=>el.onchange=async()=>{ const id=+el.dataset.iexp; const v=el.value||null; const {data:xr}=await sb.from("ledger_sheets").select("data").eq("branch_id",S.branch).eq("book","inv_exp").eq("skey",st.dept).maybeSingle(); const d=JSON.parse(JSON.stringify(xr?.data||{})); d.exp ||= {}; if(v) d.exp[id]=v; else delete d.exp[id];
+    const {error}=await sb.from("ledger_sheets").upsert({branch_id:S.branch,dept:st.dept,book:"inv_exp",skey:st.dept,data:d,updated_at:new Date().toISOString(),updated_by:S.user.id},{onConflict:"branch_id,book,skey"}); if(error) return toast(errMsg(error)); const it=items.find(x=>x.id===id); if(it) it.exp_date=v;
     const dd=v?Math.round((Date.parse(v)-Date.parse(today))/864e5):null; const td=el.closest("td"); td.className=dd==null?"":dd<0?"exp-over":dd<=30?"exp-soon":""; const sm=td.querySelector("small"); if(sm) sm.remove(); if(dd!=null&&dd<=30) td.insertAdjacentHTML("beforeend",` <small>${dd<0?"지남":`D-${dd}`}</small>`); toast("유효기간 저장됨"); });
   bindSearch("iq",v=>{ st.q=v; return renderInventory(); }); if($("iqx")) $("iqx").onclick=()=>{ st.q=""; renderInventory(); };
   if($("icount")) $("icount").onclick=()=>{ st.count=!st.count; renderInventory(); };
@@ -3407,7 +3427,7 @@ async function renderRegisters(opts={}){
   const tcol=(cur?.columns||[]).find(c=>c.tabs&&Array.isArray(c.opts)&&c.opts.length); st.tabs ||= {}; const tv=tcol?(st.tabs[cur.id]??tcol.opts[0]):null;
   const tabOf=r=>String(r.data?.[tcol.key]||"").trim()||tcol.opts[0]; const tabCnt=tcol?Object.fromEntries(tcol.opts.map(o=>[o,rows.filter(r=>tabOf(r)===o).length])):{};
   const shownAll=(q?rows.filter(r=>Object.values(r.data||{}).join(" ").toLowerCase().includes(q)):rows).filter(r=>!tcol||tv==="전체"||tabOf(r)===tv); const shown=shownAll.slice(0,st.limit);
-  const ed=cur&&canRegWrite(cur.dept); const edDef=ed&&S.me.level<=3;
+  const ed=cur&&canRegWrite(cur.dept); const edDef=ed&&S.me.level<=3; if(ed) regShareQ(cur);
   let hidRegs=[]; if(S.me.level<=3&&canRegWrite(st.dept)){ const {data:hr}=await sb.from("registers").select("id,name").eq("branch_id",S.branch).eq("dept",st.dept).eq("active",false).order("sort"); hidRegs=hr||[]; }
   const regSum=()=>{ const g=cols.find(c=>c.group); if(!g) return ""; const sc=cols.filter(c=>c.sum); const by={};
           const num=v=>{ const n=+String(v??"").replace(/[,\s원]/g,""); return isFinite(n)?n:0; };
@@ -3475,7 +3495,7 @@ async function renderRegisters(opts={}){
         td.textContent=""; td.appendChild(ta); ta.focus(); if(ta.select&&!isDate) try{ ta.select(); }catch(_){} if(isOpt){ ta.onchange=()=>ta.blur(); try{ ta.showPicker&&ta.showPicker(); }catch(_){} }
         let done=false; const fin=async save=>{ if(done) return; done=true; const v=ta.value; td.textContent=save?v:old; if(!save||v===old) return; const data={...(row.data||{}),[k]:v}; if(!v) delete data[k];
           const hit=lk&&lk.map[String(v).trim()]; if(hit) Object.entries(lk.fill).forEach(([to,from])=>{ if(hit[from]!=null&&hit[from]!==""){ data[to]=String(hit[from]); const t2=tr.querySelector(`td[data-k="${CSS.escape(to)}"]`); if(t2&&!t2.querySelector(".regin")) t2.textContent=data[to]; } });
-          const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; const rs=document.querySelector(".regsum"); if(rs&&(hit||cols.find(c=>c.key===k)?.group||cols.find(c=>c.key===k)?.sum)) rs.outerHTML=regSum(); };
+          const {error}=await sb.from("register_rows").update({data,row_date:dateOf(data)}).eq("id",rid); if(error){ toast(errMsg(error)); td.textContent=old; return; } row.data=data; regShareQ(cur); const rs=document.querySelector(".regsum"); if(rs&&(hit||cols.find(c=>c.key===k)?.group||cols.find(c=>c.key===k)?.sum)) rs.outerHTML=regSum(); };
         const mv=(dr,dc)=>fin(true).then(()=>{ const t=regNb(td,dr,dc); if(t) t.click(); });
         ta.onkeydown=e=>{ const single=!/\n/.test(ta.value||""); const at0=ta.selectionStart===0&&ta.selectionEnd===0, atEnd=ta.selectionStart!=null&&ta.selectionStart===String(ta.value).length;
           if(!isOpt&&single&&(e.key==="ArrowDown"||e.key==="ArrowUp")&&!e.shiftKey){ e.preventDefault(); return mv(e.key==="ArrowDown"?1:-1,0); }
@@ -3484,7 +3504,7 @@ async function renderRegisters(opts={}){
         ta.onblur=()=>fin(true); };
       td.addEventListener("click",open); td.addEventListener("keydown",e=>{ if(e.target!==td) return; if(e.key==="Enter"){ e.preventDefault(); open(); return; }
         const d={ArrowDown:[1,0],ArrowUp:[-1,0],ArrowRight:[0,1],ArrowLeft:[0,-1]}[e.key]; if(d){ e.preventDefault(); const t=regNb(td,d[0],d[1]); if(t) t.focus(); } }); });
-    document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } const {error}=await sb.from("register_rows").delete().eq("id",b.dataset.rdel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); });
+    document.querySelectorAll("[data-rdel]").forEach(b=>b.onclick=async()=>{ if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="삭제?"; b.style.opacity=1; b.style.color="var(--bad)"; return; } const {error}=await sb.from("register_rows").delete().eq("id",b.dataset.rdel); if(error) return toast(errMsg(error)); b.closest("tr").remove(); regShareQ(cur); });
   }
   document.querySelectorAll("[data-rrs]").forEach(b=>b.onclick=async()=>{ const {error}=await sb.from("registers").update({active:true}).eq("id",+b.dataset.rrs); if(error) return toast(errMsg(error)); st.id=+b.dataset.rrs; toast("목록을 되살렸습니다"); renderRegisters(opts); });
   if($("rdel")) $("rdel").onclick=async()=>{ if(!confirm(`'${cur.name}' 목록을 숨길까요?\n\n숨기면 모든 직원 화면에서 이 목록이 사라집니다. (입력된 자료는 지워지지 않고, 왼쪽 아래 [숨긴 목록]에서 되살릴 수 있습니다)`)) return; const {error}=await sb.from("registers").update({active:false}).eq("id",cur.id); if(error) return toast(errMsg(error)); st.id=null; renderRegisters(opts); };
