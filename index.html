@@ -850,7 +850,7 @@ async function loadPrefs(){ const k="gt-prefs-"+S.user.id; try{ S.prefs=JSON.par
   try{ const {data,error}=await sb.from("user_prefs").select("data").eq("user_id",S.user.id).maybeSingle(); if(!error&&data?.data){ S.prefs=data.data; try{ localStorage.setItem(k,JSON.stringify(S.prefs)); }catch(e){} } }catch(e){} }
 async function savePrefs(patch){ S.prefs={...(S.prefs||{}),...patch}; Object.keys(patch).forEach(k=>{ if(patch[k]==null) delete S.prefs[k]; });
   try{ localStorage.setItem("gt-prefs-"+S.user.id,JSON.stringify(S.prefs)); }catch(e){}
-  const {error}=await sb.from("user_prefs").upsert({user_id:S.user.id,data:S.prefs,updated_at:new Date().toISOString()},{onConflict:"user_id"}); if(error) toast("설정을 서버에 저장하지 못했습니다 (이 기기에서만 유지): "+errMsg(error)); }
+  const {error}=await sb.from("user_prefs").upsert({user_id:S.user.id,data:S.prefs,updated_at:new Date().toISOString()},{onConflict:"user_id"}); if(error) toast("메뉴 순서를 서버에 저장하지 못했습니다 (이 기기에서만 유지): "+errMsg(error)); }
 async function boot(){
   bumpIdle();
   if(!S.user){ S.me=null; return renderLogin(); }
@@ -2182,26 +2182,6 @@ function dutyOf(v,codes){ const t=String(v||"").trim(); if(!t||isOffVal(t,codes)
 const DUTY_ORD=["A","D","E","N"]; const dutyTxt=(o,sep="/")=>DUTY_ORD.filter(k=>o[k]).map(k=>k+o[k]).join(sep);
 const isOffVal=(v,codes)=>{ const c=codes[v]; return c?c.is_off:/^(off|휴무?|연차|병가|학회)$/i.test(String(v).trim()); };
 
-function cssHex(c){ const el=document.createElement("span"); el.style.color=c; document.body.appendChild(el); const v=getComputedStyle(el).color; el.remove(); const m=v.match(/\d+(\.\d+)?/g); return m?"#"+m.slice(0,3).map(x=>(+x|0).toString(16).padStart(2,"0")).join(""):"#888888"; }
-function leadColorDialog(codesL,used,codes){
-  const list=[...new Set([...codesL.map(c=>c.code),...used.sort((a,b)=>String(a).localeCompare(String(b),"ko",{numeric:true}))])];
-  const cur=JSON.parse(JSON.stringify((S.prefs&&S.prefs.leadCol)||{}));
-  const defBg=v=>{ const b=cssHex(isOffVal(v,codes)?SH_COLORS.gray:shiftColor(v,codes)); const n=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16)); const sf=[255,255,255]; return "#"+n.map((x,i)=>Math.round(x*.16+sf[i]*.84).toString(16).padStart(2,"0")).join(""); };
-  const apply=()=>{ document.querySelectorAll(".shtab td.sh").forEach(td=>{ const v=td.querySelector("span")?.textContent; const c=v&&cur[v]; td.style.background=c?c.bg:""; td.style.color=c?c.fg:""; }); };
-  const row=v=>{ const c=cur[v]; const bg=c?.bg||defBg(v), fg=c?.fg||"#1f2937"; return `<tr data-lcr="${esc(v)}"><td><span class="lcprev" style="display:inline-block;min-width:56px;padding:3px 6px;border-radius:4px;text-align:center;font-weight:600;background:${bg};color:${fg}">${esc(v)}</span></td>
-    <td><input type="color" data-lcb="${esc(v)}" value="${bg}" aria-label="${esc(v)} 배경색"></td><td><input type="color" data-lcf="${esc(v)}" value="${fg}" aria-label="${esc(v)} 글자색"></td>
-    <td>${c?`<button class="btn ghost sm" data-lcx="${esc(v)}">기본색</button>`:`<span class="meta">기본</span>`}</td></tr>`; };
-  const dlg=$("dlg"); dlg.innerHTML=(`<h3 style="margin:0 0 10px">★ 팀장 근무색 설정</h3><p class="meta">★팀장 탭에서 '근무색'을 골랐을 때만 적용됩니다 · 바꾸면 표에 바로 보이고, 내 아이디에 저장돼 새로고침해도 유지됩니다.</p>
-    <div class="tbl-box" style="max-height:55vh;overflow:auto"><table><thead><tr><th>근무 코드</th><th>배경색</th><th>글자색</th><th></th></tr></thead><tbody id="lcb">${list.map(row).join("")}</tbody></table></div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="btn ghost" id="lcreset">전체 초기화</button><span style="flex:1"></span><button type="button" class="btn" id="lcok">닫기</button></div>`); dlg.showModal();
-  let t=null; const save=()=>{ clearTimeout(t); t=setTimeout(()=>savePrefs({leadCol:Object.keys(cur).length?cur:null}),500); };
-  const bind=()=>{ dlg.querySelectorAll("[data-lcb],[data-lcf]").forEach(el=>el.oninput=()=>{ const v=el.dataset.lcb??el.dataset.lcf; const tr=el.closest("tr"); cur[v]={bg:tr.querySelector("[data-lcb]").value,fg:tr.querySelector("[data-lcf]").value};
-      const pv=tr.querySelector(".lcprev"); pv.style.background=cur[v].bg; pv.style.color=cur[v].fg; const last=tr.lastElementChild; if(!last.querySelector("button")){ last.innerHTML=`<button class="btn ghost sm" data-lcx="${esc(v)}">기본색</button>`; bind(); } apply(); save(); });
-    dlg.querySelectorAll("[data-lcx]").forEach(b=>b.onclick=()=>{ const v=b.dataset.lcx; delete cur[v]; const tr=b.closest("tr"); tr.outerHTML=row(v); bind(); apply(); save(); }); };
-  bind();
-  dlg.querySelector("#lcreset").onclick=()=>{ if(!confirm("팀장 근무색을 모두 기본색으로 되돌릴까요?")) return; Object.keys(cur).forEach(k=>delete cur[k]); dlg.querySelector("#lcb").innerHTML=list.map(row).join(""); bind(); apply(); save(); };
-  dlg.querySelector("#lcok").onclick=()=>{ clearTimeout(t); savePrefs({leadCol:Object.keys(cur).length?cur:null}); dlg.close(); };
-}
 async function renderStaff(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.staffV ||= {mode:"month", date:kstToday(), dept:"전체", brush:null, q:""};
@@ -2231,15 +2211,13 @@ async function renderStaff(){
   const title = st.mode==="month" ? `${start.slice(0,4)}년 ${+start.slice(5,7)}월` : st.mode==="week" ? `${weekOf(st.date).label} 주 (월~일)` : `${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${dLabel(st.date).w})`;
   st.color ||= (lsGet("gt-shcolor")||"dept");
   const colOf=(v,dept)=> isOffVal(v,codes) ? SH_COLORS.gray : (st.color==="dept" ? deptColor(dept) : shiftColor(v,codes));
-  const LCON=st.dept==="팀장"&&st.color==="code"; const LC=()=>(S.prefs&&S.prefs.leadCol)||{};
-  const lcSt=v=>{ if(!LCON) return ""; const c=LC()[v]; return c?`;background:${c.bg||"transparent"};color:${c.fg||"inherit"}`:""; };
   const sel=k=>st.sel===k?" sel":"";
   const wk0=days[0]; const wkA=d=>{ if(d===wk0) return ""; const w=new Date(d+"T00:00:00Z").getUTCDay(); return w===1?' data-wk="1"':""; };
   const wkAlt=d=>{ const t=new Date(d+"T00:00:00Z"), m=new Date(wk0+"T00:00:00Z"); const mon=x=>{ const k=(x.getUTCDay()+6)%7; return new Date(x.getTime()-k*864e5).getTime(); }; return Math.round((mon(t)-mon(m))/(7*864e5))%2===1; };
   const cell=(s,d)=>{ const k=s.id+"|"+d, h=map[k]; const ed=canEditDept(s.dept);
     if(!h) return `<td class="sh e${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?"":'data-ro="1"'}></td>`;
     const off=isOffVal(h.value,codes);
-    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}${lcSt(h.value)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
+    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
   let body="";
   if(st.mode!=="day"){
     const groups=st.dept==="팀장"?["팀장",...(shown.some(s=>s.dept===BILL_DEPT)?[BILL_DEPT]:[])]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?(s.lead&&s.dept!==BILL_DEPT):s.dept===g;
@@ -2264,7 +2242,7 @@ async function renderStaff(){
         <div class="seg" role="group" aria-label="보기">${[["month","월별"],["week","주별"],["day","일별"]].map(([k,l])=>`<button data-shm="${k}" aria-pressed="${st.mode===k}">${l}</button>`).join("")}</div>
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
         <input type="date" id="hd" value="${st.date}" aria-label="날짜" style="height:30px;padding:0 6px">
-        <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>${LCON?`<button class="btn ghost sm" id="hlc" title="★팀장 탭 + 근무색일 때만 적용 · 내 아이디에 저장">🎨 팀장 근무색 설정</button>`:""}
+        <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>
         <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button>`:""}
       </div></div>
     <div class="sh-tools">
@@ -2320,7 +2298,6 @@ async function renderStaff(){
   floatScroll(document.querySelector(".sh-wrap"));
   if(!window.__shUp){ window.__shUp=1; document.addEventListener("mouseup",()=>{ window.__shDrag=false; window.__shStroke=null; if(window.__shRg){ window.__shRgJust=window.__shRg.moved; window.__shRg=null; setTimeout(()=>{ window.__shRgJust=false; },0); } }); }
   document.querySelectorAll("[data-shc]").forEach(b=>b.onclick=()=>{ st.color=b.dataset.shc; lsSet("gt-shcolor",st.color); renderStaff(); });
-  if($("hlc")) $("hlc").onclick=()=>leadColorDialog(codesL,[...new Set(Object.values(map).map(h=>h&&h.value).filter(Boolean))],codes);
   const tdOf=k=>{ const [s,d]=k.split("|"); return document.querySelector(`td.sh[data-s="${s}"][data-d="${d}"]`); };
   // 여러 칸 선택 (마우스로 끌어서 네모 범위)
   const rowsEl=()=>[...document.querySelectorAll("table.shtab tbody tr")].filter(r=>r.querySelector("td.sh"));
