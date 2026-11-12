@@ -764,6 +764,7 @@ const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=fals
 const MD_ENTER_ADD = {"gt-os":/수액|오프 신청/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
 
 const PT_AMT_BR = ["gt-cs"];
+const TBL_CE_BR = ["gt-os"];   // 전광판 표: 수술 옆에 C-arm(블럭)·근전도 건수 (방사선사 C-arm 기록 · 근전도 스케줄)
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
 const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
 const RESV_2000_BR = ["gt-cs"];    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
@@ -1128,9 +1129,20 @@ async function renderDash(){
   ];
   const docNames=Object.keys(T.docs).sort((a,b)=>(T.docs[b].nw+T.docs[b].re)-(T.docs[a].nw+T.docs[a].re));
   const L=B.map(b=>b.label);
-  const tbl=`<table><thead><tr><th>${{day:"날짜",week:"주 (월~일)",month:"월",year:"연도"}[bm]}</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th><th>총진료</th><th>신환</th><th>재진</th><th>건당</th>${ptAmtTh()}<th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
-    <tr class="cur"><td>합계</td>${rowCells(T)}</tr>
-    ${B.slice().reverse().map(b=>`<tr><td>${bm==="day"?`<button class="linkbtn" data-one="${b.key}">${b.label}</button>`:b.label}${bm==="day"?"":` <span class="meta">${b.a.days}일</span>`}</td>${rowCells(b.a)}</tr>`).join("")}</tbody></table>`;
+  let CE=null; if(TBL_CE_BR.includes(S.branch)&&rows.length){ const ds=rows.map(r=>r.close_date).sort(), d0=ds[0], d1=ds.at(-1);
+    const kOf=d=>bm==="day"?d:bm==="week"?weekOf(d).key:bm==="month"?d.slice(0,7):d.slice(0,4);
+    const [cr,er]=await Promise.all([ sb.from("carm_counts").select("cdate,kind,cnt").eq("branch_id",S.branch).gte("cdate",d0).lte("cdate",d1),
+      schedPerm("emg")!=="none"?allRows(()=>sb.from("appointments").select("id,appt_date,status").eq("branch_id",S.branch).eq("kind","emg").gte("appt_date",d0).lte("appt_date",d1).order("id")):Promise.resolve({data:[]}) ]);
+    if(!cr.error){ const doc={}, tech={}; (cr.data||[]).forEach(r=>{ const o=/^doc/.test(r.kind)?doc:/^tech/.test(r.kind)?tech:null; if(o) o[r.cdate]=(o[r.cdate]||0)+(+r.cnt||0); });
+      const by={}; const add=(d,f,n)=>{ const k=kOf(d); (by[k] ||= {c:0,e:0})[f]+=n; };
+      new Set([...Object.keys(doc),...Object.keys(tech)]).forEach(d=>add(d,"c",Math.max(doc[d]||0,tech[d]||0)));
+      (er.data||[]).filter(a=>!LOST_ST.has(a.status)).forEach(a=>add(a.appt_date,"e",1));
+      const keys=new Set(B.map(b=>b.key)); const tot={c:0,e:0}; Object.entries(by).forEach(([k,v])=>{ if(keys.has(k)){ tot.c+=v.c; tot.e+=v.e; } }); CE={by,tot,emg:schedPerm("emg")!=="none"}; } }
+  const ceTh=CE?`<th title="방사선사·원장 C-arm 기록 중 큰 값">C-arm(블럭)</th>${CE.emg?`<th title="근전도 스케줄 · 취소·노쇼 제외">근전도</th>`:""}`:"";
+  const ceTd=v=>CE?`<td class="num">${won(v?.c||0)}</td>${CE.emg?`<td class="num">${won(v?.e||0)}</td>`:""}`:"";
+  const tbl=`<table><thead><tr><th>${{day:"날짜",week:"주 (월~일)",month:"월",year:"연도"}[bm]}</th><th>총진료비</th><th>비급여</th><th>비중</th><th>외래</th><th>입원</th><th>수술</th>${ceTh}<th>총진료</th><th>신환</th><th>재진</th><th>건당</th>${ptAmtTh()}<th>실예약</th><th>방문</th><th>이행률</th></tr></thead><tbody>
+    <tr class="cur"><td>합계</td>${rowCells(T,ceTd(CE&&CE.tot))}</tr>
+    ${B.slice().reverse().map(b=>`<tr><td>${bm==="day"?`<button class="linkbtn" data-one="${b.key}">${b.label}</button>`:b.label}${bm==="day"?"":` <span class="meta">${b.a.days}일</span>`}</td>${rowCells(b.a,ceTd(CE&&CE.by[b.key]))}</tr>`).join("")}</tbody></table>`;
   main.innerHTML=`<div class="wrap">${head}
     <section class="kpis">${kpis.map(x=>`<div class="kpi ${x.lead?"lead":""}"><span class="k">${x.k}</span><span class="v num">${x.v}<small>${x.u}</small></span><span class="d">${x.d}</span></div>`).join("")}</section>
     ${mode==="week"?(()=>{ const W=weekTrend(B); if(!W.focus) return ""; const fk=W.focus.key; const t=`${W.focus.label}(월~일) 주간 매출 추세${W.vsAvg!=null?` <span>직전 4주 평균 대비 ${updown(W.vsAvg)} ${W.vsAvg>=0?"상승":"하락"}</span>`:""}`; window.__wk=W; return trendPanel("trw",t,W,"week"); })():""}
@@ -1222,7 +1234,7 @@ const ptAmtOn=()=>PT_AMT_BR.includes(S.branch);
 function ptAmtTh(){ return ptAmtOn()?`<th>도수</th><th title="도수 건수 × 치료 단가">도수 금액</th><th>충격파</th><th title="충격파 건수 × 치료 단가">충격파 금액</th>`:`<th>도수</th><th>충격파</th>`; }
 function ptAmtTd(a){ if(!ptAmtOn()) return `<td class="num">${won(a.dosu)}</td><td class="num">${won(a.shock)}</td>`; const L=ptMoney(a); const sm=f=>L.filter(f).reduce((t,x)=>t+x.amt,0);
   return `<td class="num">${won(a.dosu)}</td><td class="num">${won(sm(x=>x.dosu))}</td><td class="num">${won(a.shock)}</td><td class="num">${won(sm(x=>!x.dosu))}</td>`; }
-function rowCells(a){ return `<td class="num">${won(a.total)}</td><td class="num">${won(a.nonpay)}</td><td class="num">${(a.npRate*100).toFixed(1)}%</td><td class="num">${won(a.out)}</td><td class="num">${won(a.inpat)}</td><td class="num">${won(a.surg)}</td><td class="num">${won(a.visits)}</td><td class="num">${won(a.newP)}</td><td class="num">${won(a.reP)}</td><td class="num">${won(Math.round(a.perVisit))}</td>${ptAmtTd(a)}<td class="num">${won(a.real)}</td><td class="num">${won(a.visit)}</td><td class="num">${a.real?(a.keep*100).toFixed(1)+"%":"–"}</td>`; }
+function rowCells(a,ext=""){ return `<td class="num">${won(a.total)}</td><td class="num">${won(a.nonpay)}</td><td class="num">${(a.npRate*100).toFixed(1)}%</td><td class="num">${won(a.out)}</td><td class="num">${won(a.inpat)}</td><td class="num">${won(a.surg)}</td>${ext}<td class="num">${won(a.visits)}</td><td class="num">${won(a.newP)}</td><td class="num">${won(a.reP)}</td><td class="num">${won(Math.round(a.perVisit))}</td>${ptAmtTd(a)}<td class="num">${won(a.real)}</td><td class="num">${won(a.visit)}</td><td class="num">${a.real?(a.keep*100).toFixed(1)+"%":"–"}</td>`; }
 function bindDash(){ fillHandover(); fillGoalsAlerts();
   document.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ S.mode=b.dataset.mode; renderDash(); });
   document.querySelectorAll("[data-one]").forEach(b=>b.onclick=()=>{ S.oneDate=b.dataset.one; S.mode="one"; renderDash(); window.scrollTo(0,0); });
