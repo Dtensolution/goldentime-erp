@@ -1354,16 +1354,26 @@ function partOf(dx,map){ const c=dxCode(dx); if(!c) return "기타"; if(map){ fo
   if(p3==="M25"&&reg==="1") return "어깨";
   if(c[0]==="M"||c[0]==="S") return "기타관절";
   return "기타"; }
-async function partsUpload(file){ const X=await loadXLSX(); const wb=X.read(await file.arrayBuffer(),{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const A=X.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
+async function partsUpload(file){ const X=await loadXLSX(); const wb=X.read(await file.arrayBuffer(),{type:"array"}); const ws=wb.Sheets[wb.SheetNames[0]]; const A=X.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+  const p2=n=>String(n).padStart(2,"0");
+  const toD=v=>{ if(v instanceof Date&&!isNaN(v)) return `${v.getFullYear()}-${p2(v.getMonth()+1)}-${p2(v.getDate())}`;
+    if(typeof v==="number"&&v>30000&&v<80000){ const t=new Date(Math.round((v-25569)*864e5)); return `${t.getUTCFullYear()}-${p2(t.getUTCMonth()+1)}-${p2(t.getUTCDate())}`; }
+    const x=String(v||"").trim(); let m;
+    if((m=x.match(/^(\d{4})[-./\s]+(\d{1,2})[-./\s]+(\d{1,2})/))) return `${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+    if((m=x.match(/^(\d{4})(\d{2})(\d{2})$/))) return `${m[1]}-${m[2]}-${m[3]}`;
+    if((m=x.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/))) return `${m[3].length===2?"20"+m[3]:m[3]}-${p2(m[1])}-${p2(m[2])}`;
+    if((m=x.match(/^(\d{2})[-.](\d{1,2})[-.](\d{1,2})$/))) return `20${m[1]}-${p2(m[2])}-${p2(m[3])}`;
+    return ""; };
   const hi=A.findIndex(r=>r.some(c=>String(c).trim()==="처방일자")&&r.some(c=>String(c).trim()==="주상병")); if(hi<0) throw new Error("'환자별 소모통계' 형식이 아닙니다 (처방일자·주상병 칸을 찾지 못함)");
   const H=A[hi].map(c=>String(c).trim()); const ix=n=>H.indexOf(n); const iD=ix("처방일자"), iC=ix("차트번호"), iN=ix("초재진구분"), iX=ix("주상병"), iK=0, iDr=ix("주치의"); if([iD,iC,iX].some(i=>i<0)) throw new Error("필요한 칸이 없습니다 (처방일자·차트번호·주상병)");
   const V=new Map(); let room="";
   for(let r=hi+1;r<A.length;r++){ const row=A[r]; const a=String(row[0]||"").trim(); if(a.startsWith("◀")){ room=String(row[1]||"").trim(); continue; }
-    const d=String(row[iD]||"").trim().slice(0,10).replace(/[./]/g,"-"); const ch=String(row[iC]||"").trim(); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!ch) continue;
+    const d=toD(row[iD]); const ch=String(row[iC]??"").trim().replace(/\.0$/,""); if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||!ch) continue;
     const k=d+"|"+ch; let v=V.get(k); if(!v){ v={visit_date:d,chart_no:ch,nr:"",dx:"",carm:false,room:room||null,doctor:iDr>=0?String(row[iDr]||"").trim()||null:null}; V.set(k,v); }
     const nr=String(row[iN]||"").trim(); if(/신환|초진/.test(nr)) v.nr="신환"; else if(!v.nr&&/재진/.test(nr)) v.nr="재진"; else if(!v.nr&&nr) v.nr=nr;
     const dx=String(row[iX]||"").trim(); if(dx&&!v.dx) v.dx=dx.split("/").slice(0,2).join("/").trim().slice(0,60);
     if(CARM_CODES.includes(String(row[iK]||"").trim().toLowerCase())) v.carm=true; }
+  if(!V.size){ const smp=A.slice(hi+1).find(r=>String(r[iD]??"").trim()!==""); throw new Error(`방문 기록이 없습니다 — 처방일자 예: '${smp?String(smp[iD]).slice(0,20):"(비어 있음)"}', 차트번호 예: '${smp?String(smp[iC]).slice(0,12):""}' (이 화면을 캡처해 주세요)`); }
   return [...V.values()]; }
 async function renderParts(){
   const main=$("main"); killCharts(); const st=S.partV ||= {by:"week",nr:"전체",base:""}; const lv=S.me.level; const canUp=lv<=3||S.me.dept==="원무"||lv===1;
