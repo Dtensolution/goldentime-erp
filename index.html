@@ -2003,7 +2003,7 @@ function apptDialog(ctx, a, preset){
     <div class="field"><label for="a_note">메모</label><input id="a_note" value="${esc(v.note||"")}" placeholder="부위, 특이사항" ${ro}></div>
     <div id="a_hist" class="ahist"></div>
     ${a?`<details class="alog" id="a_log"><summary class="meta">📝 이 예약 변경 기록 (누가 언제 추가·수정했는지)</summary><div class="meta">불러오는 중…</div></details>`:""}
-    ${a&&a.review?`<p class="rvnote rv${["간호","병동"].includes(a.review)?"N":"W"}">${esc(a.review)}에서 넣은 예약입니다 · 임상병리에서 내용 확인 후 저장하면 1차·2차 색으로 바뀝니다</p>`:""}
+    ${a&&a.review?`<p class="rvnote rv${["간호","병동"].includes(a.review)?"N":"W"}">${a.review==="간호"?"간호·병동":esc(a.review)}에서 넣은 예약입니다 · 임상병리에서 내용 확인 후 저장하면 1차·2차 색으로 바뀝니다</p>`:""}
     <p class="err" id="a_err"></p>
     <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
       <div>${a&&canEdit?`<button class="btn ghost" id="a_del" type="button" style="color:var(--bad);border-color:var(--bad)">삭제</button>`:""}</div>
@@ -4554,7 +4554,7 @@ async function setRetired(name,on){ if(RET_STAFF_BR.includes(S.branch)){ const {
     toast(on?`${name} 님을 퇴사 처리했습니다 (근무표·연차·연장근무 목록에서 숨김 · 기록은 남아 있음)`:`${name} 님을 다시 목록에 보입니다`); return true; }
   const {data}=await sb.from("branch_settings").select("data").eq("branch_id",S.branch).maybeSingle(); const d=JSON.parse(JSON.stringify(data?.data||{})); const L=new Set(d.retired||[]); on?L.add(name):L.delete(name); d.retired=[...L];
   const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:d},{onConflict:"branch_id"}); if(error){ toast(errMsg(error)); return false; } toast(on?`${name} 님을 퇴사 처리했습니다 (목록에서 숨김 · 기록은 남아 있음)`:`${name} 님을 다시 목록에 보입니다`); return true; }
-function retUi(RET,n,lv){ if(!retOn()||lv>3) return ""; const on=RET.has(n); return ` <button class="nmbtn retb" data-ret="${esc(n)}" data-on="${on?0:1}" title="${on?"다시 목록에 보이기":"퇴사 처리 (목록에서 숨김, 기록은 남음)"}" style="opacity:.7;font-size:11px;width:auto;padding:0 6px">${on?"복직":"퇴사"}</button>`; }
+function retUi(RET,n,lv){ if(RET_STAFF_BR.includes(S.branch)) return RET.has(n)?` <span class="pill" style="font-size:10.5px;opacity:.7" title="기본정보·연락망에서 퇴사 처리된 직원">퇴사</span>`:""; if(!retOn()||lv>3) return ""; const on=RET.has(n); return ` <button class="nmbtn retb" data-ret="${esc(n)}" data-on="${on?0:1}" title="${on?"다시 목록에 보이기":"퇴사 처리 (목록에서 숨김, 기록은 남음)"}" style="opacity:.7;font-size:11px;width:auto;padding:0 6px">${on?"복직":"퇴사"}</button>`; }
 function retToggle(st,nRet,lv,re){ if(!retOn()||lv>(RET_STAFF_BR.includes(S.branch)?3:2)||!nRet) return ""; return ` <button class="linkbtn" id="retshow" style="font-size:12px">${st.showRet?"퇴사자 숨기기":`퇴사자 보기 (${nRet}명)`}</button>`; }
 function bindRet(st,re){ document.querySelectorAll("[data-ret]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const on=b.dataset.on==="1"; if(on&&!confirm(`${b.dataset.ret} 님을 퇴사 처리할까요?\n목록에서만 숨기고 연차·연장근무 기록은 그대로 남습니다.`)) return; if(await setRetired(b.dataset.ret,on)) re(); });
   if($("retshow")) $("retshow").onclick=()=>{ st.showRet=!st.showRet; re(); }; }
@@ -4897,7 +4897,7 @@ async function renderAmpm(keep){
       if(error){ el.classList.add("err"); return toast(errMsg(error)); } const f=document.activeElement?.dataset?.am; await renderAmpm(true); if(f){ const n=main.querySelector(`[data-am="${f}"]`); if(n){ n.focus(); n.select(); } } }); });
 }
 // 근전도: 간호·원무에서 넣은 예약은 확인 전 색, 임상병리가 저장하면 해제 (undefined = 그대로 둠)
-function apptReview(isNew){ const d=/병동/.test(S.me.dept||"")?"병동":/간호/.test(S.me.dept||"")?"간호":S.me.dept; if(d==="임상병리") return null; if(["간호","원무","병동"].includes(d)) return isNew?d:undefined; return isNew?null:undefined; }
+function apptReview(isNew){ const d=/병동/.test(S.me.dept||"")?"간호":/간호/.test(S.me.dept||"")?"간호":S.me.dept; if(d==="임상병리") return null; if(["간호","원무","병동"].includes(d)) return isNew?d:undefined; return isNew?null:undefined; }
 // 예약 변경 기록
 async function loadApptLog({appt,kind}){ let qy=sb.from("appt_log").select("*").order("at",{ascending:false}).limit(100); qy=appt?qy.eq("appt_id",appt):qy.eq("branch_id",S.branch).eq("kind",kind);
   const {data,error}=await qy; if(error) return `<p class="meta">${esc(errMsg(error))}</p>`; if(!data?.length) return `<p class="meta" style="margin-top:8px">기록이 없습니다 (기록은 11/3부터 남습니다)</p>`;
