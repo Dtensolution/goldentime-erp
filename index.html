@@ -487,6 +487,7 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 @media (max-width:860px){.doc-shell,.doc-edit{grid-template-columns:1fr}.doc-list{max-height:none}}
 
 .shtab td.sh.sel{outline:2.5px solid var(--navy)!important;outline-offset:-2px;z-index:1}
+.shtab td.sh.msel{outline:2px solid var(--navy);outline-offset:-2px}.shtab td.sh.ccdirty{box-shadow:inset 0 0 0 2px #f59e0b}
 .shtab td.sh.rsel{box-shadow:inset 0 0 0 999px color-mix(in srgb,var(--navy) 16%,transparent);outline:1px solid color-mix(in srgb,var(--navy) 55%,transparent);outline-offset:-1px}
 .shtab td.sh.over{outline:2.5px dashed var(--accent)!important;outline-offset:-3px}
 .shtab td.sh.dragging{opacity:.45}
@@ -2229,6 +2230,11 @@ async function renderStaff(){
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
   const Q=shQueue(); Object.entries(Q).forEach(([k,q])=>{ if(q.v==null) delete map[k]; else map[k]={staff_id:q.sid,work_date:q.d,value:q.v,note:q.note}; });
   const dq=k=>Q[k]?" dirty":"";
+  // 셀 배경색 (3등급 이상이 칠하고 [색 저장]) — 장부 저장소(ledger_sheets) 'sched_cc' · 월|부서별
+  const CCON=S.me.level<=3; st.ccP ||= {}; st.multi ||= new Set(); const sDept=Object.fromEntries(staff.map(x=>[x.id,x.dept||"기타"]));
+  const ymL=[...new Set(days.map(d=>d.slice(0,7)))], dpL=[...new Set(staff.map(x=>x.dept||"기타"))]; const CC={};
+  { const {data:cc}=await sb.from("ledger_sheets").select("skey,data").eq("branch_id",S.branch).eq("book","sched_cc").in("skey",ymL.flatMap(y=>dpL.map(d=>y+"|"+d))); (cc||[]).forEach(r=>Object.assign(CC,r.data?.cells||{})); }
+  const ccOf=k=>k in st.ccP?st.ccP[k]:CC[k]; const ccSt=k=>{ const c=ccOf(k); return c?`;background:${c}`:""; };
   const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])].filter(d=>d!==BILL_DEPT);
   const leadOrd=(a,b)=>(a.lead_sort??1e6)-(b.lead_sort??1e6)||deptsPresent.indexOf(a.dept)-deptsPresent.indexOf(b.dept)||a.sort-b.sort||a.id-b.id;
   const leads=staff.filter(s=>s.lead&&s.dept!==BILL_DEPT).sort(leadOrd);
@@ -2245,9 +2251,9 @@ async function renderStaff(){
   const wk0=days[0]; const wkA=d=>{ if(d===wk0) return ""; const w=new Date(d+"T00:00:00Z").getUTCDay(); return w===1?' data-wk="1"':""; };
   const wkAlt=d=>{ const t=new Date(d+"T00:00:00Z"), m=new Date(wk0+"T00:00:00Z"); const mon=x=>{ const k=(x.getUTCDay()+6)%7; return new Date(x.getTime()-k*864e5).getTime(); }; return Math.round((mon(t)-mon(m))/(7*864e5))%2===1; };
   const cell=(s,d)=>{ const k=s.id+"|"+d, h=map[k]; const ed=canEditDept(s.dept);
-    if(!h) return `<td class="sh e${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?"":'data-ro="1"'}></td>`;
+    if(!h) return `<td class="sh e${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?"":'data-ro="1"'} style="${ccSt(k).slice(1)}"></td>`;
     const off=isOffVal(h.value,codes);
-    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
+    return `<td class="sh${off?" off":""}${d===today?" td":""}${sel(k)}${dq(k)}" data-s="${s.id}" data-d="${d}"${wkA(d)} ${ed?(st.brush?"":'draggable="true"'):'data-ro="1"'} title="${esc(s.name)} ${d} ${esc(h.value)}${h.note?" · "+esc(h.note):""}" style="--sc:${colOf(h.value,s.dept)}${ccSt(k)}"><span>${esc(h.value)}</span>${h.note?`<i>${esc(h.note)}</i>`:""}</td>`; };
   let body="";
   if(st.mode!=="day"){
     const groups=st.dept==="팀장"?["팀장",...(shown.some(s=>s.dept===BILL_DEPT)?[BILL_DEPT]:[])]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?(s.lead&&s.dept!==BILL_DEPT):s.dept===g;
@@ -2272,7 +2278,7 @@ async function renderStaff(){
         <div class="seg" role="group" aria-label="보기">${[["month","월별"],["week","주별"],["day","일별"]].map(([k,l])=>`<button data-shm="${k}" aria-pressed="${st.mode===k}">${l}</button>`).join("")}</div>
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
         <input type="date" id="hd" value="${st.date}" aria-label="날짜" style="height:30px;padding:0 6px">
-        <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>
+        <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>${CCON?`<span style="position:relative;display:inline-flex;gap:4px"><button class="btn ghost sm" id="ccpick" title="셀 배경색 — 칸을 고른 뒤 색을 고르세요 (Ctrl+클릭: 여러 칸 · Shift+클릭: 범위 · 끌기: 범위)">🪣 셀 색</button><button class="btn sm" id="ccsave" ${Object.keys(st.ccP).length?"":"disabled"}>💾 색 저장${Object.keys(st.ccP).length?` (${Object.keys(st.ccP).length})`:""}</button><button class="btn ghost sm" id="cccancel" ${Object.keys(st.ccP).length?"":"hidden"}>취소</button><div id="ccpop" hidden style="position:absolute;top:34px;left:0;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 6px 24px rgba(0,0,0,.15);width:236px"></div></span>`:""}
         <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button>`:""}
       </div></div>
     <div class="sh-tools">
@@ -2394,13 +2400,43 @@ async function renderStaff(){
   const moveSel=(dx,dy)=>{ clearRng(); if(!st.sel) return; const td=tdOf(st.sel); if(!td) return; const tr=td.parentElement; const ci=[...tr.children].indexOf(td);
     if(dx){ let n=td; do{ n=dx>0?n.nextElementSibling:n.previousElementSibling; }while(n&&!n.matches("td.sh")); if(n) select(n.dataset.s+"|"+n.dataset.d); focusProxy(); return; }
     let r=tr; do{ r=dy>0?r.nextElementSibling:r.previousElementSibling; }while(r&&!r.querySelector("td.sh")); if(r){ const n=r.children[ci]; if(n&&n.matches("td.sh")) select(n.dataset.s+"|"+n.dataset.d); } focusProxy(); };
+  const drawMulti=()=>{ document.querySelectorAll("td.sh.msel").forEach(x=>x.classList.remove("msel")); st.multi.forEach(k=>tdOf(k)?.classList.add("msel")); };
+  drawMulti();
+  const ccTargets=()=>{ const set=new Set([...rngCells().map(keyOf),...st.multi]); if(st.sel) set.add(st.sel); return [...set].filter(k=>tdOf(k)); };
+  const ccBtns=()=>{ const n=Object.keys(st.ccP).length; const b=$("ccsave"); if(b){ b.disabled=!n; b.textContent=`💾 색 저장${n?` (${n})`:""}`; } if($("cccancel")) $("cccancel").hidden=!n; };
+  const ccApply=c=>{ const T=ccTargets(); if(!T.length) return toast("먼저 칸을 고르세요 (클릭 · Ctrl+클릭 · Shift+클릭 · 끌기)");
+    T.forEach(k=>{ if((CC[k]||"")===(c||"")) delete st.ccP[k]; else st.ccP[k]=c||""; const td=tdOf(k); if(td){ td.style.background=c||""; td.classList.toggle("ccdirty",k in st.ccP); } }); ccBtns(); };
+  const CC_PAL=["#fff3a3","#ffe2c2","#ffd6d6","#ffd6ee","#e5dcff","#d6ecff","#d1f2f0","#d8f5d0","#e5e7eb","#fca5a5","#93c5fd","#86efac"];
+  if($("ccpick")){ const pop=$("ccpop");
+    pop.innerHTML=`<div class="meta" style="font-size:12px;margin-bottom:6px">고른 칸에 칠하기 · [💾 색 저장]을 눌러야 저장됩니다</div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">${CC_PAL.map(c=>`<button type="button" data-ccc="${c}" title="${c}" style="height:28px;border-radius:6px;border:1px solid var(--line);background:${c};cursor:pointer"></button>`).join("")}</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:8px"><label class="meta" style="font-size:12px;display:flex;gap:4px;align-items:center">직접 <input type="color" id="cccus" value="#ffe08a" style="width:34px;height:26px;padding:0;border:0"></label><button type="button" class="btn ghost sm" id="ccnone">색 없음</button></div>`;
+    $("ccpick").onmousedown=e=>e.preventDefault();
+    $("ccpick").onclick=e=>{ e.stopPropagation(); pop.hidden=!pop.hidden; };
+    pop.onmousedown=e=>{ if(e.target.id!=="cccus") e.preventDefault(); }; pop.onclick=e=>e.stopPropagation();
+    pop.querySelectorAll("[data-ccc]").forEach(b=>b.onclick=()=>ccApply(b.dataset.ccc));
+    $("cccus").onchange=()=>ccApply($("cccus").value); $("ccnone").onclick=()=>ccApply("");
+    document.addEventListener("click",function h(){ if(!document.body.contains(pop)) return document.removeEventListener("click",h); pop.hidden=true; });
+    $("cccancel").onclick=()=>{ Object.keys(st.ccP).forEach(k=>{ const td=tdOf(k); if(td){ td.style.background=CC[k]||""; td.classList.remove("ccdirty"); } }); st.ccP={}; ccBtns(); };
+    $("ccsave").onclick=async()=>{ const P=st.ccP; const keys=Object.keys(P); if(!keys.length) return; const G={};
+      keys.forEach(k=>{ const [sid,d]=k.split("|"); const g=d.slice(0,7)+"|"+(sDept[+sid]||"기타"); (G[g] ||= {})[k]=P[k]; });
+      $("ccsave").disabled=true; let bad=null;
+      for(const [skey,ch] of Object.entries(G)){ const dept=skey.split("|")[1]; const {data:ex}=await sb.from("ledger_sheets").select("data").eq("branch_id",S.branch).eq("book","sched_cc").eq("skey",skey).maybeSingle();
+        const cells={...(ex?.data?.cells||{})}; Object.entries(ch).forEach(([k,c])=>{ if(c) cells[k]=c; else delete cells[k]; });
+        const {error}=await sb.from("ledger_sheets").upsert({branch_id:S.branch,dept,book:"sched_cc",skey,data:{cells},updated_at:new Date().toISOString(),updated_by:S.user.id},{onConflict:"branch_id,book,skey"}); if(error){ bad=error; break; }
+        Object.entries(ch).forEach(([k,c])=>{ if(c) CC[k]=c; else delete CC[k]; delete P[k]; const td=tdOf(k); td?.classList.remove("ccdirty"); }); }
+      ccBtns(); if(bad) toast("색 저장 실패: "+errMsg(bad)); else toast(`셀 색 ${keys.length}칸 저장했습니다`); };
+  }
   let clip=null;
   document.querySelectorAll("td.sh").forEach(td=>{
     td.addEventListener("mousedown",e=>{ if(!st.brush){ if(e.button!==0||td.querySelector("input")) return; const k=keyOf(td); if(inRng(td)||(!st.rng&&st.sel===k&&td.getAttribute("draggable")==="true")) return; /* 선택된 칸은 끌어서 이동 */
         const ae=document.activeElement; if(ae&&ae.classList?.contains("shq")) ae.blur(); e.preventDefault(); window.__shRg={a:k,moved:false}; return; }
       e.preventDefault(); window.__shDrag=true; window.__shStroke="s"+Date.now(); paint(td); });
     td.addEventListener("mouseenter",()=>{ if(window.__shDrag&&st.brush) return paint(td); const G=window.__shRg; if(G&&!st.brush){ const k=keyOf(td); if(k===G.a&&!G.moved) return; G.moved=true; st.rng={a:G.a,b:k}; if(st.sel!==G.a) select(G.a); drawRng(); } });
-    td.addEventListener("click",()=>{ if(window.__shRgJust){ focusProxy(); return; } const k0=td.dataset.s+"|"+td.dataset.d; clearRng(); markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); focusProxy(); });
+    td.addEventListener("click",e=>{ if(window.__shRgJust){ focusProxy(); return; } const k0=td.dataset.s+"|"+td.dataset.d;
+      if(!st.brush&&(e.ctrlKey||e.metaKey)){ if(st.multi.has(k0)) st.multi.delete(k0); else st.multi.add(k0); if(st.sel&&st.sel!==k0&&!st.multi.size) {} drawMulti(); focusProxy(); return; }
+      if(!st.brush&&e.shiftKey&&st.sel&&st.sel!==k0){ st.rng={a:st.sel,b:k0}; drawRng(); focusProxy(); return; }
+      if(st.multi.size){ st.multi.clear(); drawMulti(); }
+      clearRng(); markLast(k0); if(st.brush) return; const k=k0; if(st.sel===k&&!td.querySelector("input")) return quickEdit(td); select(k); focusProxy(); });
     td.addEventListener("dblclick",()=>{ if(st.brush||td.dataset.ro) return; shiftDialog(td,map,codesL,staff,()=>renderStaff(),setVal); });
     td.addEventListener("dragstart",e=>{ if(td.dataset.ro||st.brush) return e.preventDefault(); if(inRng(td)){ const p0=posOf(td); window.__shBlk={p0,cells:rngCells().map(t=>({t,p:posOf(t)}))}; e.dataTransfer.setData("text/gt-shift","__blk"); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); return; } window.__shBlk=null; e.dataTransfer.setData("text/gt-shift",td.dataset.s+"|"+td.dataset.d); e.dataTransfer.effectAllowed="copyMove"; td.classList.add("dragging"); });
     td.addEventListener("dragend",()=>td.classList.remove("dragging"));
