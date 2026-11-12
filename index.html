@@ -4862,7 +4862,7 @@ async function renderAmpm(keep){
       if(error){ el.classList.add("err"); return toast(errMsg(error)); } const f=document.activeElement?.dataset?.am; await renderAmpm(true); if(f){ const n=main.querySelector(`[data-am="${f}"]`); if(n){ n.focus(); n.select(); } } }); });
 }
 // 근전도: 간호·원무에서 넣은 예약은 확인 전 색, 임상병리가 저장하면 해제 (undefined = 그대로 둠)
-function apptReview(isNew){ const d=S.me.dept; if(d==="임상병리") return null; if(["간호","원무","병동"].includes(d)) return isNew?d:undefined; return isNew?null:undefined; }
+function apptReview(isNew){ const d=/병동/.test(S.me.dept||"")?"병동":/간호/.test(S.me.dept||"")?"간호":S.me.dept; if(d==="임상병리") return null; if(["간호","원무","병동"].includes(d)) return isNew?d:undefined; return isNew?null:undefined; }
 // 예약 변경 기록
 async function loadApptLog({appt,kind}){ let qy=sb.from("appt_log").select("*").order("at",{ascending:false}).limit(100); qy=appt?qy.eq("appt_id",appt):qy.eq("branch_id",S.branch).eq("kind",kind);
   const {data,error}=await qy; if(error) return `<p class="meta">${esc(errMsg(error))}</p>`; if(!data?.length) return `<p class="meta" style="margin-top:8px">기록이 없습니다 (기록은 11/3부터 남습니다)</p>`;
