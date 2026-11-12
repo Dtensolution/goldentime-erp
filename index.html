@@ -764,7 +764,13 @@ const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=fals
 const MD_ENTER_ADD = {"gt-os":/수액|오프 신청/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
 
 const PT_AMT_BR = ["gt-cs"];
-const TBL_CE_BR = ["gt-os"];   // 전광판 표: 수술 옆에 C-arm(블럭)·근전도 건수 (방사선사 C-arm 기록 · 근전도 스케줄)
+const TBL_CE_BR = ["gt-os"];
+const PT_AMT_SUM_BR = ["gt-os"];   // 전광판 표: 도수·충격파 건수 대신 '도수·충격파 매출' 한 칸 (건수는 물리치료에서)
+const SURG_REG = {"gt-os":{dept:"수술",name:"수술 일정"}};   // 수술 건수 = 업무 기록부 '수술 일정' 날짜별 행 수 (마감일지 수술 칸 대신)
+async function applySurgReg(rows){ const c=SURG_REG[S.branch]; if(!c||!rows.length) return false; const ds=rows.map(r=>r.close_date).sort();
+  const {data:rg}=await sb.from("registers").select("id").eq("branch_id",S.branch).eq("dept",c.dept).eq("name",c.name).limit(1); const id=rg&&rg[0]?.id; if(!id) return false;
+  const res=await allRows(()=>sb.from("register_rows").select("id,row_date").eq("register_id",id).gte("row_date",ds[0]).lte("row_date",ds.at(-1)).order("id")); if(res.error) return false;
+  const n={}; (res.data||[]).forEach(x=>{ if(x.row_date) n[x.row_date]=(n[x.row_date]||0)+1; }); rows.forEach(r=>r.surgery_cnt=n[r.close_date]||0); return true; }   // 전광판 표: 수술 옆에 C-arm(블럭)·근전도 건수 (방사선사 C-arm 기록 · 근전도 스케줄)
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
 const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
 const RESV_2000_BR = ["gt-cs"];    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
@@ -1108,6 +1114,7 @@ async function renderDash(){
   else { start="2020-01-01"; end=today; title="연도별"; }
   let rows; try{ rows=(await loadRange(start,end)).filter(r=>+r.total>0); }catch(e){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(e))}</div></div>`; return; }
   if(mode==="week") rows=rows.filter(r=>ymd(weekOf(r.close_date).sun).slice(0,4)===S.year);
+  await applySurgReg(rows).catch(()=>false);
   const B=bucketize(rows,bm,mode==="range"); const T=aggRows(rows);
   const nav = mode==="day" ? monthNav() : mode==="year" ? "" : mode==="range" ? `<span style="display:inline-flex;gap:4px;align-items:center"><input type="date" id="drf" value="${start}" max="${today}" aria-label="시작일" style="height:30px;padding:0 6px">~<input type="date" id="drt" value="${end}" max="${today}" aria-label="종료일" style="height:30px;padding:0 6px"></span><span class="seg" role="group" aria-label="빠른 기간">${[["7","7일"],["30","30일"],["90","3개월"]].map(([k,t])=>`<button data-drq="${k}">${t}</button>`).join("")}</span>` :
     `<div class="monthnav"><button class="btn ghost sm" id="yp" aria-label="이전 해">◀</button><b class="num">${S.year}년</b><button class="btn ghost sm" id="yn" aria-label="다음 해" ${S.year>=today.slice(0,4)?"disabled":""}>▶</button></div>`;
@@ -1185,6 +1192,7 @@ async function renderDash(){
 async function renderDashOne(seg){
   const main=$("main"); const today=kstToday(); await loadPtPrice().catch(()=>({}));
   let rows; try{ rows=await loadRange(addDays(S.oneDate||today,-63), S.oneDate||today); }catch(e){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(e))}</div></div>`; return; }
+  await applySurgReg(rows).catch(()=>false);
   S.oneDate ||= today;
   const d=S.oneDate, dd=new Date(d+"T00:00:00Z"); const r=rows.find(x=>x.close_date===d);
   rows.sort((x,y)=>x.close_date<y.close_date?-1:1); const prevR=rows.filter(x=>x.close_date<d&&+x.total>0).at(-1), wkR=rows.find(x=>x.close_date===addDays(d,-7)&&+x.total>0);
@@ -1231,8 +1239,8 @@ async function renderDashOne(seg){
 }
 // 전광판 표: 도수·충격파 건수 옆에 금액 (건수 × 치료 단가) — 지점별
 const ptAmtOn=()=>PT_AMT_BR.includes(S.branch);
-function ptAmtTh(){ return ptAmtOn()?`<th>도수</th><th title="도수 건수 × 치료 단가">도수 금액</th><th>충격파</th><th title="충격파 건수 × 치료 단가">충격파 금액</th>`:`<th>도수</th><th>충격파</th>`; }
-function ptAmtTd(a){ if(!ptAmtOn()) return `<td class="num">${won(a.dosu)}</td><td class="num">${won(a.shock)}</td>`; const L=ptMoney(a); const sm=f=>L.filter(f).reduce((t,x)=>t+x.amt,0);
+function ptAmtTh(){ if(PT_AMT_SUM_BR.includes(S.branch)) return `<th title="도수·충격파 건수 × 치료 단가">도수·충격파 매출</th>`; return ptAmtOn()?`<th>도수</th><th title="도수 건수 × 치료 단가">도수 금액</th><th>충격파</th><th title="충격파 건수 × 치료 단가">충격파 금액</th>`:`<th>도수</th><th>충격파</th>`; }
+function ptAmtTd(a){ if(PT_AMT_SUM_BR.includes(S.branch)){ const L=ptMoney(a); const sm=f=>L.filter(f).reduce((t,x)=>t+x.amt,0); return `<td class="num" title="도수 ${won(sm(x=>x.dosu))}원 · 충격파 ${won(sm(x=>!x.dosu))}원">${won(sm(()=>true))}</td>`; } if(!ptAmtOn()) return `<td class="num">${won(a.dosu)}</td><td class="num">${won(a.shock)}</td>`; const L=ptMoney(a); const sm=f=>L.filter(f).reduce((t,x)=>t+x.amt,0);
   return `<td class="num">${won(a.dosu)}</td><td class="num">${won(sm(x=>x.dosu))}</td><td class="num">${won(a.shock)}</td><td class="num">${won(sm(x=>!x.dosu))}</td>`; }
 function rowCells(a,ext=""){ return `<td class="num">${won(a.total)}</td><td class="num">${won(a.nonpay)}</td><td class="num">${(a.npRate*100).toFixed(1)}%</td><td class="num">${won(a.out)}</td><td class="num">${won(a.inpat)}</td><td class="num">${won(a.surg)}</td>${ext}<td class="num">${won(a.visits)}</td><td class="num">${won(a.newP)}</td><td class="num">${won(a.reP)}</td><td class="num">${won(Math.round(a.perVisit))}</td>${ptAmtTd(a)}<td class="num">${won(a.real)}</td><td class="num">${won(a.visit)}</td><td class="num">${a.real?(a.keep*100).toFixed(1)+"%":"–"}</td>`; }
 function bindDash(){ fillHandover(); fillGoalsAlerts();
