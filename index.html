@@ -753,10 +753,15 @@ async function regShareSync(r,sh){
   const w=ex&&ex[0]?await sb.from("dept_docs").update({body}).eq("id",ex[0].id):await sb.from("dept_docs").insert({branch_id:S.branch,dept:sh.to,title:sh.title,body,pinned:true,edit_depts:[sh.dept]});
   if(w.error) console.warn("share",w.error.message||w.error);
 }
+// 업무게시판 글 한 번 만들어 두기 (기한 안에 그 부서 사람이 게시판을 열면 생성 · 지우면 기한 뒤엔 다시 안 생김)
+const DOC_SEED = {"gt-os":{"병동":[{title:"오프 신청", until:"2026-11-30", body:["> 오프 희망일을 한 줄씩 적어 주세요. 확정되면 '확정'에 체크합니다. 마지막 줄에서 Enter를 누르면 새 줄이 생깁니다.","","| 신청일 | 이름 | 오프 희망일 | 사유 | 확정 |","| --- | --- | --- | --- | --- |","|  |  |  |  | [ ] |"].join("\n")}]}};
+async function docSeedEnsure(dept){ const L=(DOC_SEED[S.branch]||{})[dept]; if(!L||!canEditDoc(dept)) return; const td=kstToday();
+  for(const d of L){ if(td>d.until) continue; const {data:ex,error}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",d.title).limit(1); if(error||(ex&&ex.length)) continue;
+    await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:d.title,body:d.body,pinned:true}); } }
 async function regShareEnsure(dept){ const sh=(REG_SHARE[S.branch]||[]).find(x=>x.to===dept); if(!sh||!canEditDoc(dept)) return false; const {data:ex}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",sh.title).limit(1); if(ex&&ex.length) return false;
   const {error}=await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:sh.title,body:`> ${sh.dept}팀에서 '${sh.name}'을 열거나 고치면 여기에 자동으로 채워집니다.`,pinned:true,edit_depts:[sh.dept]}); return !error; }
 const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=false)과 같은 목록 · 팀장(3등급)도 처리·확인
-const MD_ENTER_ADD = {"gt-os":/수액/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
+const MD_ENTER_ADD = {"gt-os":/수액|오프 신청/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
 
 const PT_AMT_BR = ["gt-cs"];
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
@@ -2664,7 +2669,7 @@ async function renderDocs(){
   if(window.__mdFlush){ const f=window.__mdFlush; window.__mdFlush=null; await f(); }
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.docV ||= {dept: DOC_DEPTS.includes(S.me.dept)?S.me.dept:"공통", id:null, q:"", edit:false}; if(!toolOk(st.dept)&&!docAll()){ st.dept=(TOOL_DEPTS[S.branch]||[])[0]||"공통"; st.id=null; } if(st.dept==="회의록"&&!mgmtOk()){ st.dept="공통"; st.id=null; }
-  try{ await regShareEnsure(st.dept); }catch(e){}
+  try{ await regShareEnsure(st.dept); }catch(e){} try{ await docSeedEnsure(st.dept); }catch(e){}
   const [dr,ur]=await Promise.all([ sb.from("dept_docs").select("id,dept,title,pinned,notice,sort,updated_at,updated_by,body,edit_depts").eq("branch_id",S.branch).order("pinned",{ascending:false}).order("sort").order("updated_at",{ascending:false}),
     sb.from("profiles").select("user_id,name") ]);
   const {data:myReads}=await sb.from("doc_reads").select("doc_id").eq("user_id",S.user.id); const readSet=new Set((myReads||[]).map(r=>r.doc_id));
