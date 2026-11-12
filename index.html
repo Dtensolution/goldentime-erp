@@ -673,7 +673,7 @@ const IDLE_MIN = 30;
 const LOGO = SUPABASE_URL + "/storage/v1/object/public/brand/goldentime-logo.webp";
 const PT_ITEMS = ["도수A","도수B","도수C","도수E2A","도수E2B","충격파A","충격파B","충격파13","충격파18"];
 // 지점별 마감일지 도수·충격파 칸 (철산은 스케줄 치료명 "충격파 E1" → "E1" 로 맞춤)
-const PT_BY_BRANCH = {"gt-cs":["도수A","E1","E2","ES5","ES8"]}; // 도수상담은 마감일지에 따로 붙음
+const PT_BY_BRANCH = {"gt-cs":["도수A","도수13","E1","E2","ES5","ES8"]}; // 도수상담은 마감일지에 따로 붙음
 const ptItemsOf = b => PT_BY_BRANCH[b] || PT_ITEMS;
 const ptKeyOf = (b,item) => PT_BY_BRANCH[b] ? String(item||"").replace(/^충격파\s*/,"") : item;
 
