@@ -480,7 +480,8 @@ table.price input{height:30px;width:90px;padding:0 6px;text-align:right}
 .inv td.exp-over{background:#fde8e8;color:#b42318;font-weight:600}.inv td.exp-soon{background:#fff4e0;color:#b54708}.mded .mdadd{margin:-2px 0 10px}
 .md td,.md th{text-align:left!important}
 .md li:has(>input[type=checkbox]){list-style:none;margin-left:-18px}
-.doc-edit{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.doc-edit{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.doc-edit>*{min-width:0}.doc-edit .md.preview{overflow-x:auto;max-height:60vh;overflow-y:auto;border:1px dashed var(--line);border-radius:8px;padding:8px 10px}
 .doc-edit textarea{width:100%;font-family:var(--f-num);font-size:13px;line-height:1.6;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);resize:vertical}
 .md.preview{border:1px dashed var(--line);border-radius:8px;padding:10px 12px;min-height:200px;max-height:440px;overflow:auto}
 @media (max-width:860px){.doc-shell,.doc-edit{grid-template-columns:1fr}.doc-list{max-height:none}}
@@ -754,11 +755,16 @@ async function regShareSync(r,sh){
   if(w.error) console.warn("share",w.error.message||w.error);
 }
 // 업무게시판 글 한 번 만들어 두기 (기한 안에 그 부서 사람이 게시판을 열면 생성 · 지우면 기한 뒤엔 다시 안 생김)
-const DOC_SEED = {"gt-os":{"병동":[{title:"오프 신청", until:"2026-11-30", body:["> 오프 희망일을 한 줄씩 적어 주세요. 확정되면 '확정'에 체크합니다. 마지막 줄에서 Enter를 누르면 새 줄이 생깁니다.","","| 신청일 | 이름 | 오프 희망일 | 사유 | 확정 |","| --- | --- | --- | --- | --- |","|  |  |  |  | [ ] |"].join("\n")}]}};
-async function docSeedEnsure(dept){ const L=(DOC_SEED[S.branch]||{})[dept]; if(!L||!canEditDoc(dept)) return; const td=kstToday();
-  for(const d of L){ if(td>d.until) continue; const {data:ex,error}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",d.title).limit(1); if(error||(ex&&ex.length)) continue;
+const DOC_SEED = {"gt-os":{"병동":[{title:"오프 신청", until:"2026-11-12", body:["> 오프 희망일을 한 줄씩 적어 주세요. 확정되면 '확정'에 체크합니다. 마지막 줄에서 Enter를 누르면 새 줄이 생깁니다.","","| 신청일 | 이름 | 오프 희망일 | 사유 | 확정 |","| --- | --- | --- | --- | --- |","|  |  |  |  | [ ] |"].join("\n")}]}};
+let seedBusy=false;
+async function docSeedEnsure(dept){ const L=(DOC_SEED[S.branch]||{})[dept]; if(!L||!canEditDoc(dept)||seedBusy) return; seedBusy=true; setTimeout(()=>seedBusy=false,5000); const td=kstToday();
+  for(const d of L){ const {data:ex,error}=await sb.from("dept_docs").select("id,body,updated_at").eq("branch_id",S.branch).eq("dept",dept).eq("title",d.title).order("id"); if(error) continue;
+    if(ex&&ex.length>1){ const dup=ex.filter(x=>x.body===d.body); const keep=ex.length-dup.length>0?[]:[dup[0].id]; const del=dup.map(x=>x.id).filter(id=>!keep.includes(id)); if(del.length) await sb.from("dept_docs").delete().in("id",del); continue; }
+    if(td>d.until||(ex&&ex.length)) continue;
     await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:d.title,body:d.body,pinned:true}); } }
-async function regShareEnsure(dept){ const sh=(REG_SHARE[S.branch]||[]).find(x=>x.to===dept); if(!sh||!canEditDoc(dept)) return false; const {data:ex}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",sh.title).limit(1); if(ex&&ex.length) return false;
+let shareBusy=false;
+async function regShareEnsure(dept){ const sh=(REG_SHARE[S.branch]||[]).find(x=>x.to===dept); if(!sh||!canEditDoc(dept)||shareBusy) return false; const {data:ex}=await sb.from("dept_docs").select("id").eq("branch_id",S.branch).eq("dept",dept).eq("title",sh.title).order("id");
+  if(ex&&ex.length>1){ await sb.from("dept_docs").delete().in("id",ex.slice(1).map(x=>x.id)); return true; } if(ex&&ex.length) return false; shareBusy=true; setTimeout(()=>shareBusy=false,5000);
   const {error}=await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:sh.title,body:`> ${sh.dept}팀에서 '${sh.name}'을 열거나 고치면 여기에 자동으로 채워집니다.`,pinned:true,edit_depts:[sh.dept]}); return !error; }
 const RET_STAFF_BR = ["gt-os"];   // 퇴사 = 연락망 직원(staff.active=false)과 같은 목록 · 팀장(3등급)도 처리·확인
 const MD_ENTER_ADD = {"gt-os":/수액|오프 신청/};   // 업무게시판 표: 마지막 줄에서 Enter → 새 줄 (지점: 글 제목)
