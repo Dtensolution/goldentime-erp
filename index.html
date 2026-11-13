@@ -788,7 +788,9 @@ async function applySurgReg(rows){ const c=SURG_REG[S.branch]; S.surgSrc=null; i
   const n={}; (res.data||[]).forEach(x=>{ if(x.row_date) n[x.row_date]=(n[x.row_date]||0)+1; }); rows.forEach(r=>r.surgery_cnt=n[r.close_date]||0); S.surgSrc={ok:true,n:(res.data||[]).length}; return true; }   // 전광판 표: 수술 옆에 C-arm(블럭)·근전도 건수 (방사선사 C-arm 기록 · 근전도 스케줄)
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
 const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
-const RESV_2000_BR = ["gt-cs"];    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
+const RESV_2000_BR = ["gt-cs"];
+const RESV_VISIT_BR = ["gt-cs"];   // 예약관리: '예약율' 대신 '내원률' = 내원 ÷ 전체 예약
+const rvLab=()=>RESV_VISIT_BR.includes(S.branch)?"내원률":"예약율"; const rvFx=()=>RESV_VISIT_BR.includes(S.branch)?"내원률 = 내원 ÷ 전체 예약":"예약율 = 내원 ÷ (전체 − 변경)";    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
 const OT_END850_BR = ["gt-os"];   // 연장근무 끝 시간: 기본 08:50, 목록도 08:50부터
 const EMG_LINE2_BR = ["gt-os"];
 const NEW_SPLIT_BR = ["gt-os"];   const STAT_RANGE_BR = ["gt-os"];   // 도수·충격파 통계: 날짜 직접 지정(기간) 보기
@@ -3628,19 +3630,19 @@ async function renderResv(keep){
     const {data,error}=await sb.from("reservations").select("*").eq("branch_id",S.branch).eq("resv_date",st.date).order("resv_time").order("id");
     if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
     const all=data||[]; const c=k=>all.filter(r=>r.visit===k).length; const none=all.filter(r=>!r.visit).length;
-    const real=all.length-c("변경"); const q=st.q.toLowerCase();
+    const real=RESV_VISIT_BR.includes(S.branch)?all.length:all.length-c("변경"); const q=st.q.toLowerCase();
     const CNT=RESV_CNT_BR.includes(S.branch), F2K=RESV_2000_BR.includes(S.branch); const is2k=r=>r.visit!=="내원"&&(parseInt(String(r.chart_no||"").replace(/\D/g,""),10)||0)>=2000;
     const list=all.filter(r=>(st.f==="전체"||(st.f==="미내원 2000~"?is2k(r):st.f==="확인 전"?!r.visit:r.visit===st.f))&&(!q||[r.chart_no,r.patient_name,r.memo,r.subject].join(" ").toLowerCase().includes(q)));
     const d=new Date(st.date+"T00:00:00Z");
     main.innerHTML=`<div class="wrap">
-      <div class="page-h"><div><h2>예약관리</h2><div class="meta">${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${WD[d.getUTCDay()]}) · EMR 예약 목록을 올린 뒤 내원 여부만 체크하세요 · 예약율 = 내원 ÷ (전체 − 변경)</div></div>
+      <div class="page-h"><div><h2>예약관리</h2><div class="meta">${+st.date.slice(5,7)}월 ${+st.date.slice(8)}일 (${WD[d.getUTCDay()]}) · EMR 예약 목록을 올린 뒤 내원 여부만 체크하세요 · ${rvFx()}</div></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <div class="seg" role="group" aria-label="보기"><button data-rvm="day" aria-pressed="true">일별</button><button data-rvm="month" aria-pressed="false">월별 통계</button></div>
           <div class="monthnav"><button class="btn ghost sm" id="vp" aria-label="전날">◀</button><button class="btn ghost sm" id="vt">오늘</button><button class="btn ghost sm" id="vn" aria-label="다음날">▶</button></div>
           <input type="date" id="vd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜">
           <button class="btn sm" id="vup">EMR 엑셀 올리기</button><input type="file" id="vf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="vdel" title="잘못 올린 예약을 기간으로 한꺼번에 지웁니다" style="color:var(--bad)">🗑 일괄 삭제</button><button class="btn ghost sm" id="vrf" title="다른 분이 체크한 내원 여부를 바로 불러옵니다 (화면 위치 그대로)">↻ 새로고침</button></div></div>
       <section class="kpis">
-        <div class="kpi lead"><span class="k">예약율</span><span class="v num">${real?(c("내원")/real*100).toFixed(1):"–"}<small>%</small></span><span class="d">내원 ${c("내원")} / 실예약 ${real}</span></div>
+        <div class="kpi lead"><span class="k">${rvLab()}</span><span class="v num">${real?(c("내원")/real*100).toFixed(1):"–"}<small>%</small></span><span class="d">내원 ${c("내원")} / ${RESV_VISIT_BR.includes(S.branch)?"전체 예약":"실예약"} ${real}</span></div>
         <div class="kpi"><span class="k">전체 예약</span><span class="v num">${all.length}</span><span class="d">확인 전 ${none}</span></div>
         <div class="kpi"><span class="k">내원</span><span class="v num" style="color:var(--good)">${c("내원")}</span></div>
         <div class="kpi"><span class="k">변경</span><span class="v num">${c("변경")}</span></div>
@@ -3677,18 +3679,18 @@ async function renderResv(keep){
     const {data,error}=await allRows(()=>sb.from("reservations").select("resv_date,visit,reason,subject").eq("branch_id",S.branch).gte("resv_date",wS).lte("resv_date",wE).order("id"));
     if(error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(error))}</div></div>`; return; }
     const full=data||[]; const all=full.filter(r=>r.resv_date>=R.start&&r.resv_date<=R.end); const by={}; all.forEach(r=>{ const o=by[r.resv_date] ||= {n:0,"내원":0,"변경":0,"취소":0,none:0}; o.n++; if(r.visit) o[r.visit]++; else o.none++; });
-    const tot={n:all.length}; VISITS.forEach(k=>tot[k]=all.filter(r=>r.visit===k).length); tot.none=all.filter(r=>!r.visit).length; const rate=o=>{ const real=o.n-o["변경"]; return real?(o["내원"]/real*100).toFixed(1)+"%":"–"; };
+    const tot={n:all.length}; VISITS.forEach(k=>tot[k]=all.filter(r=>r.visit===k).length); tot.none=all.filter(r=>!r.visit).length; const rate=o=>{ const real=RESV_VISIT_BR.includes(S.branch)?o.n:o.n-o["변경"]; return real?(o["내원"]/real*100).toFixed(1)+"%":"–"; };
     const why={}; all.filter(r=>r.visit==="취소"&&r.reason).forEach(r=>why[r.reason]=(why[r.reason]||0)+1);
     const W={}; full.forEach(r=>{ const w=weekOf(r.resv_date); const o=W[w.key] ||= {label:w.label,n:0,"내원":0,"변경":0,"취소":0}; o.n++; if(r.visit) o[r.visit]++; });
     main.innerHTML=`<div class="wrap">
-      <div class="page-h"><div><h2>예약관리 · 월별 통계</h2><div class="meta">${R.y}년 ${R.m}월 · 예약율 = 내원 ÷ (전체 − 변경)</div></div>
+      <div class="page-h"><div><h2>예약관리 · 월별 통계</h2><div class="meta">${R.y}년 ${R.m}월 · ${rvFx()}</div></div>
         <div style="display:flex;gap:8px;align-items:center"><div class="seg" role="group" aria-label="보기"><button data-rvm="day" aria-pressed="false">일별</button><button data-rvm="month" aria-pressed="true">월별 통계</button></div>
         <div class="monthnav"><button class="btn ghost sm" id="mp" aria-label="이전 달">◀</button><b class="num">${st.month.replace("-",". ")}</b><button class="btn ghost sm" id="mn" aria-label="다음 달">▶</button></div></div></div>
-      <section class="kpis"><div class="kpi lead"><span class="k">월 예약율</span><span class="v num">${rate(tot)}</span><span class="d">내원 ${tot["내원"]} / 실예약 ${tot.n-tot["변경"]}</span></div>
+      <section class="kpis"><div class="kpi lead"><span class="k">월 ${rvLab()}</span><span class="v num">${rate(tot)}</span><span class="d">내원 ${tot["내원"]} / ${RESV_VISIT_BR.includes(S.branch)?`전체 예약 ${tot.n}`:`실예약 ${tot.n-tot["변경"]}`}</span></div>
         <div class="kpi"><span class="k">전체 예약</span><span class="v num">${won(tot.n)}</span><span class="d">확인 전 ${tot.none}</span></div><div class="kpi"><span class="k">변경</span><span class="v num">${tot["변경"]}</span></div><div class="kpi"><span class="k">취소·노쇼</span><span class="v num">${tot["취소"]}</span></div></section>
-      <div class="grid2"><section class="panel"><h3>주별 <span>월~일 · 달에 걸친 주도 한 주 전체</span></h3><div class="tbl-box"><table><thead><tr><th>주 (월~일)</th><th>전체</th><th>내원</th><th>변경</th><th>취소</th><th>예약율</th></tr></thead><tbody>${Object.entries(W).sort().map(([k,o])=>`<tr><td>${o.label}</td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num"><b>${rate(o)}</b></td></tr>`).join("")}</tbody></table></div></section>
+      <div class="grid2"><section class="panel"><h3>주별 <span>월~일 · 달에 걸친 주도 한 주 전체</span></h3><div class="tbl-box"><table><thead><tr><th>주 (월~일)</th><th>전체</th><th>내원</th><th>변경</th><th>취소</th><th>${rvLab()}</th></tr></thead><tbody>${Object.entries(W).sort().map(([k,o])=>`<tr><td>${o.label}</td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num"><b>${rate(o)}</b></td></tr>`).join("")}</tbody></table></div></section>
         <section class="panel"><h3>취소 사유</h3><div class="tbl-box"><table><tbody>${Object.entries(why).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join("")||`<tr><td class="meta">기록된 사유가 없습니다.</td></tr>`}</tbody></table></div></section></div>
-      <section class="panel"><h3>일별 <span>날짜를 누르면 그날 목록으로 갑니다</span></h3><div class="tbl-box"><table><thead><tr><th>날짜</th><th>전체</th><th>내원</th><th>변경</th><th>취소·노쇼</th><th>확인 전</th><th>예약율</th></tr></thead><tbody>
+      <section class="panel"><h3>일별 <span>날짜를 누르면 그날 목록으로 갑니다</span></h3><div class="tbl-box"><table><thead><tr><th>날짜</th><th>전체</th><th>내원</th><th>변경</th><th>취소·노쇼</th><th>확인 전</th><th>${rvLab()}</th></tr></thead><tbody>
         ${Object.entries(by).sort().map(([d,o])=>{ const x=new Date(d+"T00:00:00Z"); return `<tr><td><button class="linkbtn" data-gd="${d}">${+d.slice(5,7)}/${+d.slice(8)} (${WD[x.getUTCDay()]})</button></td><td class="num">${o.n}</td><td class="num">${o["내원"]}</td><td class="num">${o["변경"]}</td><td class="num">${o["취소"]}</td><td class="num">${o.none||""}</td><td class="num"><b>${rate(o)}</b></td></tr>`; }).join("")||`<tr><td colspan="7" class="meta">자료가 없습니다.</td></tr>`}
       </tbody></table></div></section></div>`;
     $("mp").onclick=()=>{ st.month=shiftMonth(st.month,-1); renderResv(); }; $("mn").onclick=()=>{ st.month=shiftMonth(st.month,1); renderResv(); };
