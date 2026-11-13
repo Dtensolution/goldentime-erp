@@ -3638,7 +3638,7 @@ async function renderResv(keep){
           <div class="seg" role="group" aria-label="보기"><button data-rvm="day" aria-pressed="true">일별</button><button data-rvm="month" aria-pressed="false">월별 통계</button></div>
           <div class="monthnav"><button class="btn ghost sm" id="vp" aria-label="전날">◀</button><button class="btn ghost sm" id="vt">오늘</button><button class="btn ghost sm" id="vn" aria-label="다음날">▶</button></div>
           <input type="date" id="vd" value="${st.date}" style="height:30px;padding:0 6px" aria-label="날짜">
-          <button class="btn sm" id="vup">EMR 엑셀 올리기</button><input type="file" id="vf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="vrf" title="다른 분이 체크한 내원 여부를 바로 불러옵니다 (화면 위치 그대로)">↻ 새로고침</button></div></div>
+          <button class="btn sm" id="vup">EMR 엑셀 올리기</button><input type="file" id="vf" accept=".xlsx,.xls,.csv" hidden><button class="btn ghost sm" id="vdel" title="잘못 올린 예약을 기간으로 한꺼번에 지웁니다" style="color:var(--bad)">🗑 일괄 삭제</button><button class="btn ghost sm" id="vrf" title="다른 분이 체크한 내원 여부를 바로 불러옵니다 (화면 위치 그대로)">↻ 새로고침</button></div></div>
       <section class="kpis">
         <div class="kpi lead"><span class="k">예약율</span><span class="v num">${real?(c("내원")/real*100).toFixed(1):"–"}<small>%</small></span><span class="d">내원 ${c("내원")} / 실예약 ${real}</span></div>
         <div class="kpi"><span class="k">전체 예약</span><span class="v num">${all.length}</span><span class="d">확인 전 ${none}</span></div>
@@ -3670,6 +3670,7 @@ async function renderResv(keep){
     if(kp){ window.scrollTo(0,kp.y); main.querySelectorAll(".tbl-box").forEach((x,i)=>{ if(kp.b[i]!=null) x.scrollTop=kp.b[i]; }); }
     $("vrf").onclick=()=>{ $("vrf").disabled=true; renderResv(true).then(()=>toast("최신 예약으로 새로고침했습니다")); };
     $("vup").onclick=()=>$("vf").click(); $("vf").onchange=()=>resvUpload($("vf").files[0],st);
+    $("vdel").onclick=()=>resvBulkDelete(st);
   } else {
     const R=monthRange(st.month);
     const wS=mondayOf(R.start), wE=addDays(mondayOf(R.end),6);
@@ -3713,6 +3714,27 @@ async function resvDialog(r,date,reload){ const dlg=$("dlg");
     if(!row.resv_date){ $("r_e").textContent="날짜를 고르세요."; return; }
     const res=r?await sb.from("reservations").update(row).eq("id",r.id):await sb.from("reservations").insert({...row,branch_id:S.branch,source:"manual"}); if(res.error){ $("r_e").textContent=errMsg(res.error); return; } dlg.close(); reload(); };
   if($("r_x")) $("r_x").onclick=async()=>{ const b=$("r_x"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent="한 번 더 누르면 삭제"; return; } const {error}=await sb.from("reservations").delete().eq("id",r.id); if(error){ $("r_e").textContent=errMsg(error); return; } dlg.close(); reload(); };
+}
+async function resvBulkDelete(st){
+  const dlg=$("dlg"); const d0=st.date;
+  dlg.innerHTML=`<form method="dialog" style="min-width:min(440px,90vw)"><h3 style="margin:0 0 10px">예약 일괄 삭제</h3>
+    <p class="meta" style="margin:0 0 10px">잘못 올린 엑셀을 지울 때 씁니다. 지운 직후에는 [되살리기]로 되돌릴 수 있습니다.</p>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><input type="date" id="bd_f" value="${d0}"> ~ <input type="date" id="bd_t" value="${d0}"></div>
+    <div style="margin:10px 0;display:grid;gap:4px"><label><input type="radio" name="bd_s" value="emr" checked> 엑셀로 올린 예약만</label><label><input type="radio" name="bd_s" value="all"> 직접 입력한 예약까지 모두</label></div>
+    <p id="bd_n" class="meta" style="min-height:1.4em"></p>
+    <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn ghost" value="cancel">닫기</button><button type="button" class="btn" id="bd_ok" style="background:var(--bad);border-color:var(--bad)" disabled>삭제</button></div></form>`;
+  dlg.showModal();
+  const q=()=>{ const f=$("bd_f").value, t=$("bd_t").value; const all=dlg.querySelector('[name=bd_s]:checked').value==="all"; let x=sb.from("reservations").select("*").eq("branch_id",S.branch).gte("resv_date",f<=t?f:t).lte("resv_date",f<=t?t:f); if(!all) x=x.in("source",["emr","upload"]); return x.order("id"); };
+  let found=[];
+  const count=async()=>{ $("bd_ok").disabled=true; $("bd_ok").dataset.sure=""; $("bd_ok").textContent="삭제"; if(!$("bd_f").value||!$("bd_t").value){ $("bd_n").textContent="기간을 고르세요"; return; }
+    const r=await allRows(q); if(r.error){ $("bd_n").textContent=errMsg(r.error); return; } found=r.data||[];
+    const ds=[...new Set(found.map(x=>x.resv_date))].sort(); $("bd_n").innerHTML=found.length?`<b>${found.length}건</b> (${ds.length}일: ${ds.slice(0,8).map(d=>`${+d.slice(5,7)}/${+d.slice(8)}`).join(", ")}${ds.length>8?" …":""}) — 그중 내원 체크 ${found.filter(x=>x.visit==="내원").length}건 포함`:"지울 예약이 없습니다"; $("bd_ok").disabled=!found.length; };
+  dlg.querySelectorAll("#bd_f,#bd_t,[name=bd_s]").forEach(el=>el.onchange=count); count();
+  $("bd_ok").onclick=async()=>{ const b=$("bd_ok"); if(!b.dataset.sure){ b.dataset.sure=1; b.textContent=`정말 ${found.length}건 삭제`; return; } b.disabled=true;
+    const ids=found.map(x=>x.id); for(let i=0;i<ids.length;i+=500){ const {error}=await sb.from("reservations").delete().in("id",ids.slice(i,i+500)); if(error){ toast(errMsg(error)); return; } }
+    const bak=found.slice(); toast(`예약 ${bak.length}건을 삭제했습니다`); renderResv(true);
+    dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 10px">${bak.length}건 삭제했습니다</h3><p class="meta">잘못 지웠다면 이 창을 닫기 전에 되살릴 수 있습니다.</p><div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="btn ghost" id="bd_undo">↶ 되살리기</button><button class="btn" value="cancel">닫기</button></div></form>`;
+    $("bd_undo").onclick=async()=>{ $("bd_undo").disabled=true; for(let i=0;i<bak.length;i+=500){ const {error}=await sb.from("reservations").insert(bak.slice(i,i+500)); if(error){ toast("되살리기 실패: "+errMsg(error)); $("bd_undo").disabled=false; return; } } dlg.close(); toast(`${bak.length}건 되살렸습니다`); renderResv(true); }; };
 }
 async function resvUpload(file,st){ if(!file) return;
   try{ const X=await loadXLSX(); const wb=X.read(await file.arrayBuffer(),{cellDates:true}); const aoa=X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""});
