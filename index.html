@@ -789,6 +789,7 @@ async function applySurgReg(rows){ const c=SURG_REG[S.branch]; S.surgSrc=null; i
 const PARTS_BR = ["gt-cs"];         // 부위별 통계 (EMR 환자별 소모통계 업로드)       // 전광판 표: 도수·충격파 금액 칸
 const RESV_CNT_BR = ["gt-cs"];     // 예약관리: 내원횟수 칸
 const RESV_2000_BR = ["gt-cs"];
+const SCHED_SEED = {"gt-cs":{pt:[{name:"도수13", minutes:60, after:"도수A"}]}};   // 스케줄 치료 항목 한 번 만들기 (3등급 이상이 그 스케줄을 열 때)
 const RESV_VISIT_BR = ["gt-cs"];   // 예약관리: '예약율' 대신 '내원률' = 내원 ÷ 전체 예약
 const rvLab=()=>RESV_VISIT_BR.includes(S.branch)?"내원률":"예약율"; const rvFx=()=>RESV_VISIT_BR.includes(S.branch)?"내원률 = 내원 ÷ 전체 예약":"예약율 = 내원 ÷ (전체 − 변경)";    // 예약관리: 미내원 중 차트번호 2000번 이후만 보기
 const OT_END850_BR = ["gt-os"];   // 연장근무 끝 시간: 기본 08:50, 목록도 08:50부터
@@ -1805,6 +1806,8 @@ async function renderSched(kind,keep){
   const dbBlocks=br&&!br.error?(br.data||[]):[]; let blocks=dbBlocks;
   const err = lr.error||ir.error||ar.error||nr.error;
   if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
+  { const SD=(SCHED_SEED[S.branch]||{})[kind]||[]; if(SD.length&&S.me.level<=3){ for(const x of SD){ if((ir.data||[]).some(i=>i.name===x.name)) continue; const af=(ir.data||[]).find(i=>i.name===x.after);
+      const {data:ni,error:ne}=await sb.from("sched_items").insert({branch_id:S.branch,kind,name:x.name,minutes:x.minutes,price:x.price||0,sort:af?af.sort:99,active:true}).select().single(); if(!ne&&ni){ const L=ir.data||(ir.data=[]); const at=af?L.indexOf(af)+1:L.length; L.splice(at,0,ni); } else if(ne) console.warn("seed",ne.message); } } }
   const lanes=(lr.data||[]).filter(l=>l.active), items=ir.data||[], appts=ar.data||[], notes=nr.data||[];
   const itemBy=Object.fromEntries(items.map(i=>[i.name,i]));
   const IC=["#1a5fd0","#2f8f4e","#d17a12","#8e44ad","#c0392b","#0f8c8c","#b8860b","#d6336c","#5d6d7e","#6b8e23","#3949ab","#a0522d"];
