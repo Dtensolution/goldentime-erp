@@ -760,7 +760,12 @@ const DOC_SEED = {"gt-os":{"병동":[{title:"오프 신청", until:"2026-11-12",
 let seedBusy=false;
 async function docSeedEnsure(dept){ const L=(DOC_SEED[S.branch]||{})[dept]; if(!L||!canEditDoc(dept)||seedBusy) return; seedBusy=true; setTimeout(()=>seedBusy=false,5000); const td=kstToday();
   for(const d of L){ const {data:ex,error}=await sb.from("dept_docs").select("id,body,updated_at").eq("branch_id",S.branch).eq("dept",dept).eq("title",d.title).order("id"); if(error) continue;
-    if(ex&&ex.length>1){ const dup=ex.filter(x=>x.body===d.body); const keep=ex.length-dup.length>0?[]:[dup[0].id]; const del=dup.map(x=>x.id).filter(id=>!keep.includes(id)); if(del.length) await sb.from("dept_docs").delete().in("id",del); continue; }
+    if(ex&&ex.length>1){ // 중복: 가장 최근에 고친 글만 남기고, 나머지 글에만 있던 표 줄은 남길 글 표 끝에 옮긴 뒤 지움
+      const L2=[...ex].sort((x,y)=>String(y.updated_at).localeCompare(String(x.updated_at))); const keep=L2[0], drop=L2.slice(1); let kb=keep.body||""; const kl=kb.split("\n");
+      const isRow=l=>/^\s*\|/.test(l)&&!/^\s*\|\s*-{3}/.test(l)&&l.replace(/[|\s]|\[ \]/g,"")!==""; const hdr=kl.find(l=>/^\s*\|/.test(l));
+      const extra=[]; drop.forEach(x=>(x.body||"").split("\n").forEach(l=>{ if(isRow(l)&&l.trim()!==(hdr||"").trim()&&!kl.some(k=>k.trim()===l.trim())&&!extra.includes(l)) extra.push(l); }));
+      if(extra.length){ let li=-1; kl.forEach((l,i)=>{ if(/^\s*\|/.test(l)) li=i; }); if(li>=0) kl.splice(li+1,0,...extra); else kl.push(...extra); kb=kl.join("\n"); const {error:ue}=await sb.from("dept_docs").update({body:kb}).eq("id",keep.id); if(ue) continue; }
+      await sb.from("dept_docs").delete().in("id",drop.map(x=>x.id)); continue; }
     if(td>d.until||(ex&&ex.length)) continue;
     await sb.from("dept_docs").insert({branch_id:S.branch,dept,title:d.title,body:d.body,pinned:true}); } }
 let shareBusy=false;
