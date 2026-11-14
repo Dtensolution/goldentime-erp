@@ -2239,6 +2239,8 @@ async function renderStaff(){
     allRows(()=>sb.from("shifts").select("*").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end).order("work_date").order("staff_id"))]);
   const err=sr.error||cr.error||hr.error; if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const staff=(sr.data||[]).filter(s=>s.active), codesL=cr.data||[], codes=Object.fromEntries(codesL.map(c=>[c.code,c]));
+  // 이름이 [청구]로 시작하는 줄은 늘 청구 줄 (실수로 다른 부서로 옮겨져도 되돌림 · 3등급 이상이 열면 DB도 고침)
+  for(const s of staff){ if(/^\s*\[청구\]/.test(s.name||"")&&s.dept!==BILL_DEPT){ s.dept=BILL_DEPT; s.lead=false; if(S.me.level<=3){ const {error}=await sb.from("staff").update({dept:BILL_DEPT,lead:false}).eq("id",s.id); if(error) console.warn("billfix",error.message); } } }
   const map={}; (hr.data||[]).forEach(h=>map[h.staff_id+"|"+h.work_date]=h);
   const Q=shQueue(); Object.entries(Q).forEach(([k,q])=>{ if(q.v==null) delete map[k]; else map[k]={staff_id:q.sid,work_date:q.d,value:q.v,note:q.note}; });
   const dq=k=>Q[k]?" dirty":"";
@@ -3932,7 +3934,7 @@ async function loadOrgData(){
   return {staff, org:or.data||[], depts};
 }
 function staffEditDialog(s,reload,preset){ const dlg=$("dlg"); const isNew=!s; s ||= {name:"",dept:preset?.dept||"",title:"",phone:"",lead:false};
-  const depts=[...new Set([...STAFF_DEPTS.filter(d=>d!=="의료진"),s.dept].filter(Boolean))].filter(canEditDept);
+  const depts=s&&s.dept===BILL_DEPT?[BILL_DEPT]:[...new Set([...STAFF_DEPTS.filter(d=>d!=="의료진"),s?.dept].filter(Boolean))].filter(canEditDept);
   dlg.innerHTML=`<form method="dialog"><h3 style="margin:0 0 12px">${isNew?"직원 추가":esc(s.name)+` <span class="meta">${esc(s.dept)}</span>`}</h3><div class="form-2">
     <div class="field"><label for="se0">이름</label><input id="se0" value="${esc(s.name||"")}" autocomplete="off"></div>
     <div class="field"><label for="se6">부서</label><select id="se6">${depts.map(d=>`<option ${d===s.dept?"selected":""}>${esc(d)}</option>`).join("")}</select></div>
