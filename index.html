@@ -5027,7 +5027,7 @@ function bindApptClip(kind,cols,appts,cfg,lanes,blocks,reload){
       const step=laneStep(kind,t.c.lane);
       m.innerHTML=`<div class="stm-h">${+t.c.date.slice(5,7)}/${+t.c.date.slice(8)} ${esc(t.c.lane.name)} ${hhmm(t.m)}</div>${c?`<button data-qp>📋 여기에 붙여넣기<br><small>${esc([c.chart_no,c.patient_name,c.item].filter(Boolean).join(" "))}</small></button>`:""}
         <div class="stm-h" style="padding-top:6px">🚫 예약 막기</div><input data-qbn placeholder="메모 (선택)" style="height:30px;padding:0 8px;border:1px solid var(--line);border-radius:6px">
-        <button data-qb="${step}">${step}분만 (${hhmm(t.m)}~${hhmm(t.m+step)})</button><button data-qb="60">1시간 (${hhmm(t.m)}~${hhmm(Math.min(cfg.to,t.m+60))})</button><button data-qb="end">이 시간부터 끝까지</button><button data-qb="day">이 방 하루 종일</button><button data-qb="all">모든 방 하루 종일</button>`;
+        <button data-qb="${step}">${step}분만 (${hhmm(t.m)}~${hhmm(t.m+step)})</button>${step<30?`<button data-qb="30">30분 (${hhmm(t.m)}~${hhmm(Math.min(cfg.to,t.m+30))})</button>`:""}<button data-qb="60">1시간 (${hhmm(t.m)}~${hhmm(Math.min(cfg.to,t.m+60))})</button><button data-qb="end">이 시간부터 끝까지</button><button data-qb="day">이 방 하루 종일</button><button data-qb="all">모든 방 하루 종일</button>`;
       document.body.appendChild(m); m.style.left=Math.min(e.clientX,innerWidth-220)+"px"; m.style.top=Math.max(4,Math.min(e.clientY,innerHeight-m.offsetHeight-8))+"px";
       const close=()=>{ m.remove(); document.removeEventListener("mousedown",out,true); }; const out=ev=>{ if(!m.contains(ev.target)) close(); }; setTimeout(()=>document.addEventListener("mousedown",out,true),0);
       if(c) m.querySelector("[data-qp]").onclick=()=>{ close(); pasteConfirm(kind,c,{appt_date:t.c.date,lane_id:t.c.lane.id,start_min:t.m},lanes,blocks,reload); };
@@ -5083,7 +5083,7 @@ function bindApptDrag(kind,cols,appts,cfg,lanes,blocks,reload){
         const el=document.elementFromPoint(e.clientX,e.clientY); const body=el&&el.closest?el.closest(".sc-body[data-col]"):null; target=null;
         if(body){ const c=cols[+body.dataset.col]; const step=laneStep(kind,c.lane); const br=body.getBoundingClientRect(); const topY=e.clientY-br.top-(sy-rect.top); let m=cfg.from+Math.round(topY/(SLOT_H*step/10))*step; m=Math.max(cfg.from,Math.min(cfg.to-step,m)); target={c,m}; hint.textContent=`${+c.date.slice(5,7)}/${+c.date.slice(8)} ${c.lane.name} ${hhmm(m)}`; hint.style.left=(e.clientX+14)+"px"; hint.style.top=(e.clientY+12)+"px"; hint.hidden=false; } else hint.hidden=true; };
       const up=async e=>{ window.removeEventListener("pointermove",move); window.removeEventListener("pointerup",up); if(!drag) return;
-        card.classList.remove("dragsrc"); ghost&&ghost.remove(); hint&&hint.remove(); card.dataset.nodlg="1"; setTimeout(()=>delete card.dataset.nodlg,300);
+        card.classList.remove("dragsrc"); ghost&&ghost.remove(); hint&&hint.remove(); card.dataset.nodlg="1"; setTimeout(()=>delete card.dataset.nodlg,300); const sw=ce=>{ ce.preventDefault(); ce.stopPropagation(); }; window.addEventListener("click",sw,true); setTimeout(()=>window.removeEventListener("click",sw,true),350);   /* 놓은 자리의 빈 칸 클릭(새 예약 창)으로 이어지지 않게 */
         if(!target) return; const nv={appt_date:target.c.date,lane_id:target.c.lane.id,start_min:target.m};
         if(e.ctrlKey||e.metaKey||e.altKey) return pasteConfirm(kind,a,nv,lanes,blocks,reload);
         if(nv.appt_date===a.appt_date&&nv.lane_id===a.lane_id&&nv.start_min===a.start_min) return;
