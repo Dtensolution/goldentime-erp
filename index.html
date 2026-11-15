@@ -738,7 +738,7 @@ function mgmtOk(){ if(fullMenu()||S.me.dept==="경영지원") return true; const
 function deptMenus(dept,cfg=S.menuCfg){ const o=cfg&&cfg[dept]; return Array.isArray(o)?o:(MENU_DEFAULT[dept]||MENU_BASE); }
 function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>=3); }
 const FX = {};
-const APPT_ENTER_KEEP = ["gt-os","gt-cs","baro"];
+const APPT_ENTER_KEEP = ["gt-os","gt-cs"];
 const NIGHT_BR = ["gt-os","gt-cs"];
 const INV_EXP_BR = ["gt-os"];   // 물품·재고 약제: 유효기간 칸 (inv_items.exp_date)
 // 업무 기록부 목록을 다른 부서 업무게시판에 자동 공유 (읽기용 사본 · 최근 7일~앞으로)
