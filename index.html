@@ -2229,6 +2229,25 @@ function dutyOf(v,codes){ const t=String(v||"").trim(); if(!t||isOffVal(t,codes)
 const DUTY_ORD=["A","D","E","N"]; const dutyTxt=(o,sep="/")=>DUTY_ORD.filter(k=>o[k]).map(k=>k+o[k]).join(sep);
 const isOffVal=(v,codes)=>{ const c=codes[v]; return c?c.is_off:/^(off|휴무?|연차|병가|학회)$/i.test(String(v).trim()); };
 
+// 근무표 엑셀 읽기 — ① 주 단위 블록(요일줄·날짜줄 아래 이름줄, 예: 수술 근무표) ② 이름 × 날짜 표. 값 "09:00-19:00" → "9-19", OFF 그대로
+function shXlParse(aoa){
+  const T=c=>String(c??"").trim(); const out=[]; let M=null;
+  for(const r of aoa){ for(const c of r){ const m=T(c).match(/(\d{1,2})\s*월\s*근무/); if(m){ M=+m[1]; break; } } if(M) break; }
+  const today=kstToday(); let Y=+today.slice(0,4); const cm=+today.slice(5,7); if(M&&M-cm>6) Y--; else if(M&&cm-M>6) Y++;
+  if(!M){ M=cm; }
+  const norm=v=>{ v=T(v); if(!v) return ""; if(/^off$/i.test(v)) return "OFF"; const m=v.match(/^(\d{1,2})(?::(\d{2}))?\s*[-~]\s*(\d{1,2})(?::(\d{2}))?$/); if(m){ const f=(h,mm)=>String(+h)+(mm&&mm!=="00"?":"+mm:""); return f(m[1],m[2])+"-"+f(m[3],m[4]); } return v; };
+  const isDayRow=r=>{ const n=r.map(T).filter(t=>/^\d{1,2}$/.test(t)).map(Number).filter(d=>d>=1&&d<=31); if(n.length<4) return false; return n.every((d,i)=>i===0||d===n[i-1]+1||(d===1&&n[i-1]>=28)); };   // 1씩 늘어나는 날짜 줄만 (출근 인원 줄 제외)
+  const isWdRow=r=>r.filter(c=>/^[월화수목금토일]요?일?$/.test(T(c))).length>=4;
+  const skip=/^(출근|출근인원|합계|인원|근무|휴무)/;
+  let y=Y, m=M, prev=null, first=true, cols=null;
+  for(let i=0;i<aoa.length;i++){ const r=aoa[i]||[];
+    if(isDayRow(r)){ cols={}; r.forEach((c,ci)=>{ const t=T(c); if(!/^\d{1,2}$/.test(t)) return; let d=+t;
+        if(first){ if(d>15){ m--; if(m<1){ m=12; y--; } } first=false; } else if(prev!=null&&d<prev){ m++; if(m>12){ m=1; y++; } }
+        prev=d; cols[ci]=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }); continue; }
+    if(isWdRow(r)||!cols) continue;
+    const ci0=Math.min(...Object.keys(cols).map(Number)); const label=r.slice(0,ci0).map(T).filter(Boolean).pop()||""; if(!label||skip.test(label)) continue;
+    const name=label.replace(/\s+/g,""); Object.entries(cols).forEach(([ci,date])=>{ const v=norm(r[ci]); if(v) out.push({name,date,value:v}); }); }
+  return out; }
 // 임시 근무표: 3등급 이상만. shifts_draft에 따로 짜 두고 [근무 스케줄에 반영]하면 그 기간 근무표를 바꿈
 const SHT=()=>(S.view==="staff"&&S.staffV?.draft&&S.me?.level<=3)?"shifts_draft":"shifts";
 async function renderStaff(){
@@ -2295,6 +2314,7 @@ async function renderStaff(){
   }
   main.innerHTML=`<div class="wrap">
     ${st.draft?`<div class="draftbar"><b>📝 임시 근무표</b> <span>3등급 이상만 보입니다 · 여기서 고친 내용은 직원들 근무 스케줄에 바로 나가지 않습니다</span>
+      <button class="btn sm ghost" id="drxl" title="부서 근무표 엑셀(주 단위 블록 · 이름 × 날짜 표)을 임시표에 넣습니다">📤 엑셀 올리기</button><input type="file" id="drxlf" accept=".xlsx,.xls,.csv" hidden>
       <button class="btn sm ghost" id="drcopy" title="지금 보는 기간의 실제 근무표를 임시표로 복사합니다 (임시표 내용은 덮어씀)">📋 지금 근무표 복사해 오기</button>
       <button class="btn sm" id="drapply" title="지금 보는 기간의 임시표를 실제 근무 스케줄에 반영합니다">✅ 근무 스케줄에 반영</button>
       <button class="btn sm ghost" id="drclear" style="color:var(--bad)">임시표 비우기</button><button class="btn sm ghost" id="droff">← 실제 근무표로</button></div>`:""}
@@ -2347,6 +2367,24 @@ async function renderStaff(){
   document.querySelectorAll("[data-shm]").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.shm; renderStaff(); });
   if($("dron")) $("dron").onclick=()=>{ st.draft=true; renderStaff(); };
   if($("droff")) $("droff").onclick=()=>{ st.draft=false; renderStaff(); };
+  if($("drxl")) $("drxl").onclick=()=>$("drxlf").click();
+  if($("drxlf")) $("drxlf").onchange=async()=>{ const f=$("drxlf").files[0]; if(!f) return; $("drxlf").value="";
+    try{ const X=await loadXLSX(); const wb=X.read(await f.arrayBuffer(),{type:"array"}); let E=[]; wb.SheetNames.forEach(n=>{ E=E.concat(shXlParse(X.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:""}))); });
+      if(!E.length) return toast("근무표 모양을 읽지 못했습니다 (요일·날짜 줄 아래에 이름 줄이 있어야 합니다)");
+      const names=[...new Set(E.map(e=>e.name))]; const all=(sr.data||[]).filter(x=>x.active);
+      const guess=n=>{ const ex=all.filter(x=>x.name.replace(/\s/g,"")===n); if(ex.length===1) return ex[0].id; const ew=all.filter(x=>x.name.replace(/\s/g,"").endsWith(n)||x.name.replace(/\s/g,"").includes(n)); return ew.length===1?ew[0].id:""; };
+      const ds=E.map(e=>e.date).sort(); const dlg=$("dlg");
+      dlg.innerHTML=`<form method="dialog" style="min-width:min(560px,90vw)"><h3 style="margin:0 0 6px">엑셀 → 임시 근무표</h3><p class="meta" style="margin:0 0 10px">${esc(f.name)} · ${ds[0]} ~ ${ds.at(-1)} · ${E.length}칸 · 이름을 직원과 맞춰 주세요 (같은 날 임시표 칸은 덮어씀)</p>
+        <div class="tbl-box" style="max-height:50vh"><table><thead><tr><th>엑셀 이름</th><th>직원</th><th>칸</th></tr></thead><tbody>${names.map(n=>{ const g=guess(n); return `<tr><td><b>${esc(n)}</b></td><td><select data-xn="${esc(n)}" style="height:30px"><option value="">(넣지 않음)</option>${all.map(x=>`<option value="${x.id}" ${String(x.id)===String(g)?"selected":""}>${esc(x.name)} · ${esc(x.dept)}</option>`).join("")}</select></td><td class="num">${E.filter(e=>e.name===n).length}</td></tr>`; }).join("")}</tbody></table></div>
+        <p class="meta">예: ${esc(E.slice(0,3).map(e=>`${e.name} ${+e.date.slice(5,7)}/${+e.date.slice(8)} ${e.value}`).join(" · "))}</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn ghost" value="cancel">닫기</button><button class="btn" type="button" id="xgo">임시표에 넣기</button></div></form>`;
+      dlg.showModal();
+      $("xgo").onclick=async()=>{ const map={}; dlg.querySelectorAll("[data-xn]").forEach(s=>{ if(s.value) map[s.dataset.xn]=+s.value; });
+        const rows=E.filter(e=>map[e.name]).map(e=>({staff_id:map[e.name],work_date:e.date,branch_id:S.branch,value:e.value,note:null})); if(!rows.length) return toast("직원을 하나 이상 골라 주세요");
+        const uniq=Object.values(Object.fromEntries(rows.map(r=>[r.staff_id+"|"+r.work_date,r])));
+        for(let i=0;i<uniq.length;i+=500){ const {error}=await sb.from("shifts_draft").upsert(uniq.slice(i,i+500)); if(error) return toast(errMsg(error)); }
+        dlg.close(); toast(`임시표에 ${uniq.length}칸을 넣었습니다 · 확인 후 [근무 스케줄에 반영]을 누르세요`); if(ds[0].slice(0,7)!==st.date.slice(0,7)&&st.mode==="month") st.date=ds[Math.floor(ds.length/2)]; renderStaff(); };
+    }catch(e){ console.error(e); toast(e.message||String(e)); } };
   if($("drcopy")) $("drcopy").onclick=async()=>{ if(!confirm(`${start} ~ ${end} 실제 근무표를 임시표로 복사합니다.\n이 기간 임시표에 적어 둔 내용은 지워집니다. 계속할까요?`)) return;
     const ids=staff.map(x=>x.id); const {data:real,error:e1}=await allRows(()=>sb.from("shifts").select("staff_id,work_date,branch_id,value,note").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end)); if(e1) return toast(errMsg(e1));
     const {error:e2}=await sb.from("shifts_draft").delete().eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end); if(e2) return toast(errMsg(e2));
