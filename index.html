@@ -658,6 +658,8 @@ table.cmtab th.sub{font-size:11px;font-weight:500;color:var(--muted);padding:2px
 .hqnote{margin-top:8px;font-size:13px;padding:6px 8px;border-left:3px solid var(--navy);background:var(--sunk);border-radius:4px}.hqnote b{margin-right:6px}
 .hqmore summary{cursor:pointer;padding:4px 0}
 .md .mdfz{position:sticky;z-index:2;background:var(--surface)}.md th.mdfz{z-index:3;background:var(--sunk)}.md .mdfz-last{box-shadow:inset -2px 0 0 var(--line),4px 0 6px -4px rgb(0 0 0 / .18)}
+.md.preview .mdfz{position:sticky;z-index:2;background:var(--surface)}.md.preview th.mdfz{z-index:3;background:var(--sunk)}
+.draftbar{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;background:#fff7e0;border:1px solid #f0c75e;border-radius:10px;padding:10px 14px;margin-bottom:10px}.draftbar span{color:#8a6100;font-size:13px}
 </style>
 </head>
 <body>
@@ -2227,6 +2229,8 @@ function dutyOf(v,codes){ const t=String(v||"").trim(); if(!t||isOffVal(t,codes)
 const DUTY_ORD=["A","D","E","N"]; const dutyTxt=(o,sep="/")=>DUTY_ORD.filter(k=>o[k]).map(k=>k+o[k]).join(sep);
 const isOffVal=(v,codes)=>{ const c=codes[v]; return c?c.is_off:/^(off|휴무?|연차|병가|학회)$/i.test(String(v).trim()); };
 
+// 임시 근무표: 3등급 이상만. shifts_draft에 따로 짜 두고 [근무 스케줄에 반영]하면 그 기간 근무표를 바꿈
+const SHT=()=>(S.view==="staff"&&S.staffV?.draft&&S.me?.level<=3)?"shifts_draft":"shifts";
 async function renderStaff(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.staffV ||= {mode:"month", date:kstToday(), dept:"전체", brush:null, q:""};
@@ -2238,7 +2242,7 @@ async function renderStaff(){
   const [sr,cr,hr]=await Promise.all([
     sb.from("staff").select("*").eq("branch_id",S.branch).order("sort").order("id"),
     sb.from("shift_codes").select("*").eq("branch_id",S.branch).order("sort"),
-    allRows(()=>sb.from("shifts").select("*").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end).order("work_date").order("staff_id"))]);
+    allRows(()=>sb.from(SHT()).select("*").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end).order("work_date").order("staff_id"))]);
   const err=sr.error||cr.error||hr.error; if(err){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(err))}</div></div>`; return; }
   const staff=(sr.data||[]).filter(s=>s.active), codesL=cr.data||[], codes=Object.fromEntries(codesL.map(c=>[c.code,c]));
   // 이름이 [청구]로 시작하는 줄은 늘 청구 줄 (실수로 다른 부서로 옮겨져도 되돌림 · 3등급 이상이 열면 DB도 고침)
@@ -2290,11 +2294,16 @@ async function renderStaff(){
         ${off.length?`<p class="meta" style="margin:8px 0 0">${off.map(x=>`${esc(x.s.name)}${x.h?`(${esc(x.h.value)})`:""}`).join(", ")}</p>`:""}</section>`; }).join("")}</div>`;
   }
   main.innerHTML=`<div class="wrap">
-    <div class="page-h"><div><h2>전직원 근무 스케줄</h2><div class="meta">${title} · ${shown.length}명${anyEdit?" · 칸을 눌러 선택 → 바로 입력·Delete로 삭제 · 여러 칸을 마우스로 끌어 한꺼번에 선택(입력·삭제·Ctrl+C/V) · 선택한 칸을 끌어다 놓으면 이동(Ctrl 누르면 복사) · 이름을 끌면 순서·부서 이동":" · 보기 전용"}</div></div>
+    ${st.draft?`<div class="draftbar"><b>📝 임시 근무표</b> <span>3등급 이상만 보입니다 · 여기서 고친 내용은 직원들 근무 스케줄에 바로 나가지 않습니다</span>
+      <button class="btn sm ghost" id="drcopy" title="지금 보는 기간의 실제 근무표를 임시표로 복사합니다 (임시표 내용은 덮어씀)">📋 지금 근무표 복사해 오기</button>
+      <button class="btn sm" id="drapply" title="지금 보는 기간의 임시표를 실제 근무 스케줄에 반영합니다">✅ 근무 스케줄에 반영</button>
+      <button class="btn sm ghost" id="drclear" style="color:var(--bad)">임시표 비우기</button><button class="btn sm ghost" id="droff">← 실제 근무표로</button></div>`:""}
+    <div class="page-h"><div><h2>${st.draft?"임시 근무 스케줄":"전직원 근무 스케줄"}</h2><div class="meta">${title} · ${shown.length}명${anyEdit?" · 칸을 눌러 선택 → 바로 입력·Delete로 삭제 · 여러 칸을 마우스로 끌어 한꺼번에 선택(입력·삭제·Ctrl+C/V) · 선택한 칸을 끌어다 놓으면 이동(Ctrl 누르면 복사) · 이름을 끌면 순서·부서 이동":" · 보기 전용"}</div></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
         <div class="seg" role="group" aria-label="보기">${[["month","월별"],["week","주별"],["day","일별"]].map(([k,l])=>`<button data-shm="${k}" aria-pressed="${st.mode===k}">${l}</button>`).join("")}</div>
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
         <input type="date" id="hd" value="${st.date}" aria-label="날짜" style="height:30px;padding:0 6px">
+        ${S.me.level<=3&&!st.draft?`<button class="btn ghost sm" id="dron" title="3등급 이상만 · 다음 달 근무표 등을 미리 짜 두고 완성되면 반영">📝 임시 근무표</button>`:""}
         <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>${CCON?`<span style="position:relative;display:inline-flex;gap:4px"><button class="btn ghost sm" id="ccpick" title="셀 배경색 — 칸을 고른 뒤 색을 고르세요 (Ctrl+클릭: 여러 칸 · Shift+클릭: 범위 · 끌기: 범위)">🪣 셀 색</button><button class="btn sm" id="ccsave" ${Object.keys(st.ccP).length?"":"disabled"}>💾 색 저장${Object.keys(st.ccP).length?` (${Object.keys(st.ccP).length})`:""}</button><button class="btn ghost sm" id="cccancel" ${Object.keys(st.ccP).length?"":"hidden"}>취소</button><div id="ccpop" hidden style="position:absolute;top:34px;left:0;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 6px 24px rgba(0,0,0,.15);width:236px"></div></span>`:""}
         <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button><button class="btn ghost sm" id="hxld" title="지금 보는 기간의 의료진(원장님) 근무표를 엑셀 파일로 받습니다">📥 원장님 스케줄 엑셀</button>`:""}
       </div></div>
@@ -2336,6 +2345,21 @@ async function renderStaff(){
   $("ht").onclick=()=>{ st.date=kstToday(); renderStaff(); };
   $("hd").onchange=()=>{ if($("hd").value){ st.date=$("hd").value; renderStaff(); } };
   document.querySelectorAll("[data-shm]").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.shm; renderStaff(); });
+  if($("dron")) $("dron").onclick=()=>{ st.draft=true; renderStaff(); };
+  if($("droff")) $("droff").onclick=()=>{ st.draft=false; renderStaff(); };
+  if($("drcopy")) $("drcopy").onclick=async()=>{ if(!confirm(`${start} ~ ${end} 실제 근무표를 임시표로 복사합니다.\n이 기간 임시표에 적어 둔 내용은 지워집니다. 계속할까요?`)) return;
+    const ids=staff.map(x=>x.id); const {data:real,error:e1}=await allRows(()=>sb.from("shifts").select("staff_id,work_date,branch_id,value,note").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end)); if(e1) return toast(errMsg(e1));
+    const {error:e2}=await sb.from("shifts_draft").delete().eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end); if(e2) return toast(errMsg(e2));
+    const rows=(real||[]).filter(r=>ids.includes(r.staff_id)); for(let i=0;i<rows.length;i+=500){ const {error}=await sb.from("shifts_draft").upsert(rows.slice(i,i+500)); if(error) return toast(errMsg(error)); }
+    toast(`${rows.length}칸을 임시표로 복사했습니다`); renderStaff(); };
+  if($("drclear")) $("drclear").onclick=async()=>{ if(!confirm(`${start} ~ ${end} 임시표를 모두 비울까요?`)) return; const {error}=await sb.from("shifts_draft").delete().eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end); if(error) return toast(errMsg(error)); renderStaff(); };
+  if($("drapply")) $("drapply").onclick=async()=>{ const D=(hr.data||[]); const sids=[...new Set(D.map(r=>r.staff_id))]; if(!sids.length) return toast("이 기간 임시표가 비어 있습니다");
+    if(!confirm(`${start} ~ ${end} 임시표를 실제 근무 스케줄에 반영합니다.\n임시표에 들어 있는 직원 ${sids.length}명의 이 기간 근무표가 임시표 내용으로 바뀝니다 (임시표에서 비운 칸은 근무표에서도 지워짐).\n계속할까요?`)) return;
+    const {data:real,error:e1}=await allRows(()=>sb.from("shifts").select("staff_id,work_date").eq("branch_id",S.branch).gte("work_date",start).lte("work_date",end)); if(e1) return toast(errMsg(e1));
+    const has=new Set(D.map(r=>r.staff_id+"|"+r.work_date)); const del=(real||[]).filter(r=>sids.includes(r.staff_id)&&!has.has(r.staff_id+"|"+r.work_date));
+    for(let i=0;i<D.length;i+=500){ const {error}=await sb.from("shifts").upsert(D.slice(i,i+500).map(r=>({staff_id:r.staff_id,work_date:r.work_date,branch_id:r.branch_id,value:r.value,note:r.note??null}))); if(error) return toast(errMsg(error)); }
+    for(const r of del){ const {error}=await sb.from("shifts").delete().eq("staff_id",r.staff_id).eq("work_date",r.work_date); if(error) return toast(errMsg(error)); }
+    toast(`근무 스케줄에 반영했습니다 (${D.length}칸${del.length?` · ${del.length}칸 지움`:""})`); };
   document.querySelectorAll("[data-dp]").forEach(b=>b.onclick=()=>{ const d=b.dataset.dp;
     if(d==="전체"||d==="팀장"){ st.dept=d; st.depts=[]; }
     else { const cur=st.dept==="여러"?(st.depts||[]).slice():(st.dept==="전체"||st.dept==="팀장"?[]:[st.dept]); const i=cur.indexOf(d); if(i<0) cur.push(d); else cur.splice(i,1);
@@ -2558,8 +2582,8 @@ function shiftDialog(td,map,codesL,staff,reload,save){
   dlg.showModal();
   dlg.querySelectorAll("[data-pick]").forEach(b=>b.onclick=()=>{ $("sv").value=b.dataset.pick; });
   $("sok").onclick=async()=>{ const v=$("sv").value.trim(); if(!v){ $("serr").textContent="근무를 적거나 비우기를 누르세요."; return; }
-    if(save){ const ok=await save(sid,d,v,$("snt").value.trim()||null); if(ok) dlg.close(); return; } const {error}=await sb.from("shifts").upsert({staff_id:sid,work_date:d,branch_id:S.branch,value:v,note:$("snt").value.trim()||null}); if(error){ $("serr").textContent=errMsg(error); return; } dlg.close(); reload(); };
-  if($("sdel")) $("sdel").onclick=async()=>{ if(save){ const ok=await save(sid,d,null,null); if(ok) dlg.close(); return; } const {error}=await sb.from("shifts").delete().eq("staff_id",sid).eq("work_date",d); if(error){ $("serr").textContent=errMsg(error); return; } dlg.close(); reload(); };
+    if(save){ const ok=await save(sid,d,v,$("snt").value.trim()||null); if(ok) dlg.close(); return; } const {error}=await sb.from(SHT()).upsert({staff_id:sid,work_date:d,branch_id:S.branch,value:v,note:$("snt").value.trim()||null}); if(error){ $("serr").textContent=errMsg(error); return; } dlg.close(); reload(); };
+  if($("sdel")) $("sdel").onclick=async()=>{ if(save){ const ok=await save(sid,d,null,null); if(ok) dlg.close(); return; } const {error}=await sb.from(SHT()).delete().eq("staff_id",sid).eq("work_date",d); if(error){ $("serr").textContent=errMsg(error); return; } dlg.close(); reload(); };
 }
 
 // ── 부서별 업무게시판 ──
@@ -2822,7 +2846,7 @@ function docEditor(doc, dept, reload, st, notice, tab){
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-size:13px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dpin" ${doc?.pinned?"checked":""}> 목록 맨 위에 고정</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="dnot" ${doc?.notice?"checked":""}> 필독 공지 (직원이 [확인했습니다]를 눌러야 하고, 읽음 현황이 남습니다)</label></div>
     <p class="err" id="derr"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button>${doc?.id?`<button class="btn ghost" id="ddel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">삭제</button>`:""}</div>`;
-  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; bindMdPalette($("db"),$("dpal"),()=>$("db").oninput());
+  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); $("dpv").querySelectorAll("[data-mdates]").forEach(mdFreeze); }; $("dpv").querySelectorAll("[data-mdates]").forEach(mdFreeze); bindMdPalette($("db"),$("dpal"),()=>$("db").oninput());
   $("dcancel").onclick=reload;
   $("dsave").onclick=async()=>{ const title=$("dt").value.trim(); if(!title){ $("derr").textContent="제목을 적어주세요."; return; }
     const row={title,body:$("db").value,pinned:$("dpin").checked,notice:$("dnot").checked};
@@ -2973,7 +2997,7 @@ function docTabEditor(doc,reload,tab){ const v=$("dv"); const P=mdTabParts(doc.b
       <div><span class="meta" style="font-size:12px">미리보기</span><div class="md preview" id="dpv">${mdRender(orig)}</div></div></div>
     <p class="err" id="derr"></p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="btn" id="dsave">저장</button><button class="btn ghost" id="dcancel">취소</button><button class="btn ghost" id="dtdel" style="color:var(--bad);border-color:var(--bad);margin-left:16px">이 탭 없애기</button></div>`;
-  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); }; bindMdPalette($("db"),$("dpal"),()=>$("db").oninput()); $("dcancel").onclick=reload;
+  $("db").oninput=()=>{ $("dpv").innerHTML=mdRender($("db").value); $("dpv").querySelectorAll("[data-mdates]").forEach(mdFreeze); }; $("dpv").querySelectorAll("[data-mdates]").forEach(mdFreeze); bindMdPalette($("db"),$("dpal"),()=>$("db").oninput()); $("dcancel").onclick=reload;
   const apply=async fn=>{ try{ const fresh=await mdDocFresh(doc.id); const FP=mdTabParts(fresh); const fp=FP.find(p=>p.name===tab); if(!fp) throw new Error("그 사이에 이 탭이 없어졌습니다");
       const now=mdTrim(fp.lines).filter(l=>l.trim()!==MD_EMPTY).join("\n"); if(now!==orig&&!$("dsave").dataset.force){ $("dsave").dataset.force=1; $("dsave").textContent="그래도 덮어쓰기"; throw new Error("이 탭을 여는 사이에 다른 분이 이 탭을 고쳤습니다. [취소]로 새로 불러오거나, 정말 덮어쓰려면 한 번 더 누르세요."); }
       fn(FP,fp); await mdDocPut(doc,mdTabJoin(FP)); return true; }catch(e){ $("derr").textContent=errMsg(e); return false; } };
@@ -5060,8 +5084,8 @@ function shDirtyN(){ const A=window.__shQ||{}; return Object.values(A).reduce((n
 async function shFlush(){ const A=window.__shQ||{}; let n=0, fail=0, msg="";
   for(const [br,Q] of Object.entries(A)){ const L=Object.entries(Q); if(!L.length) continue;
     const ups=L.filter(([,q])=>q.v!=null), dels=L.filter(([,q])=>q.v==null);
-    if(ups.length){ const {error}=await sb.from("shifts").upsert(ups.map(([,q])=>({staff_id:q.sid,work_date:q.d,branch_id:br,value:q.v,note:q.note??null}))); if(error){ fail+=ups.length; msg=errMsg(error); } else { ups.forEach(([k])=>delete Q[k]); n+=ups.length; } }
-    const res=await Promise.all(dels.map(([k,q])=>sb.from("shifts").delete().eq("staff_id",q.sid).eq("work_date",q.d).then(r=>[k,r.error])));
+    if(ups.length){ const {error}=await sb.from(SHT()).upsert(ups.map(([,q])=>({staff_id:q.sid,work_date:q.d,branch_id:br,value:q.v,note:q.note??null}))); if(error){ fail+=ups.length; msg=errMsg(error); } else { ups.forEach(([k])=>delete Q[k]); n+=ups.length; } }
+    const res=await Promise.all(dels.map(([k,q])=>sb.from(SHT()).delete().eq("staff_id",q.sid).eq("work_date",q.d).then(r=>[k,r.error])));
     res.forEach(([k,e])=>{ if(e){ fail++; msg=errMsg(e); } else { delete Q[k]; n++; } }); }
   if(!fail) window.__shSaveAt=new Date(); return {n,fail,msg}; }
 window.addEventListener("beforeunload",e=>{ if(shDirtyN()>0){ e.preventDefault(); e.returnValue=""; } });
