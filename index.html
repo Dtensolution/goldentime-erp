@@ -657,6 +657,7 @@ table.cmtab th.sub{font-size:11px;font-weight:500;color:var(--muted);padding:2px
 .hqalerts{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:4px;font-size:13px}.hqalerts li{padding:5px 8px;border-radius:6px;background:var(--sunk)}.hqalerts li.bad{background:#fde2e0;color:#a52714}.hqalerts li.warn{background:#fdf1dc;color:#8a5a00}
 .hqnote{margin-top:8px;font-size:13px;padding:6px 8px;border-left:3px solid var(--navy);background:var(--sunk);border-radius:4px}.hqnote b{margin-right:6px}
 .hqmore summary{cursor:pointer;padding:4px 0}
+.md .mdfz{position:sticky;z-index:2;background:var(--surface)}.md th.mdfz{z-index:3;background:var(--sunk)}.md .mdfz-last{box-shadow:inset -2px 0 0 var(--line),4px 0 6px -4px rgb(0 0 0 / .18)}
 </style>
 </head>
 <body>
@@ -2253,7 +2254,8 @@ async function renderStaff(){
   const deptsPresent=[...new Set([...STAFF_DEPTS.filter(d=>staff.some(s=>s.dept===d)), ...staff.map(s=>s.dept)])].filter(d=>d!==BILL_DEPT);
   const leadOrd=(a,b)=>(a.lead_sort??1e6)-(b.lead_sort??1e6)||deptsPresent.indexOf(a.dept)-deptsPresent.indexOf(b.dept)||a.sort-b.sort||a.id-b.id;
   const leads=staff.filter(s=>s.lead&&s.dept!==BILL_DEPT).sort(leadOrd);
-  const shown=staff.filter(s=>(st.dept==="팀장"?(s.lead||s.dept===BILL_DEPT):(s.dept!==BILL_DEPT&&(st.dept==="전체"||s.dept===st.dept)))&&(!st.q||s.name.includes(st.q)||s.dept===BILL_DEPT)); if(st.dept==="팀장") shown.sort((a,b)=>(a.dept===BILL_DEPT)-(b.dept===BILL_DEPT)||leadOrd(a,b));
+  const multi=st.dept==="여러"&&(st.depts||[]).length>1;   // 부서 여러 개 골라 보기
+  const shown=staff.filter(s=>(st.dept==="팀장"?(s.lead||s.dept===BILL_DEPT):(s.dept!==BILL_DEPT&&(st.dept==="전체"||(multi?st.depts.includes(s.dept):s.dept===st.dept))))&&(!st.q||s.name.includes(st.q)||s.dept===BILL_DEPT)); if(st.dept==="팀장") shown.sort((a,b)=>(a.dept===BILL_DEPT)-(b.dept===BILL_DEPT)||leadOrd(a,b));
   const gapOf={}; if(leads.length) days.forEach(d=>{ const g=leadGap(leads,map,d,codes); if(g.length) gapOf[d]=g; });
   const gapTxt=d=>gapOf[d]?`팀장 공백: ${gapOf[d].map(([a,b])=>`${minTxt(a)}~${minTxt(b)}`).join(", ")}`:"";
   const anyEdit=deptsPresent.some(canEditDept);
@@ -2294,10 +2296,10 @@ async function renderStaff(){
         <div class="monthnav"><button class="btn ghost sm" id="hp" aria-label="이전">◀</button><button class="btn ghost sm" id="ht">오늘</button><button class="btn ghost sm" id="hn" aria-label="다음">▶</button></div>
         <input type="date" id="hd" value="${st.date}" aria-label="날짜" style="height:30px;padding:0 6px">
         <div class="seg" role="group" aria-label="색상"><button data-shc="dept" aria-pressed="${st.color==="dept"}">부서색</button><button data-shc="code" aria-pressed="${st.color==="code"}">근무색</button></div>${CCON?`<span style="position:relative;display:inline-flex;gap:4px"><button class="btn ghost sm" id="ccpick" title="셀 배경색 — 칸을 고른 뒤 색을 고르세요 (Ctrl+클릭: 여러 칸 · Shift+클릭: 범위 · 끌기: 범위)">🪣 셀 색</button><button class="btn sm" id="ccsave" ${Object.keys(st.ccP).length?"":"disabled"}>💾 색 저장${Object.keys(st.ccP).length?` (${Object.keys(st.ccP).length})`:""}</button><button class="btn ghost sm" id="cccancel" ${Object.keys(st.ccP).length?"":"hidden"}>취소</button><div id="ccpop" hidden style="position:absolute;top:34px;left:0;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 6px 24px rgba(0,0,0,.15);width:236px"></div></span>`:""}
-        <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button>`:""}
+        <button class="btn ghost sm" id="hprt" title="지금 보이는 표(위에서 고른 부서)를 인쇄합니다">🖨 인쇄</button>${deptsPresent.includes("의료진")?`<button class="btn ghost sm" id="hprd" title="의료진(원장님)만 골라서 인쇄합니다">🖨 원장님 스케줄 인쇄</button><button class="btn ghost sm" id="hxld" title="지금 보는 기간의 의료진(원장님) 근무표를 엑셀 파일로 받습니다">📥 원장님 스케줄 엑셀</button>`:""}
       </div></div>
     <div class="sh-tools">
-      <div class="chips">${["전체",...(leads.length?["팀장"]:[]),...deptsPresent].map(d=>`<button class="fchip${d==="팀장"?" leadchip":""}" data-dp="${esc(d)}" aria-pressed="${st.dept===d}">${d==="팀장"?"★ 팀장":esc(d)}</button>`).join("")}</div>
+      <div class="chips">${["전체",...(leads.length?["팀장"]:[]),...deptsPresent].map(d=>`<button class="fchip${d==="팀장"?" leadchip":""}" data-dp="${esc(d)}" aria-pressed="${st.dept===d||(multi&&st.depts.includes(d))}">${d==="팀장"?"★ 팀장":esc(d)}</button>`).join("")}<span class="meta" style="align-self:center">부서를 여러 개 누르면 함께 보입니다</span></div>
       <span style="display:inline-flex;align-items:center;gap:0"><input id="hq" placeholder="이름 찾기" value="${esc(st.q)}" style="height:32px;padding:0 10px;width:160px"></span>
     </div>
     ${anyEdit&&st.mode!=="day"?`<div class="brushes" role="toolbar" aria-label="근무 코드">
@@ -2323,13 +2325,22 @@ async function renderStaff(){
   stickHead(document.querySelector(".sh-wrap"),"thead th");
   const shPrint=()=>{ document.body.classList.add("printing-staff"); const done=()=>{ document.body.classList.remove("printing-staff"); window.removeEventListener("afterprint",done); }; window.addEventListener("afterprint",done); window.print(); setTimeout(done,1500); };
   $("hprt").onclick=shPrint;
+  if($("hxld")) $("hxld").onclick=async()=>{ try{ const X=await loadXLSX(); const docs=staff.filter(s=>s.dept==="의료진"); const H={}; (hr.data||[]).forEach(h=>H[h.staff_id+"|"+h.work_date]=h);
+      const head=["이름",...days.map(d=>`${+d.slice(5,7)}/${+d.slice(8)} (${WD[new Date(d+"T00:00:00Z").getUTCDay()]})`)];
+      const rows=docs.map(s=>[s.name,...days.map(d=>{ const h=H[s.id+"|"+d]; return h?String(h.value??"")+(h.note?` (${h.note})`:""):""; })]);
+      const ws=X.utils.aoa_to_sheet([head,...rows]); ws["!cols"]=[{wch:12},...days.map(()=>({wch:9}))]; const wb=X.utils.book_new(); X.utils.book_append_sheet(wb,ws,"원장님 스케줄");
+      X.writeFile(wb,`원장님스케줄_${start}_${end}.xlsx`); }catch(e){ toast(e.message||String(e)); } };
   if($("hprd")) $("hprd").onclick=async()=>{ const prev=st.dept; st.dept="의료진"; await renderStaff(); shPrint(); st.dept=prev; setTimeout(()=>renderStaff(),1600); };
   $("hp").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),-1)+"-01" : addDays(st.date, st.mode==="week"?-7:-1); renderStaff(); };
   $("hn").onclick=()=>{ st.date = st.mode==="month" ? shiftMonth(st.date.slice(0,7),1)+"-01" : addDays(st.date, st.mode==="week"?7:1); renderStaff(); };
   $("ht").onclick=()=>{ st.date=kstToday(); renderStaff(); };
   $("hd").onchange=()=>{ if($("hd").value){ st.date=$("hd").value; renderStaff(); } };
   document.querySelectorAll("[data-shm]").forEach(b=>b.onclick=()=>{ st.mode=b.dataset.shm; renderStaff(); });
-  document.querySelectorAll("[data-dp]").forEach(b=>b.onclick=()=>{ st.dept=b.dataset.dp; renderStaff(); });
+  document.querySelectorAll("[data-dp]").forEach(b=>b.onclick=()=>{ const d=b.dataset.dp;
+    if(d==="전체"||d==="팀장"){ st.dept=d; st.depts=[]; }
+    else { const cur=st.dept==="여러"?(st.depts||[]).slice():(st.dept==="전체"||st.dept==="팀장"?[]:[st.dept]); const i=cur.indexOf(d); if(i<0) cur.push(d); else cur.splice(i,1);
+      if(!cur.length){ st.dept="전체"; st.depts=[]; } else if(cur.length===1){ st.dept=cur[0]; st.depts=[]; } else { st.dept="여러"; st.depts=cur; } }
+    renderStaff(); });
   bindSearch("hq",v=>{ st.q=v; return renderStaff(); });
   const setBrush=v=>{ st.brush=v||null;
     document.querySelectorAll("[data-br]").forEach(x=>x.setAttribute("aria-pressed",String(st.brush===x.dataset.br)));
@@ -2627,7 +2638,12 @@ function bindMdMove(box,doc,rerender){ if(!box) return; const T=[...box.querySel
         const nb=mdMoveSec(fresh,from,at,to); if(nb==null) throw new Error("옮길 수 없습니다"); await mdDocPut(doc,nb); toast(`"${h.textContent.trim()}" → ${to} 탭으로 옮겼습니다`); }
       catch(e){ toast(errMsg(e)); } rerender(); };
     h.before(sel); })); }
-function bindMdMonths(box,key){ if(!box) return; const M=window.__mdMon ||= {}, CAL=window.__mdCal ||= {};
+// 날짜표(업무 포지션 등): 날짜 앞 칸(구분·이름 등)은 오른쪽으로 밀어도 왼쪽에 고정
+function mdFreeze(tb){ const t=tb.querySelector("table"); if(!t||t.__frz) return; t.__frz=1; const hd=t.rows[0]; if(!hd) return; const k=[...hd.cells].findIndex(c=>c.hasAttribute("data-mm")); if(k<=0) return;
+  const run=()=>{ const W=[...hd.cells].slice(0,k).map(c=>c.getBoundingClientRect().width); if(!W.some(w=>w>0)) return; let L=0; const lefts=W.map(w=>{ const x=L; L+=w; return x; });
+    [...t.rows].forEach(r=>{ for(let i=0;i<k&&i<r.cells.length;i++){ const c=r.cells[i]; c.classList.add("mdfz"); c.style.left=lefts[i]+"px"; c.classList.toggle("mdfz-last",i===k-1); } }); };
+  run(); try{ new ResizeObserver(run).observe(t); }catch(_){} }
+function bindMdMonths(box,key){ if(!box) return; box.querySelectorAll("[data-mdates]").forEach(mdFreeze); const M=window.__mdMon ||= {}, CAL=window.__mdCal ||= {};
   box.querySelectorAll('[data-mrows]').forEach((tb,ti)=>{ const trs=[...tb.querySelectorAll("tr[data-rm]")]; const ms=[...new Set(trs.map(x=>+x.dataset.rm))]; if(!ms.length) return; const cur=+kstToday().slice(5,7);
     const ord=m=>(m-cur+12+6)%12; ms.sort((a,b)=>ord(a)-ord(b)); const k=key+":r"+ti; let sel=M[k]??(ms.includes(cur)?cur:ms[ms.length-1]); if(sel&&!ms.includes(sel)) sel=ms[ms.length-1];
     const bar=document.createElement("div"); bar.className="chips"; bar.style.margin="8px 0 4px";
