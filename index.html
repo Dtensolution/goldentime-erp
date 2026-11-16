@@ -971,12 +971,12 @@ function render(){
   if(S.me.level===1 && !S.branch) return renderPicker();
   if(S.me.level===1 && S.branch==="__hq") return renderHQ();
   const lv=S.me.level;
-  const itemOk={dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
+  const itemOk={wkppt:lv<=2&&WKPPT_BR.includes(S.branch),dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
     dpay:seeAll()||S.me.dept==="원무",paths:canDash()||S.me.dept==="원무"||ENTRY_ALL.includes(S.branch),parts:PARTS_BR.includes(S.branch)&&(canDash()||S.me.dept==="원무"),ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+  const LB={wkppt:"주간 보고서 PPT 받기",me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","wkppt","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
@@ -989,7 +989,7 @@ function render(){
       if(toolOk(md)) ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
   if(mgmtOk()) grp("경영지원",g=>{ add("docs",{dept:"회의록",label:"주간 회의록",grp:g}); deptTools("경영지원",g); });
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
-  grp("경영 · 관리",g=>["perf","pl","ad","report","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
+  grp("경영 · 관리",g=>["perf","pl","ad","report","wkppt","pay","goals","users","log"].forEach(id=>{ if(!items.some(x=>x.id===id)) add(id,{grp:g}); }));
   { const ord=S.prefs?.navOrd||[]; if(ord.length){ const head=[], ch=[]; let cur=null; items.forEach(i=>{ if(i.sep){ cur={k:i.sep,L:[i]}; ch.push(cur); } else if(cur) cur.L.push(i); else head.push(i); });
       const pos=c=>{ const i=ord.indexOf(c.k); return i<0?1e3+ch.indexOf(c):i; }; ch.sort((a,b)=>pos(a)-pos(b)); items.splice(0,items.length,...head,...ch.flatMap(c=>c.L)); } }
   const stDept={docs:()=>S.docV?.dept,reg:()=>S.regV?.dept,inv:()=>S.invV?.dept,sec:()=>S.secSel};
@@ -1029,7 +1029,7 @@ function render(){
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="wkppt"&&lv<=2&&WKPPT_BR.includes(S.branch)) renderWkPpt(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -4660,6 +4660,201 @@ function retUi(RET,n,lv){ if(RET_STAFF_BR.includes(S.branch)) return RET.has(n)?
 function retToggle(st,nRet,lv,re){ if(!retOn()||lv>(RET_STAFF_BR.includes(S.branch)?3:2)||!nRet) return ""; return ` <button class="linkbtn" id="retshow" style="font-size:12px">${st.showRet?"퇴사자 숨기기":`퇴사자 보기 (${nRet}명)`}</button>`; }
 function bindRet(st,re){ document.querySelectorAll("[data-ret]").forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const on=b.dataset.on==="1"; if(on&&!confirm(`${b.dataset.ret} 님을 퇴사 처리할까요?\n목록에서만 숨기고 연차·연장근무 기록은 그대로 남습니다.`)) return; if(await setRetired(b.dataset.ret,on)) re(); });
   if($("retshow")) $("retshow").onclick=()=>{ st.showRet=!st.showRet; re(); }; }
+// ── 주간 보고서 PPT (운정점 · 경영 · 관리) ── 마감일지·C-arm·근전도 스케줄로 매주 경영보고 슬라이드 8장을 만들어 내려받음. 해석 문장 칸은 비워 둠
+const WKPPT_BR=["gt-os"];
+const WKPPT_LOGO={"gt-os":"data:image/png;base64,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"};
+const WKPPT_DEF={weekTarget:200000000, npLo:20, npHi:30, docRec:50000000, emgTarget:90, emgMin:45, alias:"대표원장=우승하", title:""};
+async function loadPptx(){ if(window.PptxGenJS) return window.PptxGenJS;
+  for(const u of ["https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js","https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"]){
+    try{ await new Promise((ok,no)=>{ const s=document.createElement("script"); s.src=u; s.onload=ok; s.onerror=no; document.head.appendChild(s); }); if(window.PptxGenJS) return window.PptxGenJS; }catch(_){} }
+  throw new Error("PPT 만들기 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요."); }
+const wkLabel=m=>{ const d=+m.slice(8); return `${+m.slice(5,7)}월 ${Math.floor((d-1)/7)+1}주차`; };
+const eok=v=>v==null?"-":Math.abs(v)>=1e8?(v/1e8).toFixed(Math.abs(v)>=1e9?1:2).replace(/\.?0+$/,"")+"억":Math.abs(v)>=1e4?won(Math.round(v/1e4))+"만":won(Math.round(v));
+const pctS=(a,b)=>b?`${a>=b?"+":""}${((a-b)/b*100).toFixed(1)}%`:"";
+async function wkpptData(W,opt){
+  const end=addDays(W,6); const set=await loadBranchSettings().catch(()=>({sat:1,sun:1,holidays:[],raw:{}}));
+  await loadPtPrice().catch(()=>({}));
+  const [rows,cr,er,tr]=await Promise.all([
+    allRows(()=>sb.from("daily_close").select("*").eq("branch_id",S.branch).lte("close_date",end).order("close_date")),
+    allRows(()=>sb.from("carm_counts").select("cdate,cnt").eq("branch_id",S.branch).eq("kind","tech").lte("cdate",end)),
+    allRows(()=>sb.from("appointments").select("appt_date,status,item").eq("branch_id",S.branch).eq("kind","emg").lte("appt_date",end)),
+    sb.from("branch_targets").select("ym,metric,value").eq("branch_id",S.branch).eq("metric","total") ]);
+  for(const r of [rows,cr,er]) if(r.error) throw r.error;
+  const R=(rows.data||[]).filter(r=>+r.total>0); if(!R.length) throw new Error("마감일지 자료가 없습니다");
+  const carm={}; (cr.data||[]).forEach(c=>carm[c.cdate]=(carm[c.cdate]||0)+(+c.cnt||0));
+  const emg={}; (er.data||[]).filter(a=>!LOST_ST.has(a.status)&&!/근전도 결과/.test(a.item||"")).forEach(a=>emg[a.appt_date]=(emg[a.appt_date]||0)+1);
+  const tgt=Object.fromEntries((tr.data||[]).map(t=>[t.ym,+t.value]));
+  const alias=Object.fromEntries(String(opt.alias||"").split(/[,\n]/).map(x=>x.split("=").map(s=>s.trim())).filter(x=>x[0]&&x[1]));
+  const dn=n=>{ const b=String(n||"").replace(/\s*원장(님)?$/,"").trim(); return "Dr "+(alias[n]||alias[b]||b); };
+  const sumIn=(M,a,b)=>Object.entries(M).filter(([d])=>d>=a&&d<=b).reduce((s,[,v])=>s+v,0);
+  const hasIn=(M,a,b)=>Object.keys(M).some(d=>d>=a&&d<=b);
+  const pack=(rs,a,b)=>{ const A=aggRows(rs), g=goalActual(A); const amtOK=rs.length>0&&rs.every(r=>(r.doctors||[]).some(d=>+d.amt>0));
+    const docs={}; Object.entries(A.docs).forEach(([n,v])=>{ const k=dn(n); const o=docs[k] ||= {amt:0,pts:0}; o.amt+=v.amt; o.pts+=v.nw+v.re; });
+    return {total:g.total,out:g.out,inp:g.inpat,np:A.nonpay,pt:g.ptAmt,newP:A.newP,visits:A.visits,real:A.real,visit:A.visit,keep:A.real?A.visit/A.real*100:null,
+      per:A.visits?A.total/A.visits:null,outPer:A.visits?A.out/A.visits:null,carm:hasIn(carm,a,b)?sumIn(carm,a,b):null,emg:sumIn(emg,a,b),docs:amtOK?docs:null,days:rs.length}; };
+  // 주 (월~일)
+  // 첫 주가 월요일이 아니면 그 앞 며칠은 다음 주에 합침 (예: 3/1(일) → 3/2 주)
+  const d0=R[0].close_date; let m0=mondayOf(d0); if(m0<d0) m0=addDays(m0,7);
+  const weeks=[]; for(let m=m0; m<=W; m=addDays(m,7)){ const e=addDays(m,6), a=weeks.length?m:d0; weeks.push({m,label:wkLabel(m),...pack(R.filter(r=>r.close_date>=a&&r.close_date<=e),a,e)}); }
+  // 월 (마지막 달은 보고 주 일요일까지 → 월말 예상)
+  const months=[]; const ym0=R[0].close_date.slice(0,7), ymW=end.slice(0,7);
+  for(let ym=ym0; ym<=ymW; ym=shiftMonth(ym,1)){ const MR=monthRange(ym); const b=MR.end<end?MR.end:end; const rs=R.filter(r=>r.close_date>=MR.start&&r.close_date<=b);
+    const p=pack(rs,MR.start,b); let proj=false;
+    if(b<MR.end&&rs.length){ const cut=rs.at(-1).close_date; const Wd=monthWorkdays(ym,set,cut); const f=Wd.done>0?(Wd.done+Wd.left)/Wd.done:1;
+      ["total","out","inp","np","pt"].forEach(k=>p[k]=p[k]*f); proj=true; p.factor=f; }
+    months.push({ym,label:`${+ym.slice(5)}월`,proj,target:tgt[ym]||null,...p}); }
+  const wkCount=ym=>weeks.filter(w=>w.m.startsWith(ym)).length||4;
+  // 이번 달 주들 (1주차뿐이면 지난주도 함께)
+  let cw=weeks.filter(w=>w.m.slice(0,7)===W.slice(0,7)); if(cw.length<2&&weeks.length>1) cw=weeks.slice(-2).filter(w=>!cw.includes(w)).concat(cw).slice(-2);
+  const fullM=months.filter(m=>m.ym<W.slice(0,7));
+  const docNames=[...new Set([...months,...weeks].flatMap(x=>x.docs?Object.entries(x.docs).filter(([,v])=>v.amt>0).map(([k])=>k):[]))];
+  const docOrder=n=>{ const i=(S.doctorsCache||[]).findIndex(d=>dn(d.name)===n); return i<0?99:i; };
+  docNames.sort((a,b)=>docOrder(a)-docOrder(b));
+  return {W,end,weeks,months,cw,fullM,wkCount,docNames,branchName:(S.branches.find(b=>b.id===S.branch)||{}).name||""};
+}
+function wkpptBuild(Pptx,D,opt){
+  const p=new Pptx(); p.layout="LAYOUT_WIDE"; p.author="ERP"; p.title="경영보고"; const F="맑은 고딕";
+  const C={blue:"4472C4",orange:"ED7D31",gray:"A5A5A5",yellow:"FFC000",lb:"5B9BD5",green:"70AD47",navy:"264478",brown:"9E480E",dg:"636363",red:"E00000"};
+  const name=opt.title||D.branchName; const W=D.W, wk=D.weeks.at(-1), pw=D.weeks.at(-2)||null, curM=D.months.at(-1), prevM=D.months.at(-2)||null;
+  const n0=v=>v==null?"":won(Math.round(v)); const P=(v,b)=>b==null||v==null?"":pctS(v,b);
+  const catW=D.weeks.map((w,i)=>i===0||w.m.slice(5,7)!==D.weeks[i-1].m.slice(5,7)?`${+w.m.slice(5,7)}월`:"");
+  const title=(s,t,y=0.12)=>s.addText(t,{x:0.3,y,w:12.73,h:0.42,align:"center",fontFace:F,fontSize:18,bold:true,underline:{style:"sng"},color:"000000"});
+  const line=(s,txt,y,sz=13)=>s.addText(txt,{x:0.3,y,w:12.73,h:0.32,align:"center",fontFace:F,fontSize:sz,bold:true});
+  const blank=(s,x,y,w,h)=>s.addShape(p.ShapeType.rect,{x,y,w,h,line:{color:C.red,width:1,dashType:"dash"},fill:{type:"none"}});
+  const note=(s,t,x,y,w,fill="FFF2CC",color="000000")=>s.addText(t,{x,y,w,h:0.3,fontFace:F,fontSize:11,bold:true,color,fill:fill?{color:fill}:undefined,margin:3});
+  const callouts=(s,list,x=11.45,y=1.35)=>list.forEach((c,i)=>{ s.addShape(p.ShapeType.ellipse,{x,y:y+i*0.55+0.07,w:0.14,h:0.14,fill:{color:c[2]||C.blue},line:{color:C.red,width:1.25}}); s.addText(c[0],{x:x+0.2,y:y+i*0.55-0.08,w:1.7,h:0.24,fontFace:F,fontSize:9,color:"555555"}); s.addText(c[1],{x:x+0.2,y:y+i*0.55+0.14,w:1.7,h:0.28,fontFace:F,fontSize:12,bold:true}); });
+  const AX={catAxisLabelFontSize:9,catAxisLabelFontFace:F,valAxisLabelFontSize:9,valAxisLabelFontFace:F,valGridLine:{color:"E7E7E7",size:0.5},catGridLine:{style:"none"},showLegend:true,legendPos:"b",legendFontSize:9,legendFontFace:F,catAxisLabelRotate:0};
+  const LN={lineSize:2,lineDataSymbol:"circle",lineDataSymbolSize:4};
+  const chart=(s,type,series,colors,extra,pos,opts={})=>{ const labels=extra.labels; const T=type==="bar"?p.ChartType.bar:p.ChartType.line;
+    const parts=[{type:T,data:series.map(x=>({name:x[0],labels,values:x[1].map(v=>v==null?null:Math.round(v*100)/100)})),options:{chartColors:colors,...(T===p.ChartType.line?LN:{barGapWidthPct:60}),...(opts.sec?{secondaryValAxis:false}:{})}}];
+    (extra.refs||[]).forEach(r=>parts.push({type:p.ChartType.line,data:[{name:r[0],labels,values:labels.map(()=>r[1])}],options:{chartColors:[r[2]||C.red],lineDash:"dash",lineSize:1.25,lineDataSymbol:"none"}}));
+    if(opts.secSeries) parts.push({type:p.ChartType.line,data:[{name:opts.secSeries[0],labels,values:opts.secSeries[1]}],options:{chartColors:[opts.secSeries[2]],...LN,secondaryValAxis:true,secondaryCatAxis:true}});
+    s.addChart(parts,{...pos,...AX,valAxisLabelFormatCode:opts.fmt||"#,##0",...(opts.secSeries?{valAxes:[{showValAxisTitle:false,valAxisLabelFormatCode:"#,##0"},{showValAxisTitle:false,valAxisLabelFormatCode:"0\"%\"",valGridLine:{style:"none"}}],catAxes:[{catAxisTitle:""},{catAxisHidden:true}]}:{}),...(opts.min!=null?{valAxisMinVal:opts.min}:{})}); };
+  const table=(s,head,rows,pos,hiCols=1)=>{ const n=head.length; const fs=n>12?7.5:8.5; const hc=n-hiCols;
+    const cell=(t,ci,ri,isH)=>({text:String(t??""),options:{fontFace:F,fontSize:fs,align:"center",valign:"middle",bold:isH||ci===0,fill:{color:isH?"D9D9D9":ci===0?"F2F2F2":"DEEBF7"},color:/\(-/.test(String(t))?"1F4E9F":/\(\+/.test(String(t))?"C00000":"000000",
+      border:ci>=hc?[{pt:isH?2:0.5,color:isH?C.red:"BFBFBF"},{pt:2,color:C.red},{pt:ri===rows.length-1?2:0.5,color:ri===rows.length-1?C.red:"BFBFBF"},{pt:ci===hc?2:0.5,color:ci===hc?C.red:"BFBFBF"}]:{pt:0.5,color:"BFBFBF"}}});
+    const fix=(r,ri,isH)=>r.map((t,ci)=>{ const c=cell(t,ci,ri,isH); if(isH&&ci>=hc) c.options.border=[{pt:2,color:C.red},{pt:2,color:C.red},{pt:0.5,color:"BFBFBF"},{pt:ci===hc?2:0.5,color:ci===hc?C.red:"BFBFBF"}]; return c; });
+    const first=1.0, cw=(pos.w-first)/(n-1);
+    s.addTable([fix(head,-1,true),...rows.map((r,ri)=>fix(r,ri,false))],{...pos,colW:[first,...Array(n-1).fill(cw)],rowH:0.26,autoPage:false}); };
+  const mCols=D.fullM, wCols=D.cw; const headMW=["구분",...mCols.map(m=>m.label),...wCols.map(w=>w.label)];
+  const wkVal=(k,fmt=n0,pct=true)=>wCols.map(w=>{ const i=D.weeks.indexOf(w), pv=D.weeks[i-1]; const v=w[k]; if(v==null) return "-"; return fmt(v)+(pct&&pv&&pv[k]!=null?`\n(${P(v,pv[k])})`:""); });
+  const prevOf=(cols,i,k)=>{ const c=cols[i]; if(c.m){ const q=D.weeks[D.weeks.indexOf(c)-1]; return q?q[k]:null; } return i>0?cols[i-1][k]:null; };   // 주 칸은 바로 앞 주, 월 칸은 앞 달과 비교
+  const avg=a=>{ const x=a.filter(v=>v!=null&&isFinite(v)); return x.length?x.reduce((s,v)=>s+v,0)/x.length:null; };
+  const range=`${W.slice(0,4)}. ${+W.slice(5,7)}. ${+W.slice(8)} ~ ${+D.end.slice(5,7)}. ${+D.end.slice(8)}`;
+
+  // 1. 표지
+  { const s=p.addSlide(); s.addText(name,{x:0.5,y:1.5,w:12.33,h:1.0,align:"center",fontFace:F,fontSize:40}); s.addText("경영보고",{x:0.5,y:2.6,w:12.33,h:0.9,align:"center",fontFace:F,fontSize:36});
+    s.addText(`${wk.label} (${range})`,{x:0.5,y:3.7,w:12.33,h:0.5,align:"center",fontFace:F,fontSize:18,color:"595959"});
+    if(opt.logo) s.addImage({data:opt.logo,x:5.67,y:4.4,w:2.0,h:1.6,sizing:{type:"contain",w:2.0,h:1.6}}); }
+  // 2. 월별 매출 추이
+  { const s=p.addSlide(); const M=D.months; title(s,`(${name}) 월별 매출 추이`);
+    const tg=curM.target; const npR=curM.total?curM.np/curM.total*100:0;
+    s.addText([{text:`목표매출액(월 ${tg?eok(tg):"-"}) : `,options:{bold:true}},{text:tg?`${curM.total>=tg?"+":""}${eok(curM.total-tg)}원`:"목표 미설정",options:{bold:true,color:C.red}}],{x:0.3,y:0.52,w:12.73,h:0.3,align:"center",fontFace:F,fontSize:13});
+    s.addText([{text:"비급여 목표 매출액 : ",options:{bold:true}},{text:`총 매출 대비 ${opt.npLo}~${opt.npHi}% 유지 목표(현 ${npR.toFixed(1)}%)`,options:{bold:true,color:C.red}}],{x:0.3,y:0.82,w:12.73,h:0.3,align:"center",fontFace:F,fontSize:13});
+    const av=avg(M.map(m=>m.total));
+    chart(s,"line",[["총매출"+(curM.proj?" (이번 달 예상)":""),M.map(m=>m.total)],["외래",M.map(m=>m.out)],["입원",M.map(m=>m.inp)],["도수충격파",M.map(m=>m.pt)]],[C.blue,C.orange,C.gray,C.yellow],{labels:M.map(m=>m.label),refs:[["평균",av]]},{x:0.4,y:1.2,w:10.9,h:3.55});
+    note(s,`* 평균 매출 : ${n0(av)} 원`,1.75,1.3,3.4); note(s,`올해 누적${curM.proj?"(예상 포함)":""} : ${eok(M.reduce((t,m)=>t+m.total,0))}원`,1.75,1.65,3.4);
+    const pv=k=>prevM?`(${P(curM[k],prevM[k])})`:""; const pvn=k=>prevM?`\n(${P(curM[k],prevM[k])})`:"";
+    callouts(s,[[`${curM.proj?"예상 ":""}총 매출`,`${eok(curM.total)} ${pv("total")}`,C.blue],[`${curM.proj?"예상 ":""}외래`,`${eok(curM.out)} ${pv("out")}`,C.orange],[`${curM.proj?"예상 ":""}입원`,`${eok(curM.inp)} ${pv("inp")}`,C.gray],[`${curM.proj?"예상 ":""}도수충격파`,`${eok(curM.pt)} ${pv("pt")}`,C.yellow]]);
+    const lastL=curM.label+(curM.proj?" 예상":"");
+    const cols=M.slice(0,-1);
+    table(s,["구분",...cols.map(m=>m.label),lastL],[["총매출","total"],["외래매출","out"],["입원매출","inp"],["도수충격파","pt"]].map(([l,k])=>[l,...cols.map(m=>n0(m[k])),n0(curM[k])+pvn(k)]),{x:0.45,y:5.0,w:12.4});
+    if(curM.proj) s.addText(`* ${curM.label} 예상 = ${+D.end.slice(5,7)}/${+D.end.slice(8)}까지 실적 ÷ 지난 영업일 × 이번 달 전체 영업일 (대시보드 월말 예상과 같은 방식)`,{x:0.45,y:7.1,w:12.4,h:0.25,fontFace:F,fontSize:8,color:"7F7F7F"}); }
+  // 3. 주간 매출 추이
+  { const s=p.addSlide(); const Wk=D.weeks; title(s,`(${name}) 주간 매출 추이`);
+    s.addText([{text:`목표매출액(주 ${eok(opt.weekTarget)}) : `,options:{bold:true}},{text:`${wk.total>=opt.weekTarget?"+":""}${eok(wk.total-opt.weekTarget)}원`,options:{bold:true,color:C.red}}],{x:0.3,y:0.52,w:8.0,h:0.3,align:"center",fontFace:F,fontSize:13});
+    s.addText([{text:"비급여 목표 매출액 : ",options:{bold:true}},{text:`총 매출 대비 ${opt.npLo}~${opt.npHi}% 유지 목표(현 ${(wk.total?wk.np/wk.total*100:0).toFixed(1)}%), 도수충격파 ${(wk.total?wk.pt/wk.total*100:0).toFixed(1)}%`,options:{bold:true,color:C.red}}],{x:0.3,y:0.84,w:12.73,h:0.3,align:"center",fontFace:F,fontSize:13});
+    blank(s,8.5,0.48,3.6,0.36);
+    const av=avg(Wk.map(w=>w.total));
+    chart(s,"line",[["총매출",Wk.map(w=>w.total)],["외래",Wk.map(w=>w.out)],["입원",Wk.map(w=>w.inp)],["비급여(PT)",Wk.map(w=>w.pt)]],[C.blue,C.orange,C.gray,C.yellow],{labels:catW,refs:[["평균",av]]},{x:0.4,y:1.2,w:10.9,h:3.65});
+    note(s,`* 평균 매출 ${n0(av)}원`,1.75,1.3,3.2);
+    callouts(s,[["총",eok(wk.total),C.blue],["외래",eok(wk.out),C.orange],["입원",eok(wk.inp),C.gray],["비급여(PT)",eok(wk.pt),C.yellow]]);
+    table(s,headMW,[["총 매출액","total"],["씨암","carm"],["입원","inp"],["비급여(PT)","pt"]].map(([l,k])=>[l,...mCols.map(m=>m[k]==null?"-":n0(m[k])),...wkVal(k)]),{x:0.45,y:5.05,w:12.4},wCols.length);
+    if(mCols.some(m=>m.carm==null)) s.addText("* 씨암(C-arm)은 ERP에 입력된 달부터 나옵니다",{x:0.45,y:7.15,w:12.4,h:0.22,fontFace:F,fontSize:8,color:"7F7F7F"}); }
+  // 4. 예약환자 추이
+  { const s=p.addSlide(); const Wk=D.weeks; title(s,"예약환자 평균 추이",0.3); blank(s,8.5,0.32,3.6,0.36);
+    const av=avg(Wk.map(w=>w.keep));
+    chart(s,"line",[["예약환자수",Wk.map(w=>w.real)]],[C.orange],{labels:catW},{x:0.5,y:0.85,w:10.8,h:3.45},{secSeries:["실 방문율 %",Wk.map(w=>w.keep==null?null:Math.round(w.keep*10)/10),C.blue]});
+    note(s,`실방문율 평균 : ${av==null?"-":av.toFixed(1)}%`,1.3,0.95,2.6);
+    callouts(s,[["예약환자수",`${n0(wk.real)}명`,C.orange],["실 방문율",`${wk.keep==null?"-":wk.keep.toFixed(1)}%`,C.blue]],11.45,1.4);
+    const pc=(v,k)=>wCols.map(w=>{ const i=D.weeks.indexOf(w), q=D.weeks[i-1]; return v(w)+(k&&q&&q[k]!=null?`\n(${P(w[k],q[k])})`:""); });
+    table(s,headMW,[
+      ["실방문율 (%)",...mCols.map(m=>m.keep==null?"-":m.keep.toFixed(1)+"%"),...pc(w=>w.keep==null?"-":w.keep.toFixed(1)+"%")],
+      ["총내원수",...mCols.map(m=>n0(m.visits)),...pc(w=>n0(w.visits),"visits")],
+      ["예약환자수",...mCols.map(m=>n0(m.real)),...pc(w=>n0(w.real),"real")],
+      ["실방문수",...mCols.map(m=>n0(m.visit)),...pc(w=>n0(w.visit),"visit")]],{x:0.45,y:4.55,w:12.4},wCols.length); }
+  // 5. 주별 신환
+  { const s=p.addSlide(); const Wk=D.weeks; title(s,"주별 신환 평균 추이",0.3); blank(s,7.6,0.72,3.6,0.5);
+    const av=avg(Wk.map(w=>w.newP));
+    chart(s,"bar",[["신환",Wk.map(w=>w.newP)]],[C.blue],{labels:catW,refs:[["평균",av]]},{x:0.45,y:0.85,w:12.3,h:3.75});
+    note(s,`평균 : ${n0(av)}명`,1.1,0.95,1.8);
+    const cols=[...mCols,...wCols]; const seq=cols.map(c=>c.newP);
+    table(s,headMW,[
+      ["증감비율",...cols.map((c,i)=>{ const prv=prevOf(cols,i,"newP"); return prv?P(c.newP,prv):"-"; })],
+      ["신환환자 수",...cols.map(c=>n0(c.newP))],
+      ["주 평균 수",...mCols.map(m=>fmtN(Math.round(m.newP/D.wkCount(m.ym)*10)/10)),...wCols.map(()=>"")]],{x:0.9,y:4.85,w:11.5},wCols.length); }
+  // 6. 건당 진료비
+  { const s=p.addSlide(); const Wk=D.weeks; title(s,"건당 진료비 평균 추이",0.3); blank(s,6.3,2.75,5.8,0.34);
+    const av=avg(Wk.map(w=>w.per));
+    chart(s,"line",[["전체 건당 진료비",Wk.map(w=>w.per)],["외래 건당 진료비",Wk.map(w=>w.outPer)]],[C.blue,C.orange],{labels:catW,refs:[["평균",av]]},{x:0.45,y:0.8,w:10.9,h:3.25});
+    note(s,`평균 ${n0(av)}원`,1.45,0.9,1.9);
+    callouts(s,[["전체",`${n0(wk.per)}원`,C.blue],["외래",`${n0(wk.outPer)}원`,C.orange]],11.45,1.1);
+    const cols=[...mCols.slice(-3),...wCols];
+    const cell=(c,n)=>{ const v=c.docs&&c.docs[n]; return v&&v.pts?`${n0(v.amt/v.pts)}원/${n0(v.pts)}명`:(c.docs?"0":""); };
+    table(s,["구분",...cols.map(c=>c.label)],D.docNames.map(n=>[n,...cols.map(c=>cell(c,n))]),{x:0.7,y:4.25,w:11.9},wCols.length);
+    if(cols.some(c=>!c.docs)) s.addText("* 원장님별 진료비는 ERP 마감일지에 원장님별 금액이 들어간 기간부터 나옵니다",{x:0.7,y:7.15,w:11.9,h:0.22,fontFace:F,fontSize:8,color:"7F7F7F"}); }
+  // 7. 원장님별 매출
+  { const s=p.addSlide(); title(s,"원장님 별 매출추이",0.3); blank(s,8.2,0.62,3.9,0.55);
+    const i0=D.weeks.findIndex(w=>w.docs); const Wk=i0<0?[]:D.weeks.slice(i0); const labels=Wk.map((w,i)=>`${+w.m.slice(5,7)}/${+w.m.slice(8)}`);
+    const pal=[C.blue,C.orange,C.gray,C.lb,C.green,C.navy,C.brown,C.dg,C.yellow];
+    if(Wk.length) chart(s,"line",D.docNames.map(n=>[n.replace(/^Dr /,""),Wk.map(w=>w.docs?(w.docs[n]?.amt||0):null)]),pal,{labels,refs:[["권장 "+eok(opt.docRec),opt.docRec]]},{x:0.3,y:0.8,w:11.2,h:3.5});
+    const av=avg(Wk.flatMap(w=>w.docs?Object.values(w.docs).map(v=>v.amt).filter(v=>v>0):[]));
+    note(s,`평균 : ${n0(av)}원`,9.0,4.32,2.7);
+    const cols=[...mCols,...wCols];
+    table(s,["구분",...cols.map(c=>c.label)],D.docNames.map(n=>[n,...cols.map(c=>c.docs?n0(c.docs[n]?.amt||0):"")]),{x:0.7,y:4.7,w:11.9},wCols.length);
+    if(cols.some(c=>!c.docs)) s.addText("* 원장님별 매출은 ERP 마감일지에 원장님별 금액이 들어간 기간부터 나옵니다 (빈 칸 = 자료 없음)",{x:0.7,y:7.15,w:11.9,h:0.22,fontFace:F,fontSize:8,color:"7F7F7F"}); }
+  // 8. 근전도
+  { const s=p.addSlide(); title(s,"근전도 건수 추이",0.3); blank(s,0.95,0.72,3.6,0.32);
+    const i0=D.weeks.findIndex(w=>w.emg>0); const Wk=i0<0?D.weeks:D.weeks.slice(i0);
+    const lab=Wk.map((w,i)=>i===0||w.m.slice(5,7)!==Wk[i-1].m.slice(5,7)?`${+w.m.slice(5,7)}월`:"");
+    chart(s,"bar",[["근전도",Wk.map(w=>w.emg)]],[C.blue],{labels:lab,refs:[["목표 수치",opt.emgTarget,C.red],["권장 최소치",opt.emgMin,"C00000"]]},{x:0.45,y:1.1,w:12.3,h:3.5});
+    const cols=[...mCols,...wCols]; const seq=cols.map(c=>c.emg);
+    table(s,headMW,[["증감",...cols.map((c,i)=>{ const prv=prevOf(cols,i,"emg"); return prv?P(c.emg,prv):"-"; })],["근전도 수",...cols.map(c=>n0(c.emg))]],{x:1.3,y:4.9,w:10.7},wCols.length); }
+  return p;
+}
+async function renderWkPpt(){
+  const main=$("main"); const st=S.wkpV ||= {w:mondayOf(addDays(kstToday(),-7))};
+  const set=await loadBranchSettings().catch(()=>({raw:{}})); const opt={...WKPPT_DEF,...(set.raw?.wkppt||{})};
+  if(!S.doctorsCache){ const {data}=await sb.from("doctors").select("name,sort").eq("branch_id",S.branch).order("sort"); S.doctorsCache=data||[]; }
+  const brN=(S.branches.find(b=>b.id===S.branch)||{}).name||"";
+  const e=addDays(st.w,6);
+  main.innerHTML=`<div class="wrap">
+    <div class="page-h"><div><h2>주간 보고서 PPT 받기</h2><div class="meta">마감일지·C-arm·근전도 스케줄로 매주 경영보고 슬라이드 8장을 만듭니다 · 해석 문장 칸(빨간 점선)은 비어 있으니 직접 적어 주세요</div></div></div>
+    <section class="panel"><h3>보고 주 <span>월요일 ~ 일요일</span></h3>
+      <div class="monthnav" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><button class="btn ghost sm" id="wpp" aria-label="이전 주">◀</button><b class="num">${wkLabel(st.w)} · ${+st.w.slice(5,7)}/${+st.w.slice(8)} ~ ${+e.slice(5,7)}/${+e.slice(8)}</b><button class="btn ghost sm" id="wpn" aria-label="다음 주">▶</button>
+        <input type="date" id="wpd" value="${st.w}" style="height:32px"><button class="btn" id="wpgo">📥 PPT 받기</button><span class="meta" id="wpmsg"></span></div></section>
+    <section class="panel"><h3>설정 <span>한 번 저장하면 매주 그대로 씁니다 · 월 목표는 [목표·알림 설정]의 이번 달 총진료비 목표를 씁니다</span></h3>
+      <div class="formgrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+        <div class="field"><label for="wo_t">표지·제목 병원 이름</label><input id="wo_t" value="${esc(opt.title||brN)}"></div>
+        <div class="field"><label for="wo_wk">주 목표 매출 (원)</label><input id="wo_wk" inputmode="numeric" value="${won(opt.weekTarget)}"></div>
+        <div class="field"><label for="wo_np">비급여 목표 비중 (%)</label><div style="display:flex;gap:6px;align-items:center"><input id="wo_nl" inputmode="numeric" value="${opt.npLo}" style="width:60px">~<input id="wo_nh" inputmode="numeric" value="${opt.npHi}" style="width:60px"></div></div>
+        <div class="field"><label for="wo_dr">원장님 주 매출 권장 (원)</label><input id="wo_dr" inputmode="numeric" value="${won(opt.docRec)}"></div>
+        <div class="field"><label for="wo_et">근전도 주 목표 / 권장 최소 (건)</label><div style="display:flex;gap:6px;align-items:center"><input id="wo_et" inputmode="numeric" value="${opt.emgTarget}" style="width:70px">/<input id="wo_em" inputmode="numeric" value="${opt.emgMin}" style="width:70px"></div></div>
+        <div class="field"><label for="wo_al">원장님 표시 이름 (ERP이름=보고서이름, 쉼표로 구분)</label><input id="wo_al" value="${esc(opt.alias||"")}"></div>
+      </div><div style="margin-top:8px"><button class="btn sm ghost" id="wosave">설정 저장</button></div></section>
+    <section class="panel"><h3>슬라이드 구성</h3><ol class="meta" style="margin:0;padding-left:20px;line-height:1.8">
+      <li>표지</li><li>월별 매출 추이 — 총매출·외래·입원·도수충격파, 이번 달은 월말 예상 (대시보드와 같은 계산)</li><li>주간 매출 추이 — 주별 총매출·외래·입원·비급여(PT), 씨암</li><li>예약환자 추이 — 예약환자수·실방문수·실방문율·총내원수</li><li>주별 신환 추이</li><li>건당 진료비 — 전체·외래, 원장님별 건당 진료비/인원</li><li>원장님별 매출 추이 (원장님별 금액이 마감일지에 들어간 주부터)</li><li>근전도 건수 추이 (근전도 스케줄 기준)</li></ol></section></div>`;
+  const go=w=>{ st.w=mondayOf(w); renderWkPpt(); };
+  $("wpp").onclick=()=>go(addDays(st.w,-7)); $("wpn").onclick=()=>go(addDays(st.w,7)); $("wpd").onchange=()=>{ if($("wpd").value) go($("wpd").value); };
+  const num=id=>+String($(id).value).replace(/[^\d.]/g,"")||0;
+  const readOpt=()=>({title:$("wo_t").value.trim(),weekTarget:num("wo_wk"),npLo:num("wo_nl"),npHi:num("wo_nh"),docRec:num("wo_dr"),emgTarget:num("wo_et"),emgMin:num("wo_em"),alias:$("wo_al").value.trim()});
+  $("wosave").onclick=async()=>{ const raw={...(set.raw||{}),wkppt:readOpt()}; const {error}=await sb.from("branch_settings").upsert({branch_id:S.branch,data:raw},{onConflict:"branch_id"}); toast(error?errMsg(error):"설정을 저장했습니다"); };
+  $("wpgo").onclick=async()=>{ const b=$("wpgo"); b.disabled=true; $("wpmsg").textContent="자료 모으는 중…";
+    try{ const o={...opt,...readOpt()}; const [Pptx,D]=await Promise.all([loadPptx(),wkpptData(st.w,o)]); $("wpmsg").textContent="PPT 만드는 중…";
+      const p=wkpptBuild(Pptx,D,{...o,logo:WKPPT_LOGO[S.branch]}); await p.writeFile({fileName:`${o.title||brN}_경영보고_${wkLabel(st.w).replace(/\s/g,"")}.pptx`}); $("wpmsg").textContent="내려받았습니다"; }
+    catch(err){ console.error(err); $("wpmsg").textContent=""; toast(err.message||String(err)); }
+    b.disabled=false; };
+}
 async function loadBranchSettings(branch=S.branch){
   const {data}=await sb.from("branch_settings").select("data").eq("branch_id",branch).maybeSingle();
   const d=data?.data||{}; const alerts={}; ALERT_DEFS.forEach(a=>{ const s=(d.alerts||{})[a.k]||{}; alerts[a.k]={on:s.on!==false, th:s.th??a.th}; });
