@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.25, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>골든타임 ERP</title>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -35,7 +35,8 @@
   --good:#5cc08a; --warn:#f0a44b; --bad:#f07a6e;
   --bar:#6fa4e8; --bar-weekend:#2f6d90; color-scheme:dark}}
 *{box-sizing:border-box}
-html,body{margin:0}
+html,body{margin:0;touch-action:auto}
+.pgzoom{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:8px;padding:1px 2px;background:var(--surface)}.pgzoom button{border:0;background:none;font-size:15px;font-weight:800;width:26px;height:26px;cursor:pointer;color:var(--ink)}.pgzoom b{font-size:11.5px;min-width:36px;text-align:center}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5;padding-top:env(safe-area-inset-top,0px)}
 [hidden]{display:none!important}
 .num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
@@ -965,7 +966,7 @@ function topbar(){
     : `<b>${esc(br?br.name:"-")}</b>`;
   return `<header class="top gut"><button class="brand brandlink" id="homeBtn" aria-label="대시보드로"><h1 style="color:var(--navy)">골든타임 ERP</h1><span class="by">D:TEN</span></button>
     <div class="branch">${ctl}</div>
-    <div class="me"><span class="lv">${lvName(me.level)}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<button class="linkbtn" id="logout">로그아웃</button></div></header>`;
+    <div class="me"><span class="lv">${lvName(me.level)}${me.dept?" · "+esc(me.dept):""}</span><span>${esc(me.name)}</span>${isStandalone()?"":`<button class="linkbtn" id="appInstall" title="휴대폰·PC에 앱으로 설치">앱 설치</button>`}<span class="pgzoom" title="화면 배율 (이 기기에 기억)"><button type="button" data-pz="-10" aria-label="화면 축소">－</button><b id="pzv">100%</b><button type="button" data-pz="10" aria-label="화면 확대">＋</button></span><button class="linkbtn" id="logout">로그아웃</button></div></header>`;
 }
 function render(){
   if(S.view!=="staff"){ if(window.__shQ) window.__shQ={}; if(S.staffV){ S.staffV.undo=[]; S.staffV.last=null; } }
@@ -5142,9 +5143,13 @@ function stickTop(){ let t=0; const tb=document.querySelector("header.top"); if(
   const sh=document.querySelector(".sched-h"); if(sh&&getComputedStyle(sh).position==="sticky"){ if(tb) sh.style.top=(getComputedStyle(tb).position==="sticky"?tb.offsetHeight:0)+"px"; t=Math.max(t,sh.getBoundingClientRect().bottom); }
   const nb=document.querySelector(".navbtn"); if(nb&&getComputedStyle(nb).display!=="none") t=Math.max(t,nb.getBoundingClientRect().bottom);
   const nv=document.querySelector("nav.side"); if(nv&&getComputedStyle(nv).position==="sticky"){ const r=nv.getBoundingClientRect(); if(r.width>r.height) t=Math.max(t,r.bottom); } return t; }
+/* 화면 배율: 휴대폰에서 손가락 확대가 안 될 때도 ＋/－로 키우고 줄임 (main 전체 · 이 기기에 기억) */
+function pgZoomApply(){ let z=100; try{ z=+(localStorage.getItem("gt-pgzoom")||100); }catch(e){} const m=document.querySelector("main"); if(m) m.style.zoom=z===100?"":z/100; const v=document.getElementById("pzv"); if(v) v.textContent=z+"%"; try{ stickRun(); }catch(e){} }
+document.addEventListener("click",e=>{ const b=e.target.closest("[data-pz]"); if(!b) return; let z=100; try{ z=+(localStorage.getItem("gt-pgzoom")||100); }catch(_){} z=Math.max(50,Math.min(200,z+ +b.dataset.pz)); try{ localStorage.setItem("gt-pgzoom",String(z)); }catch(_){} pgZoomApply(); });
+new MutationObserver(()=>{ const v=document.getElementById("pzv"); if(v&&!v.dataset.ok){ v.dataset.ok="1"; pgZoomApply(); } }).observe(document.documentElement,{childList:true,subtree:true});
 function stickRun(){ const top=stickTop();
   for(const it of __sticky){ if(!it.wrap.isConnected) continue; const r=it.wrap.getBoundingClientRect(); const cells=it.wrap.querySelectorAll(it.sel); if(!cells.length) continue;
-    const h=cells[0].offsetHeight; let off=Math.min(Math.max(0,top-r.top), Math.max(0,r.height-h-6)); cells.forEach(c=>{ c.style.transform=off?`translateY(${off}px)`:""; c.classList.toggle("stuck",off>0); }); } }
+    const z=(r.height/(it.wrap.offsetHeight||1))||1; const h=cells[0].offsetHeight*z; let off=Math.min(Math.max(0,top-r.top), Math.max(0,r.height-h-6))/z; cells.forEach(c=>{ c.style.transform=off?`translateY(${off}px)`:""; c.classList.toggle("stuck",off>0); }); } }
 window.addEventListener("scroll",stickRun,{passive:true}); window.addEventListener("resize",stickRun);
 
 // ── 예약 불가 시간 ──
