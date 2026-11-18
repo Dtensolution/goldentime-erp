@@ -2515,7 +2515,8 @@ async function renderStaff(){
         Object.entries(ch).forEach(([k,c])=>{ if(c) CC[k]=c; else delete CC[k]; delete P[k]; const td=tdOf(k); td?.classList.remove("ccdirty"); }); }
       ccBtns(); if(bad) toast("색 저장 실패: "+errMsg(bad)); else toast(`셀 색 ${keys.length}칸 저장했습니다`); };
   }
-  let clip=null;
+  /* 운정점: 복사한 칸을 화면을 바꿔도 기억 → 공식 근무표에서 Ctrl+C 한 칸을 임시 근무표에서 Ctrl+V */
+  const CLIP_KEEP=S.branch==="gt-os"; let clip=CLIP_KEEP?(S.shClip||null):null;
   document.querySelectorAll("td.sh").forEach(td=>{
     td.addEventListener("mousedown",e=>{ if(!st.brush){ if(e.button!==0||td.querySelector("input")) return; const k=keyOf(td); if(inRng(td)||(!st.rng&&st.sel===k&&td.getAttribute("draggable")==="true")) return; /* 선택된 칸은 끌어서 이동 */
         const ae=document.activeElement; if(ae&&ae.classList?.contains("shq")) ae.blur(); e.preventDefault(); window.__shRg={a:k,moved:false}; return; }
@@ -2551,8 +2552,8 @@ async function renderStaff(){
     else if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); if(td.dataset.ro) return toast("이 부서 근무표를 고칠 권한이 없습니다"); setVal(+sid,d,null); }
     else if(e.key.startsWith("Arrow")){ e.preventDefault(); moveSel(e.key==="ArrowRight"?1:e.key==="ArrowLeft"?-1:0, e.key==="ArrowDown"?1:e.key==="ArrowUp"?-1:0); }
     else if(e.key==="Enter"||e.key==="F2"){ e.preventDefault(); quickEdit(td); }
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&st.rng){ const L=rngCells(), P=L.map(posOf); const r0=Math.min(...P.map(p=>p.r)), c0=Math.min(...P.map(p=>p.c)); clip={cells:L.map((t,i)=>({dr:P[i].r-r0,dc:P[i].c-c0,h:map[keyOf(t)]?{...map[keyOf(t)]}:null}))}; toast(`${L.length}칸 복사 · 붙여 넣을 칸을 누르고 Ctrl+V`); }
-    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){ clip=map[st.sel]?{...map[st.sel]}:null; if(clip) toast(`"${clip.value}" 복사`); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"&&st.rng){ const L=rngCells(), P=L.map(posOf); const r0=Math.min(...P.map(p=>p.r)), c0=Math.min(...P.map(p=>p.c)); clip={cells:L.map((t,i)=>({dr:P[i].r-r0,dc:P[i].c-c0,h:map[keyOf(t)]?{...map[keyOf(t)]}:null}))}; if(CLIP_KEEP) S.shClip=clip; toast(`${L.length}칸 복사 · 붙여 넣을 칸을 누르고 Ctrl+V${CLIP_KEEP&&!st.draft&&S.me.level<=3?" (📝 임시 근무표에 가서 붙여 넣어도 됩니다)":""}`); }
+    else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="c"){ clip=map[st.sel]?{...map[st.sel]}:null; if(CLIP_KEEP) S.shClip=clip; if(clip) toast(`"${clip.value}" 복사`); }
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&clip?.cells){ e.preventDefault(); const R=rowsEl(); let p0=posOf(td); if(st.rng){ const P=rngCells().map(posOf); p0={r:Math.min(...P.map(p=>p.r)),c:Math.min(...P.map(p=>p.c))}; }
       (async()=>{ const g="p"+Date.now(); let n=0; for(const x of clip.cells){ const t=tdAt(R,p0.r+x.dr,p0.c+x.dc); if(!t||t.dataset.ro) continue; await setVal(+t.dataset.s,t.dataset.d,x.h?.value??null,x.h?.note??null,{group:g,nolast:true}); n++; } const L=clip.cells; const last=L.reduce((m,x)=>({dr:Math.max(m.dr,x.dr),dc:Math.max(m.dc,x.dc)}),{dr:0,dc:0}); const a=tdAt(R,p0.r,p0.c), b=tdAt(R,p0.r+last.dr,p0.c+last.dc)||a; if(a&&b){ st.rng={a:keyOf(a),b:keyOf(b)}; drawRng(); } toast(`${n}칸 붙여 넣었습니다`); })(); }
     else if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="v"&&clip&&st.rng){ e.preventDefault(); fillRng(clip.value); }
