@@ -434,6 +434,7 @@ dialog{width:min(520px,94vw)}
 .shtab td.sh.off{color:var(--muted)}
 .shtab td.sh span{display:block;padding:0 3px;font-weight:600;line-height:30px}
 .shtab [data-wk]{border-left:2px solid #7d8ea8}
+.shtab thead th.om{opacity:.55;font-style:italic}
 .shtab thead th.walt{background:color-mix(in srgb,var(--navy) 9%,var(--sunk))}
 .shfloat{position:fixed;bottom:0;height:16px;overflow-x:auto;overflow-y:hidden;z-index:40;background:color-mix(in srgb,var(--surface) 88%,transparent);border-top:1px solid var(--line)}.shfloat>div{height:1px}
 .shsave{display:inline-flex;align-items:center;gap:6px}.shsave .meta{font-size:12px}.shsave .warn{color:var(--bad);font-weight:700}
@@ -745,6 +746,7 @@ function fullMenu(){ return S.me.level===1 || (S.me.dept==="총괄"&&S.me.level>
 const FX = {};
 const APPT_ENTER_KEEP = ["gt-os","gt-cs"];
 const NIGHT_BR = ["gt-os","gt-cs"];
+const SH_FULLWK = ["gt-os"];   // 월별 근무표를 월~일 주 단위로 채워 보여 주는 지점 (운정점: 11/30 월요일이면 12/6까지)
 const INV_EXP_BR = ["gt-os"];   // 물품·재고 약제: 유효기간 칸 (inv_items.exp_date)
 // 업무 기록부 목록을 다른 부서 업무게시판에 자동 공유 (읽기용 사본 · 최근 7일~앞으로)
 const REG_SHARE = {};   // (2026-11-15 끝: 병동은 registers.view_depts 권한으로 원본 수술 일정을 봄)
@@ -2255,9 +2257,10 @@ async function renderStaff(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st = S.staffV ||= {mode:"month", date:kstToday(), dept:"전체", brush:null, q:""};
   let start,end,days;
-  if(st.mode==="month"){ const R=monthRange(st.date.slice(0,7)); start=R.start; end=R.end; }
+  if(st.mode==="month"){ const R=monthRange(st.date.slice(0,7)); start=R.start; end=R.end; if(SH_FULLWK.includes(S.branch)){ start=mondayOf(R.start); end=addDays(mondayOf(R.end),6); } }   /* 운정점: 월별도 월~일 주 단위로 (앞뒤 달 날짜까지 채움) */
   else if(st.mode==="week"){ start=mondayOf(st.date); end=addDays(start,6); }
   else { start=end=st.date; }
+  const inM=d=>st.mode!=="month"||d.slice(0,7)===st.date.slice(0,7);
   days=[]; for(let d=start; d<=end; d=addDays(d,1)) days.push(d);
   const [sr,cr,hr]=await Promise.all([
     sb.from("staff").select("*").eq("branch_id",S.branch).order("sort").order("id"),
@@ -2298,9 +2301,9 @@ async function renderStaff(){
   let body="";
   if(st.mode!=="day"){
     const groups=st.dept==="팀장"?["팀장",...(shown.some(s=>s.dept===BILL_DEPT)?[BILL_DEPT]:[])]:deptsPresent.filter(d=>shown.some(s=>s.dept===d)); const inG=(s,g)=>g==="팀장"?(s.lead&&s.dept!==BILL_DEPT):s.dept===g;
-    body=`${leads.length&&Object.keys(gapOf).length?`<p class="gapnote">● 붉은 날짜 = 팀장 근무로 9시~22시가 다 채워지지 않은 날 (${Object.keys(gapOf).length}일) · 날짜에 마우스를 올리면 빈 시간이 보입니다</p>`:leads.length?`<p class="gapnote ok">✔ 이 기간은 매일 팀장 근무로 9시~22시가 다 채워졌습니다</p>`:""}<div class="sh-wrap"><table class="shtab ${st.mode}"><thead><tr><th class="nm">이름</th>${days.map(d=>{const l=dLabel(d);return `<th class="${l.we?"we":""}${d===today?" td":""}${l.sun?" sun":""}${gapOf[d]?" gap":""}${st.mode==="month"&&wkAlt(d)?" walt":""}"${wkA(d)} ${gapOf[d]?`title="${gapTxt(d)}"`:""}>${st.mode==="month"?l.d:`${l.m}/${l.d}`}<small>${l.w}</small></th>`;}).join("")}<th class="tot">근무<small>일·시간</small></th></tr></thead><tbody>
+    body=`${leads.length&&Object.keys(gapOf).length?`<p class="gapnote">● 붉은 날짜 = 팀장 근무로 9시~22시가 다 채워지지 않은 날 (${Object.keys(gapOf).length}일) · 날짜에 마우스를 올리면 빈 시간이 보입니다</p>`:leads.length?`<p class="gapnote ok">✔ 이 기간은 매일 팀장 근무로 9시~22시가 다 채워졌습니다</p>`:""}<div class="sh-wrap"><table class="shtab ${st.mode}"><thead><tr><th class="nm">이름</th>${days.map(d=>{const l=dLabel(d);return `<th class="${l.we?"we":""}${d===today?" td":""}${l.sun?" sun":""}${gapOf[d]?" gap":""}${st.mode==="month"&&wkAlt(d)?" walt":""}${inM(d)?"":" om"}"${wkA(d)} ${gapOf[d]?`title="${gapTxt(d)}"`:""}>${st.mode==="month"&&inM(d)?l.d:`${l.m}/${l.d}`}<small>${l.w}</small></th>`;}).join("")}<th class="tot">근무<small>일·시간</small></th></tr></thead><tbody>
       ${groups.map(g=>`<tr class="grp" style="--dc:${deptColor(g)}"><td class="nm" ${g==="팀장"||g===BILL_DEPT?"":`data-gd="${esc(g)}"`} colspan="${days.length+2}">${esc(g)} <span class="meta">${shown.filter(s=>inG(s,g)).length}명</span></td></tr>`+
-        shown.filter(s=>inG(s,g)).map(s=>{ let wd=0,hrs=0; const du={}; days.forEach(d=>{ const h=map[s.id+"|"+d]; if(h&&!isOffVal(h.value,codes)){ wd++; hrs+=shiftHours(h.value,codes); const k=dutyOf(h.value,codes); if(k) du[k]=(du[k]||0)+1; } });
+        shown.filter(s=>inG(s,g)).map(s=>{ let wd=0,hrs=0; const du={}; days.filter(inM).forEach(d=>{ const h=map[s.id+"|"+d]; if(h&&!isOffVal(h.value,codes)){ wd++; hrs+=shiftHours(h.value,codes); const k=dutyOf(h.value,codes); if(k) du[k]=(du[k]||0)+1; } });
           return `<tr><td class="nm" data-nm="${s.id}" ${canEditDept(s.dept)?'draggable="true"':""} style="--dc:${deptColor(s.dept)}"><div class="nmw"><span class="nmtxt">${esc(s.name)}${s.memo?` <span class="meta">${esc(s.memo)}</span>`:""}</span>${canEditDept(s.dept)?`<button class="nmbtn" data-sedit="${s.id}" aria-label="${esc(s.name)} 정보 수정" title="이름·부서 수정, 숨기기">⋯</button>`:""}</div></td>${days.map(d=>cell(s,d)).join("")}<td class="tot num" title="${wd}일 근무"><b>${dutyTxt(du," ")||(wd?wd+"일":"")}</b>${dutyTxt(du," ")?`<small class="meta" style="display:block;font-size:10.5px">${wd}일</small>`:""}</td></tr>`; }).join("")).join("")}
       <tr class="sum"><td class="nm">근무 인원</td>${days.map(d=>{ const on=shown.filter(s=>{const h=map[s.id+"|"+d];return s.dept!==BILL_DEPT&&h&&!isOffVal(h.value,codes);}); const o={}; on.forEach(s=>{ const k=dutyOf(map[s.id+"|"+d].value,codes); if(k) o[k]=(o[k]||0)+1; }); const t=dutyTxt(o); return `<td class="num dutyc"${wkA(d)} title="${on.length}명">${t?t.split("/").join("<br>"):on.length||""}</td>`; }).join("")}<td></td></tr>
     </tbody></table></div>`;
