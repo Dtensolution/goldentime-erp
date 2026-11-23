@@ -1541,7 +1541,7 @@ async function renderPaths(){
 function ptKeysEntry(){ return [...ptItemsOf(S.branch),"도수상담"]; }
 async function renderEntry(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
-  const today=kstToday(); const lv=S.me.level; const minDate = "2026-01-01"; const editFrom = lv===4 ? addDays(today,-1) : minDate;
+  const today=kstToday(); const lv=S.me.level; const minDate = "2026-01-01"; const editFrom = lv===4&&!(S.branch==="gt-os"&&S.me.dept==="원무") ? addDays(today,-1) : minDate;   /* 운정점 원무는 모든 날짜 수정 (11/23) */
   let date = S.entryDate && S.entryDate>=minDate && S.entryDate<=today ? S.entryDate : today; S.entryDate=null;
   const docs=(await loadDoctors()).filter(d=>d.active);
   const {data:row, error} = await sb.from("daily_close").select("*").eq("branch_id",S.branch).eq("close_date",date).maybeSingle();
