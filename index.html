@@ -666,6 +666,47 @@ table.cmtab th.sub{font-size:11px;font-weight:500;color:var(--muted);padding:2px
 .md.preview .mdfz{position:sticky;z-index:2;background:var(--surface)}.md.preview th.mdfz{z-index:3;background:var(--sunk)}
 .draftbar{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;background:#fff7e0;border:1px solid #f0c75e;border-radius:10px;padding:10px 14px;margin-bottom:10px}.draftbar span{color:#8a6100;font-size:13px}
 th.rdh{background:#e3eefc!important;color:#1a4f9c} th.rsh{background:#fdebe1!important;color:#a2440f} td.rd{color:#1a4f9c;font-weight:700} td.rs{color:#a2440f;font-weight:700}
+/* 골타톡 */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.tkbadge{display:inline-block;min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:9px;background:#e5484d;color:#fff;font-size:11px;font-weight:700;text-align:center;font-family:var(--f-num)}
+.tk{display:grid;grid-template-columns:300px 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface);min-height:380px}
+.tkl{display:flex;flex-direction:column;border-right:1px solid var(--line);min-height:0;background:var(--surface)}
+.tklh{display:flex;justify-content:space-between;align-items:center;padding:12px 12px 8px}.tklh b{font-size:16px;color:var(--navy)}
+.tkl input[type=search]{margin:0 12px 8px;height:34px;border:1px solid var(--line);border-radius:8px;padding:0 10px;background:var(--sunk);color:var(--ink)}
+.tkrooms{flex:1;overflow:auto;min-height:0}
+.tkroom{display:flex;gap:10px;align-items:center;width:100%;border:0;background:none;padding:9px 12px;text-align:left;cursor:pointer;color:var(--ink);font:inherit}
+.tkroom:hover{background:var(--sunk)}.tkroom.on{background:var(--navy-soft)}
+.tkav{flex:none;width:40px;height:40px;border-radius:14px;display:grid;place-items:center;font-size:18px;background:var(--sunk)}
+.tkav.k-all{background:linear-gradient(135deg,#2a7fd4,#16489a)}.tkav.k-dept{background:var(--accent-soft)}
+.tkrm{flex:1;min-width:0;display:flex;flex-direction:column}.tkrn{display:flex;gap:6px;align-items:baseline}.tkrn b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tkrn em{font-style:normal;color:var(--muted);font-size:12px}
+.tkrl{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tkrr{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex:none}.tkrt{font-size:11px;color:var(--muted)}
+.tknote{margin:0;padding:8px 12px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--line)}
+.tkc{display:flex;flex-direction:column;min-height:0;min-width:0;background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface))}
+.tkch{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--line)}.tkct{flex:1;min-width:0;display:flex;flex-direction:column}.tkct .meta{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tkback{display:none;border:0;background:none;font-size:28px;line-height:1;color:var(--navy);cursor:pointer;padding:0 4px}
+.tkmsgs{flex:1;overflow:auto;padding:12px 16px;min-height:0;display:flex;flex-direction:column;gap:2px}.tkmsgs.drop{outline:3px dashed var(--accent);outline-offset:-8px}
+.tkday{text-align:center;margin:12px 0 8px}.tkday span{font-size:11.5px;background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--muted);padding:3px 12px;border-radius:12px}
+.tkm{display:flex;flex-direction:column;align-items:flex-start;margin-top:8px;max-width:100%}.tkm.cont{margin-top:2px}.tkm.me{align-items:flex-end}
+.tkwho{font-size:12px;color:var(--muted);margin:0 0 3px 4px;font-weight:600}
+.tkrow{display:flex;align-items:flex-end;gap:5px;max-width:min(560px,82%)}.tkm.me .tkrow{flex-direction:row-reverse}
+.tkbub{background:var(--surface);border-radius:4px 14px 14px 14px;padding:7px 11px;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 1px rgba(0,0,0,.05);display:flex;flex-direction:column;gap:6px;min-width:0}
+.tkm.me .tkbub{background:#ffe86b;color:#2b2b2b;border-radius:14px 4px 14px 14px}.tkm.cont .tkbub{border-radius:14px}
+.tkbub.pic{padding:0;background:none;box-shadow:none}.tkimg img{display:block;max-width:min(280px,100%);max-height:320px;border-radius:12px;object-fit:cover}
+.tkfile{display:flex;gap:8px;align-items:center;color:inherit;text-decoration:none}.tkfile span{display:flex;flex-direction:column}.tkfile small{color:var(--muted);font-size:11px}
+.tktxt a{color:inherit}
+.tkdel{color:var(--muted);font-style:italic}
+.tkmeta{display:flex;flex-direction:column;align-items:flex-end;font-size:10.5px;color:var(--muted);flex:none;line-height:1.3}.tkm:not(.me) .tkmeta{align-items:flex-start}
+.tkun{color:#d9a400;font-weight:700;font-family:var(--f-num)}
+.tkx{border:0;background:none;color:var(--muted);font-size:10.5px;cursor:pointer;padding:0;opacity:0}.tkm:hover .tkx,.tkx:focus{opacity:1}
+.tkin{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;background:var(--surface);border-top:1px solid var(--line)}
+.tkin textarea{flex:1;resize:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;min-height:38px;max-height:140px;background:var(--surface);color:var(--ink)}
+.tkatt{font-size:20px;cursor:pointer;height:38px;display:grid;place-items:center;padding:0 4px}
+.tkempty{flex:1;display:grid;place-content:center;justify-items:center;gap:10px;color:var(--muted)}
+.tklogo{width:84px;height:84px;border-radius:22px;background:linear-gradient(135deg,#2a7fd4,#16489a);display:grid;place-items:center;color:#fff;font-weight:900;font-size:24px}
+.tkpl{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px 10px}.tkpd{margin:4px 0 8px}.tkpd>b{display:block;font-size:12px;color:var(--navy);margin-bottom:2px}.tkpd label{display:flex;gap:6px;align-items:center;padding:3px 0;cursor:pointer}
+@media (prefers-color-scheme: dark){.tkm.me .tkbub{background:#d9c24a;color:#1b1b1b}}
+@media (max-width:760px){.tk{grid-template-columns:1fr;border-radius:0;margin:-8px -4px}.tk.inroom .tkl{display:none}.tk:not(.inroom) .tkc{display:none}.tkback{display:block}.tkrow{max-width:88%}}
 </style>
 </head>
 <body>
@@ -734,7 +775,7 @@ const MENU_DEFAULT={
 MENU_DEFAULT["의사"]=MENU_PICK.map(([k])=>k); MENU_DEFAULT["팀장"]=MENU_PICK.map(([k])=>k).filter(k=>k!=="sec"); MENU_DEFAULT["2등급"]=MENU_PICK.map(([k])=>k); // 3등급 팀장: 처음엔 전부 // 5등급 의사: 처음엔 전부, 1등급이 줄일 수 있음
 // 메뉴 그룹 아이콘·색 (C안)
 const NAV_ST={"근무 · 인사 (공용)":["🗓️","#3a6ea5"],"공통":["📢","#64748b"],"원무":["🧾","#d17a12"],"물리치료":["💪","#2f8f4e"],"간호":["💉","#d0457a"],"병동":["🛏️","#7656b8"],"수술":["🩼","#1c8c8c"],"영상의학":["🩻","#5b6fd6"],"임상병리":["🧪","#a35b2a"],"청구":["💰","#b8860b"],"경영지원":["💼","#6b7785"],"의료진":["👨‍⚕️","#1858a8"],"보안":["🔒","#c0392b"],"경영 · 관리":["📊","#334155"]};
-const navSt=g=>NAV_ST[g]||["📁","#64748b"]; const NAV_TOP={me:"🏠",dash:"📈"};
+const navSt=g=>NAV_ST[g]||["📁","#64748b"]; const NAV_TOP={me:"🏠",talk:"💬",dash:"📈"};
 // 지점별로 업무게시판·업무 기록부·물품재고를 쓰는 부서 (없으면 전부) — 철산은 간호만
 const DOC_ALL_USERS={"gt-cs":["hwan","seol"]}; // 이 지점의 모든 부서 게시물을 볼 수 있는 아이디
 const docAll=()=>(DOC_ALL_USERS[S.branch]||[]).includes(S.me?.login_id);
@@ -852,7 +893,7 @@ const resvTot = (r,k) => RESV_ITEMS.reduce((a,i)=>a+(Number(r.resv?.items?.[i]?.
 let idleT;
 function bumpIdle(){ /* 시간 경과 자동 로그아웃 없음 — 창을 닫으면 로그아웃 */ }
 // 로그아웃: 서버 응답을 기다리지 않고 이 기기에서 확실히 로그아웃
-async function doLogout(why){
+async function doLogout(why){ try{ if(S.tkCh){ sb.removeChannel(S.tkCh); S.tkCh=null; S.tkChFor=null; } S.talk=null; }catch(_){}
   document.querySelectorAll("#logout,#lo").forEach(b=>{ b.disabled=true; b.textContent="로그아웃 중…"; });
   try{ if(window.__entryFlush) await Promise.race([window.__entryFlush(), new Promise(r=>setTimeout(r,1500))]); }catch(e){}
   try{ if(typeof shDirtyN==="function"&&shDirtyN()>0&&confirm(`근무표에 저장 안 한 칸이 ${shDirtyN()}개 있습니다. 저장하고 로그아웃할까요?`)) await shFlush(); }catch(e){}
@@ -984,14 +1025,14 @@ function render(){
   const itemOk={wkppt:lv<=2&&WKPPT_BR.includes(S.branch),dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
     dpay:seeAll()||S.me.dept==="원무",paths:canDash()||S.me.dept==="원무"||ENTRY_ALL.includes(S.branch),parts:PARTS_BR.includes(S.branch)&&(canDash()||S.me.dept==="원무"),ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={wkppt:"주간 보고서 PPT 받기",me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+  const LB={wkppt:"주간 보고서 PPT 받기",me:"마이페이지",talk:"골타톡",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","wkppt","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||(id==="talk"&&talkOn())||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","wkppt","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
   const DEPT_FN={"원무":["entry","dpay","cal","paths","parts","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
-  add("me"); add("dash");
+  add("me"); add("talk"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("info",{grp:g}); });
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
@@ -1038,8 +1079,9 @@ function render(){
     const nav=$("sidenav"); if(nav&&(S.prefs?.navOrd||[]).length){ nav.insertAdjacentHTML("beforeend",`<button type="button" class="navreset" id="navreset" title="끌어서 바꾼 메뉴 순서를 처음대로 되돌립니다">↺ 메뉴 순서 처음대로</button>`); $("navreset").onclick=async()=>{ await savePrefs({navOrd:null}); render(); }; } }
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
+  talkListen();
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="wkppt"&&lv<=2&&WKPPT_BR.includes(S.branch)) renderWkPpt(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="talk") renderTalk(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="wkppt"&&lv<=2&&WKPPT_BR.includes(S.branch)) renderWkPpt(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -4435,6 +4477,162 @@ async function apptHistory(chart, selfId){
 }
 
 // ── 마이페이지 ──
+/* ===== 골타톡 (사내 메신저) · 지점별로 따로 씀 ===== */
+const TALK_BR=["gt-os"];
+const talkOn=()=>TALK_BR.includes(S.branch);
+function tkT(){ return S.talk ||= {room:null,rooms:[],msgs:[],mem:[],ppl:null,urls:{},q:"",more:false,synced:{},busy:false}; }
+const tkTime=s=>{ const d=new Date(s); return d.toLocaleTimeString("ko-KR",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Seoul"}); };
+const tkDay=s=>new Date(s).toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long",timeZone:"Asia/Seoul"});
+const tkDayKey=s=>new Date(new Date(s).getTime()+9*3600e3).toISOString().slice(0,10);
+function tkWhen(s){ if(!s) return ""; const k=tkDayKey(s), t=kstToday(); if(k===t) return tkTime(s); const y=new Date(Date.parse(t)-864e5).toISOString().slice(0,10); if(k===y) return "어제"; return k.slice(5).replace("-","/"); }
+const tkSize=n=>n>=1048576?(n/1048576).toFixed(1)+"MB":n>=1024?Math.round(n/1024)+"KB":(n||0)+"B";
+function tkRoomName(r){ if(!r) return ""; if(r.kind==="all") return "전체"; if(r.kind==="dept") return r.dept||r.name||"부서"; if(r.kind==="dm") return r.others||"(나간 사람)"; return r.name||r.others||"그룹"; }
+function tkIco(r){ return r.kind==="all"?"📢":r.kind==="dept"?"🏷️":r.kind==="dm"?"👤":"👥"; }
+async function tkPeople(){ const T=tkT(); if(T.ppl&&T.pplFor===S.branch) return T.ppl; const {data}=await sb.rpc("chat_people",{p_branch:S.branch}); T.ppl=data||[]; T.pplFor=S.branch; T.pmap=Object.fromEntries(T.ppl.map(p=>[p.user_id,p])); return T.ppl; }
+const tkName=id=>{ const p=tkT().pmap?.[id]; return p?p.name:"(퇴사자)"; };
+async function tkBadge(){ if(!talkOn()) return; const {data}=await sb.rpc("chat_unread",{p_branch:S.branch}); const n=+data||0; S.talkUnread=n;
+  const nb=$("navbtn"); if(nb){ nb.querySelector(".tkbadge")?.remove(); if(n) nb.insertAdjacentHTML("beforeend",` <span class="tkbadge" title="골타톡 안 읽은 메시지">💬${n>99?"99+":n}</span>`); }
+  const b=document.querySelector('nav.side button[data-v="talk"]'); if(b){ b.querySelector(".tkbadge")?.remove(); if(n) b.insertAdjacentHTML("beforeend",` <span class="tkbadge" aria-label="안 읽은 메시지 ${n}개">${n>99?"99+":n}</span>`); }
+  try{ if(navigator.setAppBadge) n?navigator.setAppBadge(n):navigator.clearAppBadge(); }catch(_){}
+  document.title=(n?`(${n}) `:"")+"골든타임 ERP"; }
+/* 로그인한 동안 계속 듣는 채널 (지점마다 하나) */
+function talkListen(){
+  if(!talkOn()){ if(S.tkCh){ sb.removeChannel(S.tkCh); S.tkCh=null; S.tkChFor=null; } return; }
+  if(S.tkCh&&S.tkChFor===S.branch){ tkBadge(); return; }
+  if(S.tkCh) sb.removeChannel(S.tkCh);
+  S.tkChFor=S.branch;
+  S.tkCh=sb.channel("talk-"+S.user.id+"-"+S.branch)
+    .on("postgres_changes",{event:"INSERT",schema:"public",table:"chat_messages"},p=>tkOnMsg(p.new))
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"chat_messages"},p=>tkOnEdit(p.new))
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"chat_members"},p=>tkOnMem(p.new))
+    .subscribe();
+  tkBadge();
+}
+async function tkOnMsg(m){ const T=tkT(); const here=S.view==="talk"&&T.room===m.room_id&&!document.hidden;
+  if(S.view==="talk"&&T.room===m.room_id){ if(!T.msgs.some(x=>x.id===m.id)){ T.msgs.push(m); tkDrawMsgs(true); } if(here) tkMarkRead(); }
+  if(m.user_id!==S.user.id&&!here){ await tkPeople(); const who=tkName(m.user_id); const txt=m.body||(m.file_type?.startsWith("image/")?"사진":"파일 · "+(m.file_name||""));
+    if(S.view!=="talk") toast(`💬 ${who}: ${txt.slice(0,40)}`);
+    try{ if(document.hidden&&"Notification" in window&&Notification.permission==="granted"){ const n=new Notification("골타톡 · "+who,{body:txt.slice(0,120),icon:"talk-192.png",tag:"gtt-"+m.room_id}); n.onclick=()=>{ window.focus(); S.view="talk"; tkT().room=m.room_id; render(); n.close(); }; } }catch(_){} }
+  tkBadge(); if(S.view==="talk") tkLoadRooms().then(tkDrawList);
+}
+function tkOnEdit(m){ const T=tkT(); const i=T.msgs.findIndex(x=>x.id===m.id); if(i>=0){ T.msgs[i]=m; tkDrawMsgs(false); } if(S.view==="talk") tkLoadRooms().then(tkDrawList); }
+function tkOnMem(r){ const T=tkT(); if(r.room_id!==T.room) { if(r.user_id===S.user.id) tkBadge(); return; } const x=T.mem.find(z=>z.user_id===r.user_id); if(x){ if(x.last_read!==r.last_read){ x.last_read=r.last_read; tkDrawMsgs(false); } } else { T.mem.push(r); tkDrawMsgs(false); } }
+async function tkLoadRooms(){ const {data,error}=await sb.rpc("chat_list",{p_branch:S.branch}); if(error){ toast(errMsg(error)); return; } tkT().rooms=data||[]; }
+async function tkMarkRead(){ const T=tkT(); const last=T.msgs.at(-1); if(!last||!T.room) return; const me=T.mem.find(z=>z.user_id===S.user.id); if(me&&me.last_read>=last.id) return; if(me) me.last_read=last.id;
+  await sb.rpc("chat_read",{p_room:T.room,p_id:last.id}); const r=T.rooms.find(x=>x.id===T.room); if(r) r.unread=0; tkDrawList(); tkBadge(); }
+
+async function renderTalk(){
+  const T=tkT(); if(T.for!==S.branch){ Object.assign(T,{room:null,rooms:[],msgs:[],mem:[],ppl:null,urls:{},q:""}); T.for=S.branch; }
+  $("main").innerHTML=`<div class="tk${T.room?" inroom":""}" id="tk">
+    <aside class="tkl" aria-label="대화방 목록"><div class="tklh"><b>💬 골타톡</b><button class="btn sm" id="tknew">＋ 새 대화</button></div>
+      <input type="search" id="tkq" placeholder="대화방·이름 찾기" value="${esc(T.q)}" aria-label="대화방 찾기"><div class="tkrooms" id="tkrooms"><p class="meta" style="padding:12px">불러오는 중…</p></div>
+      <p class="tknote">${esc((S.branches.find(b=>b.id===S.branch)||{}).name||"")} 직원끼리만 보입니다${"Notification" in window&&Notification.permission==="default"?` · <button class="linkbtn" id="tknoti">알림 켜기</button>`:""}</p></aside>
+    <section class="tkc" id="tkc" aria-label="대화"></section></div>`;
+  const fit=()=>{ const el=$("tk"); if(!el) return window.removeEventListener("resize",fit); el.style.height=Math.max(380,innerHeight-el.getBoundingClientRect().top-14)+"px"; }; fit(); window.addEventListener("resize",fit);
+  $("tknew").onclick=()=>tkNewDlg();
+  $("tkq").oninput=e=>{ T.q=e.target.value; tkDrawList(); };
+  if($("tknoti")) $("tknoti").onclick=async()=>{ try{ await Notification.requestPermission(); }catch(_){} renderTalk(); };
+  if(!T.synced[S.branch]){ const {error}=await sb.rpc("chat_sync",{p_branch:S.branch}); if(error){ $("tkrooms").innerHTML=`<p class="err" style="padding:12px">${esc(errMsg(error))}</p>`; return; } T.synced[S.branch]=1; }
+  await Promise.all([tkLoadRooms(),tkPeople()]); if(S.view!=="talk") return;
+  if(!T.room&&innerWidth>760&&T.rooms[0]) T.room=T.rooms[0].id;
+  tkDrawList(); tkOpen(T.room);
+}
+function tkDrawList(){ const T=tkT(), box=$("tkrooms"); if(!box) return; const q=T.q.trim();
+  const L=T.rooms.filter(r=>!q||tkRoomName(r).includes(q)||(r.others||"").includes(q));
+  box.innerHTML=L.length?L.map(r=>`<button type="button" class="tkroom${r.id===T.room?" on":""}" data-tkr="${r.id}"><span class="tkav k-${r.kind}" aria-hidden="true">${tkIco(r)}</span>
+    <span class="tkrm"><span class="tkrn"><b>${esc(tkRoomName(r))}</b>${r.kind!=="dm"?`<em>${r.members}</em>`:""}</span><span class="tkrl">${esc(r.last_text||"아직 대화가 없습니다")}</span></span>
+    <span class="tkrr"><span class="tkrt">${r.last_text?tkWhen(r.last_at):""}</span>${+r.unread?`<span class="tkbadge">${r.unread>99?"99+":r.unread}</span>`:""}</span></button>`).join(""):`<p class="meta" style="padding:12px">${q?"찾는 대화방이 없습니다":"대화방이 없습니다"}</p>`;
+  box.querySelectorAll("[data-tkr]").forEach(b=>b.onclick=()=>tkOpen(+b.dataset.tkr));
+}
+async function tkOpen(id){ const T=tkT(), c=$("tkc"); if(!c) return; T.room=id||null; $("tk").classList.toggle("inroom",!!id); tkDrawList();
+  if(!id){ c.innerHTML=`<div class="tkempty"><div class="tklogo" aria-hidden="true">골타</div><p>왼쪽에서 대화방을 고르거나 <b>＋ 새 대화</b>를 누르세요</p></div>`; return; }
+  const r=T.rooms.find(x=>x.id===id)||{kind:"group"};
+  c.innerHTML=`<header class="tkch"><button class="tkback" id="tkback" aria-label="목록으로">‹</button><span class="tkav k-${r.kind}" aria-hidden="true">${tkIco(r)}</span><div class="tkct"><b>${esc(tkRoomName(r))}</b><span class="meta" id="tkmemn"></span></div>
+      ${r.kind==="group"?`<button class="btn ghost sm" id="tkedit">방 설정</button>`:""}</header>
+    <div class="tkmsgs" id="tkmsgs" tabindex="0" aria-live="polite"><p class="meta" style="text-align:center">불러오는 중…</p></div>
+    <form class="tkin" id="tkin"><label class="tkatt" title="사진·파일 보내기 (25MB까지)"><input type="file" id="tkfile" multiple hidden>📎<span class="sr">파일 첨부</span></label>
+      <textarea id="tktx" rows="1" placeholder="메시지 입력 · Enter 보내기 · Shift+Enter 줄바꿈" aria-label="메시지"></textarea><button class="btn" id="tksend">보내기</button></form>`;
+  $("tkback").onclick=()=>{ T.room=null; $("tk").classList.remove("inroom"); tkDrawList(); };
+  if($("tkedit")) $("tkedit").onclick=()=>tkEditDlg(r);
+  const tx=$("tktx"), grow=()=>{ tx.style.height="auto"; tx.style.height=Math.min(140,tx.scrollHeight)+"px"; };
+  tx.oninput=grow; tx.onkeydown=e=>{ if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){ e.preventDefault(); $("tkin").requestSubmit(); } };
+  tx.onpaste=e=>{ const f=[...(e.clipboardData?.files||[])]; if(f.length){ e.preventDefault(); tkSendFiles(f); } };
+  $("tkin").onsubmit=async e=>{ e.preventDefault(); const body=tx.value.trim(); if(!body||T.busy) return; T.busy=true; tx.value=""; grow();
+    const {error}=await sb.from("chat_messages").insert({room_id:T.room,body}); T.busy=false; if(error){ tx.value=body; return toast(errMsg(error)); } tx.focus(); };
+  $("tkfile").onchange=e=>{ tkSendFiles([...e.target.files]); e.target.value=""; };
+  const ms=$("tkmsgs"); ms.ondragover=e=>{ e.preventDefault(); ms.classList.add("drop"); }; ms.ondragleave=()=>ms.classList.remove("drop");
+  ms.ondrop=e=>{ e.preventDefault(); ms.classList.remove("drop"); tkSendFiles([...(e.dataTransfer?.files||[])]); };
+  const [m,mm]=await Promise.all([sb.from("chat_messages").select("*").eq("room_id",id).order("id",{ascending:false}).limit(60),sb.from("chat_members").select("user_id,last_read").eq("room_id",id)]);
+  if(T.room!==id) return; if(m.error) return ms.innerHTML=`<p class="err">${esc(errMsg(m.error))}</p>`;
+  T._drawn=false; T.msgs=(m.data||[]).reverse(); T.more=(m.data||[]).length===60; T.mem=mm.data||[];
+  $("tkmemn").textContent=r.kind==="dm"?"":`${T.mem.length}명 · ${T.mem.map(x=>tkName(x.user_id)).slice(0,8).join(", ")}${T.mem.length>8?" 외":""}`;
+  await tkDrawMsgs(true); tkMarkRead(); if(innerWidth>760) tx.focus();
+}
+async function tkSign(list){ const T=tkT(); const need=[...new Set(list.filter(m=>m.file_path&&!m.deleted&&!T.urls[m.file_path]).map(m=>m.file_path))]; if(!need.length) return;
+  const {data}=await sb.storage.from("chat").createSignedUrls(need,3600*6); (data||[]).forEach(x=>{ if(x.signedUrl) T.urls[x.path]=x.signedUrl; }); }
+async function tkDrawMsgs(stick){ const T=tkT(), ms=$("tkmsgs"); if(!ms) return; await tkSign(T.msgs);
+  const atBottom=ms.scrollHeight-ms.scrollTop-ms.clientHeight<80; const prevH=ms.scrollHeight, prevT=ms.scrollTop;
+  const others=uid=>T.mem.filter(x=>x.user_id!==uid);
+  let h=T.more?`<div style="text-align:center"><button class="btn ghost sm" id="tkmore">이전 대화 더 보기</button></div>`:""; let day="", prev=null;
+  T.msgs.forEach((m,i)=>{ const k=tkDayKey(m.created_at); if(k!==day){ day=k; prev=null; h+=`<div class="tkday"><span>${esc(tkDay(m.created_at))}</span></div>`; }
+    const mine=m.user_id===S.user.id, nx=T.msgs[i+1]; const cont=prev&&prev.user_id===m.user_id&&Date.parse(m.created_at)-Date.parse(prev.created_at)<180e3;
+    const lastOfRun=!nx||nx.user_id!==m.user_id||tkDayKey(nx.created_at)!==k||tkTime(nx.created_at)!==tkTime(m.created_at);
+    const unread=others(m.user_id).filter(x=>x.last_read<m.id).length;
+    let body; if(m.deleted) body=`<span class="tkdel">삭제된 메시지입니다</span>`;
+    else { const u=m.file_path?T.urls[m.file_path]:null; body="";
+      if(m.file_path&&m.file_type?.startsWith("image/")) body+=u?`<a href="${esc(u)}" target="_blank" rel="noopener" class="tkimg"><img src="${esc(u)}" alt="${esc(m.file_name||"사진")}" loading="lazy"></a>`:`<span class="meta">사진</span>`;
+      else if(m.file_path) body+=`<a class="tkfile" href="${esc(u||"#")}" target="_blank" rel="noopener" download="${esc(m.file_name||"")}">📄 <span><b>${esc(m.file_name||"파일")}</b><small>${tkSize(m.file_size)}</small></span></a>`;
+      if(m.body) body+=`<span class="tktxt">${esc(m.body).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}</span>`; }
+    h+=`<div class="tkm${mine?" me":""}${cont?" cont":""}" data-mid="${m.id}">${!mine&&!cont?`<div class="tkwho">${esc(tkName(m.user_id))}</div>`:""}
+      <div class="tkrow"><div class="tkbub${m.file_path&&!m.body&&m.file_type?.startsWith("image/")?" pic":""}">${body}</div><div class="tkmeta">${unread&&!m.deleted?`<span class="tkun">${unread}</span>`:""}${lastOfRun?`<span>${tkTime(m.created_at)}</span>`:""}${mine&&!m.deleted?`<button class="tkx" data-tkdel="${m.id}" title="삭제" aria-label="메시지 삭제">삭제</button>`:""}</div></div></div>`;
+    prev=m; });
+  if(!T.msgs.length) h+=`<p class="meta" style="text-align:center;margin-top:30px">첫 메시지를 보내 보세요</p>`;
+  ms.innerHTML=h;
+  if(stick===true&&(atBottom||prevT===0||!T._drawn||T.msgs.at(-1)?.user_id===S.user.id)) ms.scrollTop=ms.scrollHeight; else if(stick==="top") ms.scrollTop=ms.scrollHeight-prevH; else ms.scrollTop=prevT;
+  T._drawn=true; ms.querySelectorAll("img").forEach(im=>im.onload=()=>{ if(stick===true&&atBottom) ms.scrollTop=ms.scrollHeight; });
+  if($("tkmore")) $("tkmore").onclick=async()=>{ const first=T.msgs[0]; const {data}=await sb.from("chat_messages").select("*").eq("room_id",T.room).lt("id",first.id).order("id",{ascending:false}).limit(60);
+    T.more=(data||[]).length===60; T.msgs=[...(data||[]).reverse(),...T.msgs]; tkDrawMsgs("top"); };
+  ms.querySelectorAll("[data-tkdel]").forEach(b=>b.onclick=async()=>{ if(!confirm("이 메시지를 삭제할까요? 모두에게 '삭제된 메시지'로 보입니다.")) return;
+    const {error}=await sb.from("chat_messages").update({deleted:true,body:null}).eq("id",+b.dataset.tkdel); if(error) toast(errMsg(error)); });
+}
+async function tkSendFiles(files){ const T=tkT(); const room=T.room; if(!room||!files.length) return;
+  for(const f of files){ if(f.size>25*1048576){ toast(`${f.name}: 25MB를 넘어 보낼 수 없습니다`); continue; }
+    const ext=(f.name.match(/\.[A-Za-z0-9]{1,8}$/)||[""])[0].toLowerCase(); const path=`${room}/${Date.now()}_${Math.random().toString(36).slice(2,8)}${ext}`;
+    toast(`올리는 중… ${f.name}`);
+    const up=await sb.storage.from("chat").upload(path,f,{contentType:f.type||"application/octet-stream",upsert:false}); if(up.error){ toast(errMsg(up.error)); continue; }
+    const {error}=await sb.from("chat_messages").insert({room_id:room,file_path:path,file_name:f.name||("사진"+ext),file_type:f.type||"",file_size:f.size}); if(error) toast(errMsg(error)); }
+}
+async function tkPickDlg({title,okLabel,exclude=[],withName=false,name=""},cb){ const ppl=(await tkPeople()).filter(p=>p.user_id!==S.user.id&&!exclude.includes(p.user_id));
+  const dl=$("dlg"); const depts=[...new Set(ppl.map(p=>p.dept||"기타"))];
+  dl.innerHTML=`<form method="dialog" class="tkpick"><h3 style="margin:0 0 10px">${esc(title)}</h3>
+    ${withName?`<div class="field"><label for="tkgn">방 이름 (2명 이상일 때)</label><input id="tkgn" value="${esc(name)}" placeholder="예: 수술팀 야간"></div>`:""}
+    <input type="search" id="tkpq" placeholder="이름·부서 찾기" aria-label="사람 찾기" style="width:100%;margin-bottom:8px">
+    <div class="tkpl" id="tkpl">${depts.map(d=>`<div class="tkpd" data-pd="${esc(d)}"><b>${esc(d)}</b>${ppl.filter(p=>(p.dept||"기타")===d).map(p=>`<label data-pn="${esc(p.name+" "+(p.dept||""))}"><input type="checkbox" value="${p.user_id}"> ${esc(p.name)} <small class="meta">${esc(p.title||"")}</small></label>`).join("")}</div>`).join("")||`<p class="meta">고를 수 있는 사람이 없습니다</p>`}</div>
+    <p class="meta" id="tkpn" style="margin:8px 0 0">1명을 고르면 1:1 대화, 여러 명이면 그룹 대화</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn ghost" value="cancel" formnovalidate>닫기</button><button class="btn" id="tkpok" value="ok">${esc(okLabel)}</button></div></form>`;
+  dl.showModal();
+  $("tkpq").oninput=e=>{ const q=e.target.value.trim(); dl.querySelectorAll("[data-pn]").forEach(l=>l.hidden=!!q&&!l.dataset.pn.includes(q)); dl.querySelectorAll("[data-pd]").forEach(d=>d.hidden=![...d.querySelectorAll("[data-pn]")].some(l=>!l.hidden)); };
+  const sel=()=>[...dl.querySelectorAll("#tkpl input:checked")].map(i=>i.value);
+  dl.querySelector("#tkpl").onchange=()=>{ const n=sel().length; $("tkpn").textContent=n?`${n}명 선택`+(withName?(n===1?" · 1:1 대화":" · 그룹 대화"):""):"1명을 고르면 1:1 대화, 여러 명이면 그룹 대화"; };
+  $("tkpok").onclick=async e=>{ e.preventDefault(); const ids=sel(); if(!ids.length) return toast("대화할 사람을 고르세요"); const ok=await cb(ids,withName?$("tkgn").value:""); if(ok!==false) dl.close(); };
+}
+function tkNewDlg(){ tkPickDlg({title:"새 대화",okLabel:"대화 시작",withName:true},async(ids,nm)=>{
+  const {data,error}=ids.length===1?await sb.rpc("chat_dm",{p_branch:S.branch,p_other:ids[0]}):await sb.rpc("chat_group",{p_branch:S.branch,p_name:nm,p_users:ids});
+  if(error){ toast(errMsg(error)); return false; } await tkLoadRooms(); tkOpen(+data); }); }
+function tkEditDlg(r){ const T=tkT(); const dl=$("dlg");
+  dl.innerHTML=`<form method="dialog"><h3 style="margin:0 0 10px">방 설정</h3><div class="field"><label for="tken">방 이름</label><input id="tken" value="${esc(r.name||"")}"></div>
+    <p class="meta">참여 ${T.mem.length}명: ${esc(T.mem.map(x=>tkName(x.user_id)).join(", "))}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;margin-top:12px"><span><button class="btn ghost" id="tkadd">＋ 사람 초대</button> <button class="btn ghost" id="tkleave" style="color:var(--bad);border-color:var(--bad)">방 나가기</button></span>
+    <span><button class="btn ghost" value="cancel" formnovalidate>닫기</button> <button class="btn" id="tkesave">저장</button></span></div></form>`;
+  dl.showModal();
+  $("tkesave").onclick=async e=>{ e.preventDefault(); const {error}=await sb.rpc("chat_group_edit",{p_room:r.id,p_name:$("tken").value,p_add:null,p_leave:false}); if(error) return toast(errMsg(error)); dl.close(); await tkLoadRooms(); tkOpen(r.id); };
+  $("tkadd").onclick=e=>{ e.preventDefault(); dl.close(); tkPickDlg({title:"사람 초대",okLabel:"초대",exclude:T.mem.map(x=>x.user_id)},async ids=>{ const {error}=await sb.rpc("chat_group_edit",{p_room:r.id,p_name:null,p_add:ids,p_leave:false}); if(error){ toast(errMsg(error)); return false; }
+    await sb.from("chat_messages").insert({room_id:r.id,body:`${tkName(S.user.id)}님이 ${ids.map(tkName).join(", ")}님을 초대했습니다`}); await tkLoadRooms(); tkOpen(r.id); }); };
+  $("tkleave").onclick=async e=>{ e.preventDefault(); if(!confirm("이 방에서 나갈까요? 다시 들어오려면 초대를 받아야 합니다.")) return;
+    await sb.from("chat_messages").insert({room_id:r.id,body:`${tkName(S.user.id)}님이 나갔습니다`});
+    const {error}=await sb.rpc("chat_group_edit",{p_room:r.id,p_name:null,p_add:null,p_leave:true}); if(error) return toast(errMsg(error)); dl.close(); T.room=null; await tkLoadRooms(); tkDrawList(); tkOpen(null); };
+}
+
 async function renderMe(){
   const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const me=S.me, today=kstToday(), y=+today.slice(0,4), ym=today.slice(0,7), R=monthRange(ym); const mon=mondayOf(today), sun=addDays(mon,6);
