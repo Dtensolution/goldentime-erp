@@ -317,6 +317,7 @@ table.cmtab td.cm input{all:unset;box-sizing:border-box;width:100%;height:26px;t
 table.mxsheet td.sl{position:relative}table.mxsheet .slg{position:absolute;right:2px;top:50%;transform:translateY(-50%);cursor:grab;color:var(--muted);font-size:12px;display:none;padding:0 2px}table.mxsheet td.sl:hover input:not(:placeholder-shown)+.slg{display:block}table.mxsheet td.sl input{text-align:left;padding:0 6px;font-family:var(--f-body)}table.mxsheet tr.hh td{border-top:1.5px solid color-mix(in srgb,var(--ink) 25%,transparent)}table.mxsheet th[draggable]{cursor:grab}table.mxsheet thead th{position:sticky;top:0;z-index:1}
 table.cmtab td.cm input:focus{outline:2px solid var(--navy);outline-offset:-2px;background:var(--navy-soft)}
 table.cmtab td.cm input.saved{background:color-mix(in srgb,var(--good) 8%,transparent)}table.cmtab td.cm input.err{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+table.dstab tr.dsfut td:not(.cmd){color:var(--muted);opacity:.7}
 table.cmtab tr.sumrow td{background:#2f8f4e;color:#fff;font-weight:700}table.cmtab tr.sumrow td.tot{background:#24713d}
 .cmx{all:unset;cursor:pointer;color:var(--muted);font-size:11px;margin-left:2px}.cmx:hover{color:var(--bad)}
 .cmadd{display:flex;gap:6px;margin-top:8px}
@@ -981,21 +982,21 @@ function render(){
   if(S.me.level===1 && !S.branch) return renderPicker();
   if(S.me.level===1 && S.branch==="__hq") return renderHQ();
   const lv=S.me.level;
-  const itemOk={wkppt:lv<=2&&WKPPT_BR.includes(S.branch),dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",semg:schedPerm("emg")!=="none",
+  const itemOk={wkppt:lv<=2&&WKPPT_BR.includes(S.branch),dash:canDash(),cal:canDash(),entry:canEntry(),spt:schedPerm("pt")!=="none",cons:schedPerm("pt")!=="none",manual:schedPerm("pt")!=="none",dscnt:schedPerm("pt")!=="none"&&DSC_BR.includes(S.branch),semg:schedPerm("emg")!=="none",
     resv:seeAll()||["원무","간호","물리치료","임상병리","병동","영상의학"].includes(S.me.dept),carm:seeAll()||S.me.dept==="영상의학",upload:lv<=3||S.me.dept==="원무",
     dpay:seeAll()||S.me.dept==="원무",paths:canDash()||S.me.dept==="원무"||ENTRY_ALL.includes(S.branch),parts:PARTS_BR.includes(S.branch)&&(canDash()||S.me.dept==="원무"),ampm:AMPM_BR.includes(S.branch),sec:lv<=2,users:lv<=2,log:lv<=2,perf:canPerf(),pl:lv<=2,ad:lv<=2,report:lv<=2,pay:lv===1,goals:lv<=2};
-  const LB={wkppt:"주간 보고서 PPT 받기",me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
+  const LB={wkppt:"주간 보고서 PPT 받기",me:"마이페이지",dash:"대시보드",cal:"마감 달력",entry:"마감일지 입력",dpay:"일일수납",paths:"내원경로 통계",parts:"부위별 통계",ampm:"오전·오후 보고",sec:"보안 자료",spt:"도수·충격파 스케줄",cons:"도수상담",manual:"수기치료 카운트",dscnt:"도충 카운트",semg:"근전도 스케줄",staff:"근무 스케줄",resv:"예약관리",ot:"연장근무",leave:"연차관리",inv:"물품·재고",carm:"C-arm 카운트",docs:"업무게시판",reg:"업무 기록부",info:"기본정보·연락망",std:"의료진 표준화",upload:"엑셀 업로드",users:"계정·원장 관리",log:"변경 기록",perf:"부서 실적",pl:"수입·지출",ad:"광고 효과",report:"월간 보고서",pay:"인건비·인센티브",goals:"목표·알림 설정"};
   const full=fullMenu(); const myM=full?null:new Set(Array.isArray(S.me.perms?.menus)?S.me.perms.menus:deptMenus(menuDept()));
-  const can=id=>itemOk[id]!==false&&(id==="me"||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","wkppt","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
+  const can=id=>itemOk[id]!==false&&(id==="me"||(id==="dscnt"&&(full||myM.has("spt")||myM.has("manual")))||full||myM.has(id)||(id==="docs"&&mgmtOk())||(id==="dpay"&&(myM.has("entry")||myM.has("reg")))||(id==="paths"&&(myM.has("entry")||myM.has("cal")))||(id==="parts"&&(myM.has("entry")||myM.has("cal")||myM.has("dash")))||(lv<=2&&["perf","pl","ad","report","wkppt","pay","goals","users","log"].includes(id))||(id==="entry"&&ENTRY_ALL.includes(S.branch))||(id==="ampm"&&AMPM_BR.includes(S.branch)));
   const items=[]; const add=(id,o={})=>{ if(can(id)&&!items.some(x=>x.id===id&&(x.dept||null)===(o.dept||null))) items.push({id,label:o.label||LB[id],dept:o.dept||null,grp:o.grp||null}); };
   const grp=(name,fn)=>{ const n0=items.length; items.push({sep:name}); fn(name); if(items.length===n0+1) items.pop(); };
   const deptTools=(d,g)=>{ if(!toolOk(d)) return; if(DOC_DEPTS.includes(d)) add("docs",{dept:d,grp:g}); if(REG_DEPTS.includes(d)) add("reg",{dept:d,grp:g}); if(INV_DEPTS.includes(d)) add("inv",{dept:d,grp:g}); };
-  const DEPT_FN={"원무":["entry","dpay","cal","paths","parts","resv","upload"],"물리치료":["spt","cons","manual"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
+  const DEPT_FN={"원무":["entry","dpay","cal","paths","parts","resv","upload"],"물리치료":["spt","cons","manual","dscnt"],"임상병리":["semg"],"영상의학":["carm"],"의료진":["std"]};
   add("me"); add("dash");
   grp("근무 · 인사 (공용)",g=>["staff","ot","leave"].forEach(id=>add(id,{grp:g})));
   grp("공통",g=>{ if(ENTRY_ALL.includes(S.branch)) add("entry",{grp:g}); if(AMPM_BR.includes(S.branch)) add("ampm",{grp:g}); add("docs",{dept:"공통",label:"공통 게시판",grp:g}); add("info",{grp:g}); });
   if(full||S.me.level<=3) ["원무","물리치료","간호","병동","수술","영상의학","임상병리","청구","의료진"].forEach(d=>grp(d,g=>{ (DEPT_FN[d]||[]).forEach(id=>add(id,{grp:g})); deptTools(d,g); }));
-  else if(S.me.dept!=="경영지원"){ const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","paths","parts","resv","upload","spt","cons","manual","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
+  else if(S.me.dept!=="경영지원"){ const md=menuDept()==="의사"?"의료진":(S.me.dept||"내 부서"); grp(md,g=>{ ["entry","dpay","cal","paths","parts","resv","upload","spt","cons","manual","dscnt","semg","carm","std","perf"].forEach(id=>add(id,{grp:g})); deptTools(md,g);
       if(toolOk(md)) ["docs","reg","inv"].forEach(id=>{ if(!items.some(x=>x.id===id&&x.dept!=="공통"&&x.dept!=="회의록")) add(id,{grp:g}); }); }); }
   if(mgmtOk()) grp("경영지원",g=>{ add("docs",{dept:"회의록",label:"주간 회의록",grp:g}); deptTools("경영지원",g); });
   grp("보안",g=>SEC_TABS.forEach(n=>add("sec",{label:n,dept:n,grp:g})));
@@ -1039,7 +1040,7 @@ function render(){
   document.querySelectorAll("nav.side [data-navg]").forEach(b=>b.onclick=()=>{ const g=b.dataset.navg; const close=b.getAttribute("aria-expanded")==="true"; close?navClosed.add(g):navClosed.delete(g); try{ localStorage.setItem("gt-navclosed2",JSON.stringify([...navClosed])); }catch(_){}
     document.querySelectorAll("nav.side [data-grp]").forEach(x=>{ if(x.dataset.grp===g) x.hidden=close&&x.getAttribute("aria-current")!=="page"; }); b.setAttribute("aria-expanded",!close); b.querySelector(".ar").textContent=close?"▸":"▾"; });
   const v=S.view;
-  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="wkppt"&&lv<=2&&WKPPT_BR.includes(S.branch)) renderWkPpt(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual();
+  if(v==="dash") renderDash(); else if(v==="paths") renderPaths(); else if(v==="parts") renderParts(); else if(v==="cal") renderCal(); else if(v==="entry") renderEntry(); else if(v==="users") renderUsers(); else if(v==="log") renderLog(); else if(v==="spt") renderSched("pt"); else if(v==="semg") renderSched("emg"); else if(v==="spts") renderSchedStats("pt"); else if(v==="semgs") renderSchedStats("emg"); else if(v==="staff") renderStaff(); else if(v==="docs") renderDocs(); else if(v==="price") renderPrices(); else if(v==="ot") renderOvertime(); else if(v==="inv") renderInventory(); else if(v==="upload") renderUpload(); else if(v==="resv") renderResv(); else if(v==="leave") renderLeave(); else if(v==="reg") renderRegisters(); else if(v==="sec"&&lv<=2){ S.secSel ||= SEC_TABS[0]; renderRegisters({dept:"보안",key:"regSec",pageTitle:"🔒 "+S.secSel,title:"보안 자료 · 1·2등급만 볼 수 있습니다 (서버에서도 막혀 있음) · 칸을 누르면 바로 고칩니다",filter:r=>r.name===S.secSel||r.name.startsWith(S.secSel+" · "),hideList:"auto",listPrefix:S.secSel+" · ",nowrap:true}); } else if(v==="ampm") renderAmpm(); else if(v==="dpay") renderRegisters({dept:"원무",key:"regPay",pageTitle:"일일수납",title:"원무 · 일일수납 (날짜를 고르면 그날 수납과 결제수단별 합계가 나옵니다)",filter:r=>r.name==="일일수납",hideList:true,dayDefault:true}); else if(v==="info") renderInfo(); else if(v==="perf"&&canPerf()) renderPerf(); else if(v==="pl"&&lv<=2) renderPL(); else if(v==="me") renderMe(); else if(v==="ad"&&lv<=2) renderAd(); else if(v==="report"&&lv<=2) renderReport(); else if(v==="wkppt"&&lv<=2&&WKPPT_BR.includes(S.branch)) renderWkPpt(); else if(v==="pay"&&lv===1) renderPay(); else if(v==="goals"&&lv<=2) renderGoals(); else if(v==="carm") renderCarm(); else if(v==="cons") renderCons(); else if(v==="std") renderStd(); else if(v==="manual") renderManual(); else if(v==="dscnt") renderDsCnt();
   else $("main").innerHTML=`<div class="wrap"><div class="empty">${esc(S.me.dept||"")} 부서 화면은 다음 단계에서 열립니다.</div></div>`;
 }
 function renderPicker(){
@@ -5677,6 +5678,37 @@ async function renderStd(){
   }
 }
 // ── 수기치료 카운트 (C-arm 카운트와 같은 방식 · 날짜 × 물리치료사) ──
+/* ── 도충 카운트: 도수·충격파 스케줄에서 치료사별·날짜별 건수 자동 집계 (철산점 11/25 요청) ── */
+const DSC_BR=["gt-cs"];
+async function renderDsCnt(){
+  const main=$("main"); main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
+  const st=S.dscV ||= {done:false}; const R=monthRange(S.month);
+  const [ar,set]=await Promise.all([allRows(()=>sb.from("appointments").select("appt_date,staff,item,status,is_new").eq("branch_id",S.branch).eq("kind","pt").gte("appt_date",R.start).lte("appt_date",R.end).order("id")),loadBranchSettings().catch(()=>({holidays:[]}))]);
+  if(ar.error){ main.innerHTML=`<div class="wrap"><div class="empty">${esc(errMsg(ar.error))}</div></div>`; return; }
+  const live=(ar.data||[]).filter(a=>!LOST_ST.has(a.status)&&(!st.done||a.status==="완료")&&(isDosu(a.item)||isShock(a.item)));
+  const V={}, byS={}; const add=(d,n,k,nw)=>{ const o=V[d+"|"+n] ||= {d:0,s:0}; o[k]++; const t=byS[n] ||= {d:0,s:0,nw:0}; t[k]++; if(nw) t.nw++; };
+  const NW={}; live.forEach(a=>{ const n=staffBase(a.staff)||"(미지정)"; const k=isDosu(a.item)?"d":"s"; add(a.appt_date,n,k,a.is_new); if(a.is_new) NW[a.appt_date]=(NW[a.appt_date]||0)+1; });
+  const merged=mergeStaff(JSON.parse(JSON.stringify(byS))); /* 두 글자 이름은 세 글자 이름으로 합침 */
+  const alias={}; Object.keys(byS).forEach(k=>{ if(!merged[k]){ const full=Object.keys(merged).find(x=>x.endsWith(k)); if(full) alias[k]=full; } });
+  if(Object.keys(alias).length){ Object.entries(V).forEach(([key,o])=>{ const [d,n]=key.split("|"); if(alias[n]){ const t=V[d+"|"+alias[n]] ||= {d:0,s:0}; t.d+=o.d; t.s+=o.s; delete V[key]; } }); }
+  const staff=Object.entries(merged).sort((a,b)=>(b[1].d+b[1].s)-(a[1].d+a[1].s)).map(([n])=>n);
+  const days=[...Array(R.days)].map((_,i)=>`${S.month}-${String(i+1).padStart(2,"0")}`); const today=kstToday();
+  const hol=new Set((set.holidays||[]).map(h=>h.d)); const dcls=d=>{ const w=new Date(d+"T00:00:00Z").getUTCDay(); return w===0||hol.has(d)?"sun":w===6?"sat":""; };
+  const g=(d,n,k)=>V[d+"|"+n]?.[k]||0; const dayT=(d,k)=>staff.reduce((s,n)=>s+g(d,n,k),0); const colT=(n,k)=>days.reduce((s,d)=>s+g(d,n,k),0); const allT=k=>days.reduce((s,d)=>s+dayT(d,k),0);
+  const z=v=>v?v:"";
+  main.innerHTML=`<div class="wrap">
+    <div class="page-h"><div><h2>도충 카운트</h2><div class="meta">도수·충격파 스케줄에서 자동으로 셉니다 · 취소·노쇼·변경 제외 · 이름의 #회차·숫자는 합쳐서 · 스케줄을 고치면 여기도 바로 바뀝니다</div></div>${monthNav()}</div>
+    <div class="seg" role="group" aria-label="세는 기준" style="margin-bottom:10px"><button data-dsd="0" aria-pressed="${!st.done}">예약 포함</button><button data-dsd="1" aria-pressed="${st.done}">완료만</button></div>
+    <section class="panel" style="padding:12px"><div class="tbl-box"><table class="cmtab small dstab"><thead>
+      <tr><th class="cmd" rowspan="2">${R.m}월</th>${staff.map(n=>`<th colspan="2">${esc(n)}</th>`).join("")}<th class="tot" colspan="3">합계</th><th class="cfh" rowspan="2">신환</th></tr>
+      <tr>${staff.map(()=>`<th>도수</th><th>충격파</th>`).join("")}<th class="tot">도수</th><th class="tot">충격파</th><th class="tot">ALL</th></tr></thead><tbody>
+      ${days.map(d=>{ const td=dayT(d,"d"), ts=dayT(d,"s"); return `<tr${d>today?' class="dsfut"':""}><td class="cmd ${dcls(d)}">${+d.slice(8)}일</td>${staff.map(n=>`<td class="num">${z(g(d,n,"d"))}</td><td class="num">${z(g(d,n,"s"))}</td>`).join("")}<td class="tot num">${z(td)}</td><td class="tot num">${z(ts)}</td><td class="tot num"><b>${z(td+ts)}</b></td><td class="num">${z(NW[d]||0)}</td></tr>`; }).join("")}
+      <tr class="sumrow"><td class="cmd">합계</td>${staff.map(n=>`<td class="num">${colT(n,"d")}</td><td class="num">${colT(n,"s")}</td>`).join("")}<td class="tot num">${allT("d")}</td><td class="tot num">${allT("s")}</td><td class="tot num">${allT("d")+allT("s")}</td><td class="num">${Object.values(NW).reduce((a,b)=>a+b,0)}</td></tr>
+      </tbody></table></div>${staff.length?"":`<p class="meta">이 달 도수·충격파 예약이 없습니다.</p>`}
+      <p class="meta" style="margin:8px 0 0">오늘 이후 날짜(연한 글씨)는 아직 예약 상태인 건수입니다.</p></section></div>`;
+  bindMonthNav(renderDsCnt);
+  main.querySelectorAll("[data-dsd]").forEach(b=>b.onclick=()=>{ st.done=b.dataset.dsd==="1"; renderDsCnt(); });
+}
 async function renderManual(){
   killCharts(); const main=$("main"); const keepY=S.mxKeepY??null; S.mxKeepY=null; if(keepY==null) main.innerHTML=`<div class="wrap"><p class="meta">불러오는 중…</p></div>`;
   const st=S.mxV ||= {ym:kstToday().slice(0,7)}; st.mode ||= "month"; st.date ||= kstToday(); st.from ||= addDays(kstToday(),-6); st.to ||= kstToday(); st.year ||= +kstToday().slice(0,4);
